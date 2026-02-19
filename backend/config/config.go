@@ -1,0 +1,158 @@
+package config
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"log"
+	"os"
+	"path/filepath"
+)
+
+type Emulator struct {
+	Path         string `json:"path"`
+	ShouldNotify bool   `json:"shouldNotify"`
+	IsDefault    bool   `json:"isDefault"`
+}
+
+type CfgFile struct {
+	Emulators []Emulator `json:"emulators"`
+}
+
+var ctx context.Context
+
+var p1, _ = os.UserHomeDir()
+var p2, _ = os.UserConfigDir()
+var p3, _ = os.UserCacheDir()
+
+var configDir = filepath.Join(p3, "sentinel")
+var configPath = filepath.Join(configDir, "config.json")
+
+var defaultEmulatorPaths = []Emulator{
+	{Path: fmt.Sprintf("%s/Public/Documents/Steam/CODEX", p1), ShouldNotify: true, IsDefault: true},
+	{Path: fmt.Sprintf("%s/Public/Documents/Steam/RUNE", p1), ShouldNotify: true, IsDefault: true},
+	{Path: fmt.Sprintf("%s/Public/Documents/Steam/OnlineFix", p1), ShouldNotify: true, IsDefault: true},
+	{Path: fmt.Sprintf("%s/Public/Documents/EMPRESS", p1), ShouldNotify: true, IsDefault: true},
+	{Path: fmt.Sprintf("%s/Steam/CODEX", p2), ShouldNotify: true, IsDefault: true},
+	{Path: fmt.Sprintf("%s/Goldberg SteamEmu Saves", p2), ShouldNotify: true, IsDefault: true},
+	{Path: fmt.Sprintf("%s/GSE Saves", p2), ShouldNotify: true, IsDefault: true},
+	{Path: fmt.Sprintf("%s/EMPRESS", p2), ShouldNotify: true, IsDefault: true},
+}
+
+func init() {
+	log.Print("Starting Config Initialization")
+
+	// Ensure config directory exists
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		log.Fatalf("Failed to create config directory: %v", err)
+	}
+
+	_, err := os.Stat(configPath)
+
+	if os.IsNotExist(err) {
+		// File doesn't exist - initialize default config
+		defaultConfig := CfgFile{Emulators: defaultEmulatorPaths}
+		config, marshalErr := json.MarshalIndent(defaultConfig, "", "  ")
+		if marshalErr != nil {
+			log.Fatalf("Failed to marshal default config: %v", marshalErr)
+		}
+
+		err := os.WriteFile(configPath, config, 0644)
+		if err != nil {
+			log.Fatalf("Failed to write default config: %v", err)
+		}
+	} else if err != nil {
+		// Handle other errors (e.g., permission issues)
+		log.Fatalf("Unexpected error checking config: %v", err)
+	}
+
+	log.Print("Config Initialization Complete")
+}
+
+func (c *CfgFile) LoadConfig() (*CfgFile, error) {
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := json.Unmarshal(data, c); err != nil {
+		return nil, err
+	}
+
+	return c, nil
+}
+
+func (c *CfgFile) SaveConfig() error {
+	data, err := json.MarshalIndent(c, "", "  ")
+
+	if err != nil {
+		return fmt.Errorf("failed to marshal config: %w", err)
+	}
+
+	if err := os.MkdirAll(filepath.Dir(configPath), 0755); err != nil {
+		return fmt.Errorf("failed to create config dir: %w", err)
+	}
+
+	if err := os.WriteFile(configPath, data, 0644); err != nil {
+		return fmt.Errorf("failed to write config: %w", err)
+	}
+
+	return nil
+}
+
+func (c *CfgFile) AddEmulator(path string) error {
+
+	emulator := Emulator{
+		Path:         path,
+		IsDefault:    false,
+		ShouldNotify: true,
+	}
+
+	// Check for duplicates
+	for _, emu := range c.Emulators {
+		if emu.Path == emulator.Path {
+			return nil // Already exists
+		}
+	}
+
+	c.Emulators = append(c.Emulators, emulator)
+	return c.SaveConfig()
+}
+
+// RemoveEmulator removes an emulator from the configuration by index
+func (c *CfgFile) RemoveEmulator(index int) error {
+	if index < 0 || index >= len(c.Emulators) {
+		return nil
+	}
+
+	if c.Emulators[index].IsDefault {
+		return nil // Cannot remove default emulators
+	}
+
+	c.Emulators = append(c.Emulators[:index], c.Emulators[index+1:]...)
+	return c.SaveConfig()
+}
+
+// ToggleEmulatorNotification toggles the notification setting for an emulator by index
+func (c *CfgFile) ToggleEmulatorNotification(index int) error {
+
+	if index < 0 || index >= len(c.Emulators) {
+		runtime.LogErrorf(ctx, "Unable to toggle notification at index: %d", index)
+		return nil
+	}
+	c.Emulators[index].ShouldNotify = !c.Emulators[index].ShouldNotify
+
+	return c.SaveConfig()
+
+}
+
+func (c *CfgFile) SelectDirectory() (string, error) {
+	return runtime.OpenDirectoryDialog(ctx, runtime.OpenDialogOptions{
+		Title: "Select A Folder",
+	})
+}
+
+func (c *CfgFile) SetContext(context context.Context) {
+	ctx = context
+}

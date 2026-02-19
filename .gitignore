@@ -1,0 +1,9 @@
+build/bin
+frontend/node_modules
+frontend/dist
+.agent/
+.idea/
+dist/
+.roo/
+openspec/
+build/

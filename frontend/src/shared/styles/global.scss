@@ -1,0 +1,32 @@
+// Oat UI CSS imports
+@import '@knadh/oat/css/00-base.css';
+@import '@knadh/oat/css/01-theme.css';
+@import '@knadh/oat/css/accordion.css';
+@import '@knadh/oat/css/alert.css';
+@import '@knadh/oat/css/animations.css';
+@import '@knadh/oat/css/badge.css';
+@import '@knadh/oat/css/button.css';
+@import '@knadh/oat/css/card.css';
+@import '@knadh/oat/css/dialog.css';
+@import '@knadh/oat/css/form.css';
+@import '@knadh/oat/css/grid.css';
+@import '@knadh/oat/css/progress.css';
+@import '@knadh/oat/css/sidebar.css';
+@import '@knadh/oat/css/skeleton.css';
+@import '@knadh/oat/css/spinner.css';
+@import '@knadh/oat/css/table.css';
+@import '@knadh/oat/css/tabs.css';
+@import '@knadh/oat/css/toast.css';
+@import '@knadh/oat/css/tooltip.css';
+@import '@knadh/oat/css/utilities.css';
+
+
+body {
+    margin: 0;
+    font-family: var(--font-sans);
+}
+
+.divider {
+    border-bottom:1px solid var(--border);
+    margin: var(--space-5) 0;
+}

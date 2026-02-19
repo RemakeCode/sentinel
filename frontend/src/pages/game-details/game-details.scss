@@ -1,0 +1,92 @@
+.game-details {
+    &-back-link {
+        text-decoration: none;
+    }
+
+    &-back-icon {
+        width: 16px;
+        height: 16px;
+    }
+
+    &-container {
+        padding: var(--space-6);
+        height: 100%;
+        color: var(--foreground);
+        display: flex;
+        gap: var(--space-10);
+        align-items: flex-start;
+
+        &-image-section {
+            flex: 1;
+            max-width: 500px;
+
+            &-large-image {
+                width: 100%;
+                height: auto;
+                aspect-ratio: 2/3;
+                border-radius: var(--radius-large);
+                object-fit: cover;
+                box-shadow: var(--shadow-medium);
+                view-transition-name: attr(data-view-transition);
+            }
+
+            &-back-button {
+                margin-bottom: var(--space-5);
+                display: inline-flex;
+                align-items: center;
+                gap: var(--space-2);
+                cursor: pointer;
+                color: var(--muted-foreground);
+                transition: color var(--transition);
+
+                &:hover {
+                    color: var(--foreground);
+                }
+            }
+        }
+
+        &-info-section {
+            flex: 2;
+            padding-top: var(--space-10);
+
+            h1 {
+                font-size: var(--text-1);
+                margin-bottom: var(--space-6);
+                font-weight: var(--font-bold);
+                background: linear-gradient(90deg, var(--foreground), var(--muted-foreground));
+                background-clip: text;
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+            }
+
+            &-dummy-list {
+                list-style: none;
+                padding: 0;
+
+                li {
+                    background: var(--secondary);
+                    margin-bottom: var(--space-3);
+                    padding: var(--space-4);
+                    border-radius: var(--radius-medium);
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    transition: background var(--transition);
+
+                    &:hover {
+                        background: var(--muted);
+                    }
+
+                    &-item-title {
+                        font-weight: var(--font-semibold);
+                        font-size: var(--text-5);
+                    }
+
+                    &-item-desc {
+                        color: var(--muted-foreground);
+                    }
+                }
+            }
+        }
+    }
+}
