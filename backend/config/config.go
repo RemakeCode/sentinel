@@ -29,6 +29,13 @@ var p3, _ = os.UserCacheDir()
 var configDir = filepath.Join(p3, "sentinel")
 var configPath = filepath.Join(configDir, "config.json")
 
+// Cache directory paths
+var cacheDir = filepath.Join(configDir, "cache")
+var cacheDataDir = filepath.Join(cacheDir, "data")
+var cacheIconDir = filepath.Join(cacheDir, "icon")
+var cacheSchemaDir = filepath.Join(cacheDir, "schema")
+var cacheSchemaLangDir = filepath.Join(cacheSchemaDir, "dummy")
+
 var defaultEmulatorPaths = []Emulator{
 	{Path: fmt.Sprintf("%s/Public/Documents/Steam/CODEX", p1), ShouldNotify: true, IsDefault: true},
 	{Path: fmt.Sprintf("%s/Public/Documents/Steam/RUNE", p1), ShouldNotify: true, IsDefault: true},
@@ -46,6 +53,17 @@ func init() {
 	// Ensure config directory exists
 	if err := os.MkdirAll(configDir, 0755); err != nil {
 		log.Fatalf("Failed to create config directory: %v", err)
+	}
+
+	// Ensure cache directories exist
+	if err := os.MkdirAll(cacheDataDir, 0755); err != nil {
+		log.Fatalf("Failed to create cache data directory: %v", err)
+	}
+	if err := os.MkdirAll(cacheIconDir, 0755); err != nil {
+		log.Fatalf("Failed to create cache icon directory: %v", err)
+	}
+	if err := os.MkdirAll(cacheSchemaLangDir, 0755); err != nil {
+		log.Fatalf("Failed to create cache schema directory: %v", err)
 	}
 
 	_, err := os.Stat(configPath)
