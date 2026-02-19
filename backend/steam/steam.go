@@ -98,7 +98,7 @@ func FetchAppDetailsBulk(appIDs []string) ([]*GameBasics, error) {
 			// 2. Fetch Achievements
 			// Note: We are already holding a slot in the semaphore, so this is safe
 			//achievementsList, err := fetchAchievementsWithKey(id)
-			achievementsList, err := fetchAchievementsFromThirdParty(id)
+			achievementsList, err := fetchAchievementsFromThirdParty(id, "english")
 
 			if err == nil {
 				details.Achievement.List = achievementsList
@@ -115,7 +115,7 @@ func FetchAppDetailsBulk(appIDs []string) ([]*GameBasics, error) {
 	return results, nil
 }
 
-func fetchAchievementsWithKey(appID string) ([]Achievement, error) {
+func fetchAchievementsWithKey(appID string, language string) ([]Achievement, error) {
 	apiKey := os.Getenv("STEAM_API_KEY")
 
 	if apiKey == "" {
@@ -125,8 +125,8 @@ func fetchAchievementsWithKey(appID string) ([]Achievement, error) {
 	//TODO match language to config and system language or default to english
 
 	url := fmt.Sprintf(
-		"https://api.steampowered.com/ISteamUserStats/GetSchemaForGame/v2/?key=%s&appid=%s&l=english",
-		apiKey, appID,
+		"https://api.steampowered.com/ISteamUserStats/GetSchemaForGame/v2/?key=%s&appid=%s&l=%s",
+		apiKey, appID, language,
 	)
 
 	resp, err := http.Get(url)
@@ -160,9 +160,9 @@ func fetchAchievementsWithKey(appID string) ([]Achievement, error) {
 	return achievements, nil
 }
 
-func fetchAchievementsFromThirdParty(appID string) ([]Achievement, error) {
+func fetchAchievementsFromThirdParty(appID string, language string) ([]Achievement, error) {
 	// Check cache first
-	if cached, err := loadCachedAchievementData(appID); err == nil {
+	if cached, err := loadCachedAchievementData(appID, language); err == nil {
 		return cached, nil
 	}
 
@@ -261,7 +261,7 @@ func fetchAchievementsFromThirdParty(appID string) ([]Achievement, error) {
 	}
 
 	// Cache the fetched achievement data
-	_ = cacheAchievementData(appID, achievements)
+	_ = cacheAchievementData(appID, language, achievements)
 
 	return achievements, nil
 }
@@ -346,8 +346,8 @@ func getCacheDir() string {
 	return filepath.Join(p3, "sentinel", "cache")
 }
 
-func getAchievementCachePath(appID string) string {
-	return filepath.Join(getCacheDir(), "schema", "dummy", appID+".json")
+func getAchievementCachePath(appID string, language string) string {
+	return filepath.Join(getCacheDir(), "schema", language, appID+".json")
 }
 
 func getIconCachePath(appID string, filename string) string {
@@ -360,8 +360,8 @@ func getGameImageCachePath(appID string, imageType string) string {
 
 // Achievement data caching
 
-func cacheAchievementData(appID string, achievements []Achievement) error {
-	cachePath := getAchievementCachePath(appID)
+func cacheAchievementData(appID string, language string, achievements []Achievement) error {
+	cachePath := getAchievementCachePath(appID, language)
 
 	// Ensure directory exists
 	if err := os.MkdirAll(filepath.Dir(cachePath), 0755); err != nil {
@@ -380,8 +380,8 @@ func cacheAchievementData(appID string, achievements []Achievement) error {
 	return nil
 }
 
-func loadCachedAchievementData(appID string) ([]Achievement, error) {
-	cachePath := getAchievementCachePath(appID)
+func loadCachedAchievementData(appID string, language string) ([]Achievement, error) {
+	cachePath := getAchievementCachePath(appID, language)
 
 	data, err := os.ReadFile(cachePath)
 	if err != nil {
