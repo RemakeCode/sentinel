@@ -4,7 +4,7 @@ import (
 	"context"
 )
 
-// App struct
+//wails:bind
 type App struct {
 	ctx context.Context
 }

@@ -1,0 +1,153 @@
+version: '3'
+
+includes:
+  common: ../Taskfile.yml
+
+vars:
+  # Signing configuration - edit these values for your project
+  # SIGN_IDENTITY: "Developer ID Application: Your Company (TEAMID)"
+  # KEYCHAIN_PROFILE: "my-notarize-profile"
+  # ENTITLEMENTS: "build/darwin/entitlements.plist"
+
+  # Docker image for cross-compilation (used when building on non-macOS)
+  CROSS_IMAGE: wails-cross
+
+tasks:
+  build:
+    summary: Builds the application
+    cmds:
+      - task: '{{if eq OS "darwin"}}build:native{{else}}build:docker{{end}}'
+        vars:
+          ARCH: '{{.ARCH}}'
+          DEV: '{{.DEV}}'
+          OUTPUT: '{{.OUTPUT}}'
+          EXTRA_TAGS: '{{.EXTRA_TAGS}}'
+    vars:
+      DEFAULT_OUTPUT: '{{.BIN_DIR}}/{{.APP_NAME}}'
+      OUTPUT: '{{ .OUTPUT | default .DEFAULT_OUTPUT }}'
+
+  build:native:
+    summary: Builds the application natively on macOS
+    internal: true
+    deps:
+      - task: common:go:mod:tidy
+      - task: common:build:frontend
+        vars:
+          BUILD_FLAGS:
+            ref: .BUILD_FLAGS
+          DEV:
+            ref: .DEV
+      # - task: common:generate:icons  # Skip icon generation for now
+    cmds:
+      - go build {{.BUILD_FLAGS}} -o {{.OUTPUT}}
+    vars:
+      BUILD_FLAGS: '{{if eq .DEV "true"}}{{if .EXTRA_TAGS}}-tags {{.EXTRA_TAGS}} {{end}}-buildvcs=false -gcflags=all="-l"{{else}}-tags production{{if .EXTRA_TAGS}},{{.EXTRA_TAGS}}{{end}} -trimpath -buildvcs=false -ldflags="-w -s"{{end}}'
+      DEFAULT_OUTPUT: '{{.BIN_DIR}}/{{.APP_NAME}}'
+      OUTPUT: '{{ .OUTPUT | default .DEFAULT_OUTPUT }}'
+    env:
+      GOOS: darwin
+      CGO_ENABLED: 1
+      GOARCH: '{{.ARCH | default ARCH}}'
+      CGO_CFLAGS: "-mmacosx-version-min=10.15"
+      CGO_LDFLAGS: "-mmacosx-version-min=10.15"
+      MACOSX_DEPLOYMENT_TARGET: "10.15"
+
+  build:docker:
+    summary: Cross-compiles for macOS using Docker (for Linux/Windows hosts)
+    internal: true
+    deps:
+      - task: common:build:frontend
+      # - task: common:generate:icons  # Skip icon generation for now
+    preconditions:
+      - sh: docker info > /dev/null 2>&1
+        msg: "Docker is required for cross-compilation. Please install Docker."
+      - sh: docker image inspect {{.CROSS_IMAGE}} > /dev/null 2>&1
+        msg: |
+          Docker image '{{.CROSS_IMAGE}}' not found.
+          Build it first: wails3 task setup:docker
+    cmds:
+      - docker run --rm -v "{{.ROOT_DIR}}:/app" {{.GO_CACHE_MOUNT}} {{.REPLACE_MOUNTS}} -e APP_NAME="{{.APP_NAME}}" {{if .EXTRA_TAGS}}-e EXTRA_TAGS="{{.EXTRA_TAGS}}"{{end}} {{.CROSS_IMAGE}} darwin {{.DOCKER_ARCH}}
+      - docker run --rm -v "{{.ROOT_DIR}}:/app" alpine chown -R $(id -u):$(id -g) /app/bin
+      - mkdir -p {{.BIN_DIR}}
+      - mv "bin/{{.APP_NAME}}-darwin-{{.DOCKER_ARCH}}" "{{.OUTPUT}}"
+    vars:
+      DOCKER_ARCH: '{{if eq .ARCH "arm64"}}arm64{{else if eq .ARCH "amd64"}}amd64{{else}}arm64{{end}}'
+      DEFAULT_OUTPUT: '{{.BIN_DIR}}/{{.APP_NAME}}'
+      OUTPUT: '{{ .OUTPUT | default .DEFAULT_OUTPUT }}'
+      # Mount Go module cache for faster builds
+      GO_CACHE_MOUNT:
+        sh: 'echo "-v ${GOPATH:-$HOME/go}/pkg/mod:/go/pkg/mod"'
+      # Extract replace directives from go.mod and create -v mounts for each
+      # Handles both relative (=> ../) and absolute (=> /) paths
+      REPLACE_MOUNTS:
+        sh: |
+          grep -E '^replace .* => ' go.mod 2>/dev/null | while read -r line; do
+            path=$(echo "$line" | sed -E 's/^replace .* => //' | tr -d '\r')
+            # Convert relative paths to absolute
+            if [ "${path#/}" = "$path" ]; then
+              path="$(cd "$(dirname "$path")" 2>/dev/null && pwd)/$(basename "$path")"
+            fi
+            # Only mount if directory exists
+            if [ -d "$path" ]; then
+              echo "-v $path:$path:ro"
+            fi
+          done | tr '\n' ' '
+
+  build:universal:
+    summary: Builds darwin universal binary (arm64 + amd64)
+    deps:
+      - task: build
+        vars:
+          ARCH: arm64
+          OUTPUT: bin/{{.APP_NAME}}-arm64
+      - task: build
+        vars:
+          ARCH: amd64
+          OUTPUT: bin/{{.APP_NAME}}-amd64
+    cmds:
+      - lipo -create -output {{.BIN_DIR}}/{{.APP_NAME}} bin/{{.APP_NAME}}-arm64 bin/{{.APP_NAME}}-amd64
+      - rm bin/{{.APP_NAME}}-arm64 bin/{{.APP_NAME}}-amd64
+
+  package:
+    summary: Packages the application as a .app bundle
+    deps:
+      - task: build
+    cmds:
+      - |
+        set -euo pipefail
+        APP_NAME="{{.APP_NAME}}"
+        BIN_DIR="{{.BIN_DIR}}"
+        APP_BUNDLE="${BIN_DIR}/${APP_NAME}.app"
+        CONTENTS="${APP_BUNDLE}/Contents"
+        MACOS="${CONTENTS}/MacOS"
+        RESOURCES="${CONTENTS}/Resources"
+        
+        # Remove existing .app if it exists
+        rm -rf "${APP_BUNDLE}"
+        
+        # Create .app structure
+        mkdir -p "${MACOS}"
+        mkdir -p "${RESOURCES}"
+        
+        # Copy binary
+        cp "${BIN_DIR}/${APP_NAME}" "${MACOS}/${APP_NAME}"
+        
+        # Copy Info.plist
+        cp build/darwin/Info.plist "${CONTENTS}/Info.plist"
+        
+        # Copy icon if it exists
+        if [ -f "build/darwin/icons.icns" ]; then
+          cp build/darwin/icons.icns "${RESOURCES}/AppIcon.icns"
+        fi
+        
+        # Set executable permissions
+        chmod +x "${MACOS}/${APP_NAME}"
+        
+        echo "Packaged: ${APP_BUNDLE}"
+
+  run:
+    summary: Runs the application
+    deps:
+      - task: build
+    cmds:
+      - ./{{.BIN_DIR}}/{{.APP_NAME}}

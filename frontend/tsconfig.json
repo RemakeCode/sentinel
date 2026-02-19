@@ -18,7 +18,7 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
-      "@wa/*": ["./wailsjs/*"]
+      "@wa/*": ["./bindings/*"]
     }
   },
   "include": ["src"],
