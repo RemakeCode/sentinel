@@ -1,0 +1,64 @@
+.settings {
+  &-container {
+    padding: var(--space-8);
+    max-width: 1200px;
+    margin: 0 auto;
+    color: var(--foreground);
+    animation: fadeIn var(--transition) ease-out;
+
+    &-header {
+      margin-bottom: var(--space-6);
+    }
+  }
+
+  &-back-icon {
+    width: 16px;
+    height: 16px;
+  }
+
+  &-section-title {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+  }
+
+  &-table {
+    border: 1px solid var(--border);
+    padding: var(--space-5);
+    border-radius: var(--radius-medium);
+    margin-bottom: var(--space-12);
+    background: var(--primary-foreground);
+
+    &-actions {
+      text-align: right;
+
+      .label {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      > svg {
+        cursor: pointer
+      }
+
+      .disabled {
+        cursor: not-allowed;
+        opacity: 0.2
+      }
+    }
+  }
+
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
