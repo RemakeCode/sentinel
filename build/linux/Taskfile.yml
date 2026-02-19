@@ -1,0 +1,17 @@
+version: '3'
+
+tasks:
+  build:
+    summary: Builds the application for Linux
+    cmds:
+      - echo "Linux build not yet implemented"
+
+  package:
+    summary: Packages the application for Linux
+    cmds:
+      - echo "Linux package not yet implemented"
+
+  run:
+    summary: Runs the application on Linux
+    cmds:
+      - echo "Linux run not yet implemented"

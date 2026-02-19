@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router';
-import { ArrowLeft, Eye, FolderOpen, Trash2, Volume, Volume2, VolumeOff, VolumeX } from 'lucide-react';
+import { ArrowLeft, Eye, FolderOpen, Trash2, Volume2, VolumeOff } from 'lucide-react';
 
-import { LoadConfig, AddEmulator, RemoveEmulator, ToggleEmulatorNotification, SelectDirectory } from '@wa/go/config/CfgFile';
+import { LoadConfig, AddEmulator, RemoveEmulator, ToggleEmulatorNotification, SelectDirectory } from '@wa/sentinel/backend/config/cfgfile';
 
 import './settings.scss';
 import EmptyState from '@/shared/components/EmptyState';
-import { config } from '@wa/go/models';
-import { LogError, LogPrint } from '@wa/runtime';
+import { CfgFile, Emulator } from '@wa/sentinel/backend/config/models';
+
+import { Dialogs } from '@wailsio/runtime';
 
 declare global {
   interface Window {
@@ -20,12 +21,12 @@ declare global {
 }
 
 interface EmulatorItem {
-  emu: config.Emulator;
+  emu: Emulator;
   index: number;
 }
 
 const Settings: React.FC = () => {
-  const [appConfig, setAppConfig] = useState<config.CfgFile | null>(null);
+  const [appConfig, setAppConfig] = useState<CfgFile | null>(null);
   const [darkMode, setDarkMode] = useState(true);
 
   useEffect(() => {
@@ -44,7 +45,7 @@ const Settings: React.FC = () => {
 
   const handleAddEmulator = async () => {
     try {
-      const selectedPath = await SelectDirectory();
+      const selectedPath = await Dialogs.OpenFile({ CanChooseDirectories: true, CanChooseFiles: false, Title: 'Select A Folder to Watch' });
 
       if (selectedPath) {
         await AddEmulator(selectedPath);
@@ -63,7 +64,6 @@ const Settings: React.FC = () => {
       await loadConfig();
     } catch (err) {
       console.error('Failed to toggle notification:', err);
-      LogError(`Failed to toggle notification: ${err}`);
       window.Oat?.toast?.show('Failed to update setting', 'error');
     }
   };
@@ -81,7 +81,7 @@ const Settings: React.FC = () => {
 
   const emulators = appConfig?.emulators || [];
 
-  const allEmulators: EmulatorItem[] = emulators.map((emu, index) => ({ emu, index }));
+  const allEmulators: EmulatorItem[] = emulators.map((emu: Emulator, index: number) => ({ emu, index }));
 
   return (
     <div className='settings-container'>

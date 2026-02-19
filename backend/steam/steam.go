@@ -3,7 +3,6 @@ package steam
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -251,8 +250,6 @@ func fetchAchievementsFromThirdParty(appID string) ([]Achievement, error) {
 		achievements = append(achievements, a)
 	}
 
-	log.Println("Found", len(achievements), "merged achievements for", appID)
-	log.Println("Found", achievements[0])
 	return achievements, nil
 }
 
@@ -260,9 +257,11 @@ func fetchGameBasics(appID string) (*GameBasics, error) {
 	url := fmt.Sprintf("https://store.steampowered.com/api/appdetails?appids=%s&l=english", appID)
 
 	resp, err := http.Get(url)
+
 	if err != nil {
 		return nil, err
 	}
+
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
@@ -295,6 +294,8 @@ func fetchGameBasics(appID string) (*GameBasics, error) {
 		},
 	}, nil
 }
+
+//cache data - achievements, achievement-images, HeaderImage, CoverImage
 
 // func cacheIcons(appID string) error {
 

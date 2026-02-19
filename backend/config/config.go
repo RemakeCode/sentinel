@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"log"
 	"os"
 	"path/filepath"
@@ -16,6 +15,7 @@ type Emulator struct {
 	IsDefault    bool   `json:"isDefault"`
 }
 
+//wails:bind
 type CfgFile struct {
 	Emulators []Emulator `json:"emulators"`
 }
@@ -138,7 +138,7 @@ func (c *CfgFile) RemoveEmulator(index int) error {
 func (c *CfgFile) ToggleEmulatorNotification(index int) error {
 
 	if index < 0 || index >= len(c.Emulators) {
-		runtime.LogErrorf(ctx, "Unable to toggle notification at index: %d", index)
+		// Wails 3: Runtime logging handled differently
 		return nil
 	}
 	c.Emulators[index].ShouldNotify = !c.Emulators[index].ShouldNotify
@@ -147,10 +147,11 @@ func (c *CfgFile) ToggleEmulatorNotification(index int) error {
 
 }
 
+// SelectDirectory opens a directory selection dialog
+// Wails 3: This will be handled via the frontend runtime
 func (c *CfgFile) SelectDirectory() (string, error) {
-	return runtime.OpenDirectoryDialog(ctx, runtime.OpenDialogOptions{
-		Title: "Select A Folder",
-	})
+	// Wails 3: File dialogs are handled via frontend runtime
+	return "", nil
 }
 
 func (c *CfgFile) SetContext(context context.Context) {

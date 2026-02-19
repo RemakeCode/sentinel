@@ -1,47 +1,51 @@
 package main
 
 import (
-	"context"
 	"embed"
-	"sentinel/backend"
-	configFile "sentinel/backend/config"
+	_ "embed"
+	"log"
 
-	"github.com/wailsapp/wails/v2"
-	"github.com/wailsapp/wails/v2/pkg/logger"
-	"github.com/wailsapp/wails/v2/pkg/options"
-	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"sentinel/backend"
+	"sentinel/backend/config"
+
+	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 //go:embed all:frontend/dist
 var assets embed.FS
 
 func main() {
-	// Create an instance of the app structure
-	app := &backend.App{}
-	configFile := &configFile.CfgFile{}
 
-	// Create application with options
-	err := wails.Run(&options.App{
-		Title:    "Sentinel",
-		Width:    1024,
-		Height:   768,
-		LogLevel: logger.ERROR,
-		AssetServer: &assetserver.Options{
-			Assets: assets,
+	// Create a new Wails application by providing the necessary options.
+	// Variables 'Name' and 'Description' are for application metadata.
+	// 'Assets' configures the asset server with the 'FS' variable pointing to the frontend files.
+	// 'Bind' is a list of Go struct instances. The frontend has access to the methods of these instances.
+	// 'Mac' options tailor the application when running an macOS.
+	app := application.New(application.Options{
+		Name:        "Sentinel",
+		Description: "Steam game emulator manager",
+		Services: []application.Service{
+			application.NewService(&backend.App{}),
+			application.NewService(&config.CfgFile{}),
 		},
-		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
-		OnStartup: func(ctx context.Context) {
-			configFile.SetContext(ctx)
-
+		Assets: application.AssetOptions{
+			Handler: application.AssetFileServerFS(assets),
 		},
-		OnDomReady: app.DomReady,
-		Bind: []interface{}{
-			app,
-			configFile,
+		Mac: application.MacOptions{
+			ApplicationShouldTerminateAfterLastWindowClosed: true,
 		},
 	})
 
-	if err != nil {
-		println("Error:", err.Error())
+	// Create the main window
+	app.Window.NewWithOptions(application.WebviewWindowOptions{
+		Title:  "Sentinel",
+		Width:  1024,
+		Height: 768,
+		URL:    "/",
+	})
+
+	// Run the application
+	if err := app.Run(); err != nil {
+		log.Fatal(err)
 	}
 }

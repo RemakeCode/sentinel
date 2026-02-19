@@ -1,4 +1,4 @@
-package scanner
+package watcher
 
 import (
 	"log"
@@ -8,8 +8,7 @@ import (
 
 var numericRegex = regexp.MustCompile(`^\d+$`)
 
-// ScanEmulator reads a directory, returns a list of AppIDs, and ensures their data files exist
-func ScanEmulator(path string) {
+func Scan(path string) {
 	entries, err := os.ReadDir(path)
 	if err != nil {
 		return

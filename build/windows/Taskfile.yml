@@ -1,0 +1,17 @@
+version: '3'
+
+tasks:
+  build:
+    summary: Builds the application for Windows
+    cmds:
+      - echo "Windows build not yet implemented"
+
+  package:
+    summary: Packages the application for Windows
+    cmds:
+      - echo "Windows package not yet implemented"
+
+  run:
+    summary: Runs the application on Windows
+    cmds:
+      - echo "Windows run not yet implemented"
