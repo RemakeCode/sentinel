@@ -34,7 +34,30 @@ var cacheDir = filepath.Join(configDir, "cache")
 var cacheDataDir = filepath.Join(cacheDir, "data")
 var cacheIconDir = filepath.Join(cacheDir, "icon")
 var cacheSchemaDir = filepath.Join(cacheDir, "schema")
-var cacheSchemaLangDir = filepath.Join(cacheSchemaDir, "dummy")
+
+// SteamLanguage represents a language from the Steam i18n config
+type SteamLanguage struct {
+	DisplayName string `json:"displayName"`
+	API         string `json:"api"`
+	WebAPI      string `json:"webapi"`
+	Native      string `json:"native"`
+}
+
+// GetSteamLanguages returns the list of available Steam languages
+func GetSteamLanguages() ([]SteamLanguage, error) {
+	langPath := filepath.Join(configDir, "i18n", "steam.json")
+	data, err := os.ReadFile(langPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read steam languages: %w", err)
+	}
+
+	var languages []SteamLanguage
+	if err := json.Unmarshal(data, &languages); err != nil {
+		return nil, fmt.Errorf("failed to parse steam languages: %w", err)
+	}
+
+	return languages, nil
+}
 
 var defaultEmulatorPaths = []Emulator{
 	{Path: fmt.Sprintf("%s/Public/Documents/Steam/CODEX", p1), ShouldNotify: true, IsDefault: true},
@@ -62,8 +85,21 @@ func init() {
 	if err := os.MkdirAll(cacheIconDir, 0755); err != nil {
 		log.Fatalf("Failed to create cache icon directory: %v", err)
 	}
-	if err := os.MkdirAll(cacheSchemaLangDir, 0755); err != nil {
+	if err := os.MkdirAll(cacheSchemaDir, 0755); err != nil {
 		log.Fatalf("Failed to create cache schema directory: %v", err)
+	}
+
+	// Create language folders in schema directory based on steam.json
+	languages, err := GetSteamLanguages()
+	if err != nil {
+		log.Printf("Warning: Failed to load Steam languages: %v", err)
+	} else {
+		for _, lang := range languages {
+			langDir := filepath.Join(cacheSchemaDir, lang.API)
+			if err := os.MkdirAll(langDir, 0755); err != nil {
+				log.Printf("Warning: Failed to create language directory %s: %v", lang.API, err)
+			}
+		}
 	}
 
 	_, err := os.Stat(configPath)
