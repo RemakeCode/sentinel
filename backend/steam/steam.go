@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -13,12 +14,13 @@ import (
 	"github.com/PuerkitoBio/goquery"
 )
 
-type Achievement struct {
+type achievement struct {
 	Name         string
 	DisplayName  string
 	Description  string
 	Icon         string
 	IconGray     string
+	IconLocal    string
 	DefaultValue int `default:"0"`
 	Hidden       int `default:"0"`
 }
@@ -31,7 +33,7 @@ type GameBasics struct {
 	PortraitImage string
 	Achievement   struct {
 		Total int
-		List  []Achievement
+		List  []achievement
 	}
 }
 
@@ -66,49 +68,56 @@ type schemaResponse struct {
 	} `json:"game"`
 }
 
-// SteamLanguage represents a language from Steam
-type SteamLanguage struct {
+// Language represents a language from Steam
+type Language struct {
 	DisplayName string `json:"displayName"`
 	API         string `json:"api"`
 	WebAPI      string `json:"webapi"`
-	Native      string `json:"native"`
 }
 
 // steamLanguages is the list of available Steam languages
-var steamLanguages = []SteamLanguage{
-	{DisplayName: "Arabic", API: "arabic", WebAPI: "ar", Native: "العربية"},
-	{DisplayName: "Bulgarian", API: "bulgarian", WebAPI: "bg", Native: "български език"},
-	{DisplayName: "Simplified Chinese", API: "schinese", WebAPI: "zh-CN", Native: "简体中文"},
-	{DisplayName: "Traditional Chinese", API: "tchinese", WebAPI: "zh-TW", Native: "繁體中文"},
-	{DisplayName: "Czech", API: "czech", WebAPI: "cs", Native: "čeština"},
-	{DisplayName: "Danish", API: "danish", WebAPI: "da", Native: "Dansk"},
-	{DisplayName: "Dutch", API: "dutch", WebAPI: "nl", Native: "Nederlands"},
-	{DisplayName: "English", API: "english", WebAPI: "en", Native: "English"},
-	{DisplayName: "Finnish", API: "finnish", WebAPI: "fi", Native: "Suomi"},
-	{DisplayName: "French", API: "french", WebAPI: "fr", Native: "Français"},
-	{DisplayName: "German", API: "german", WebAPI: "de", Native: "Deutsch"},
-	{DisplayName: "Greek", API: "greek", WebAPI: "el", Native: "Ελληνικά"},
-	{DisplayName: "Hungarian", API: "hungarian", WebAPI: "hu", Native: "Magyar"},
-	{DisplayName: "Italian", API: "italian", WebAPI: "it", Native: "Italiano"},
-	{DisplayName: "Japanese", API: "japanese", WebAPI: "ja", Native: "日本語"},
-	{DisplayName: "Korean", API: "koreana", WebAPI: "ko", Native: "한국어"},
-	{DisplayName: "Norwegian", API: "norwegian", WebAPI: "no", Native: "Norsk"},
-	{DisplayName: "Polish", API: "polish", WebAPI: "pl", Native: "Polski"},
-	{DisplayName: "Portuguese", API: "portuguese", WebAPI: "pt", Native: "Português"},
-	{DisplayName: "Portuguese - Brazil", API: "brazilian", WebAPI: "pt-BR", Native: "Português-Brasil"},
-	{DisplayName: "Romanian", API: "romanian", WebAPI: "ro", Native: "Română"},
-	{DisplayName: "Russian", API: "russian", WebAPI: "ru", Native: "Русский"},
-	{DisplayName: "Spanish - Spain", API: "spanish", WebAPI: "es", Native: "Español-España"},
-	{DisplayName: "Spanish - Latin America", API: "latam", WebAPI: "es-419", Native: "Español-Latinoamérica"},
-	{DisplayName: "Swedish", API: "swedish", WebAPI: "sv", Native: "Svenska"},
-	{DisplayName: "Thai", API: "thai", WebAPI: "th", Native: "ไทย"},
-	{DisplayName: "Turkish", API: "turkish", WebAPI: "tr", Native: "Türkçe"},
-	{DisplayName: "Ukrainian", API: "ukrainian", WebAPI: "uk", Native: "Українська"},
-	{DisplayName: "Vietnamese", API: "vietnamese", WebAPI: "vn", Native: "Tiếng Việt"},
+var steamLanguages = []Language{
+	{DisplayName: "Arabic", API: "arabic", WebAPI: "ar"},
+	{DisplayName: "Bulgarian", API: "bulgarian", WebAPI: "bg"},
+	{DisplayName: "Simplified Chinese", API: "schinese", WebAPI: "zh-CN"},
+	{DisplayName: "Traditional Chinese", API: "tchinese", WebAPI: "zh-TW"},
+	{DisplayName: "Czech", API: "czech", WebAPI: "cs"},
+	{DisplayName: "Danish", API: "danish", WebAPI: "da"},
+	{DisplayName: "Dutch", API: "dutch", WebAPI: "nl"},
+	{DisplayName: "English", API: "english", WebAPI: "en"},
+	{DisplayName: "Finnish", API: "finnish", WebAPI: "fi"},
+	{DisplayName: "French", API: "french", WebAPI: "fr"},
+	{DisplayName: "German", API: "german", WebAPI: "de"},
+	{DisplayName: "Greek", API: "greek", WebAPI: "el"},
+	{DisplayName: "Hungarian", API: "hungarian", WebAPI: "hu"},
+	{DisplayName: "Italian", API: "italian", WebAPI: "it"},
+	{DisplayName: "Japanese", API: "japanese", WebAPI: "ja"},
+	{DisplayName: "Korean", API: "koreana", WebAPI: "ko"},
+	{DisplayName: "Norwegian", API: "norwegian", WebAPI: "no"},
+	{DisplayName: "Polish", API: "polish", WebAPI: "pl"},
+	{DisplayName: "Portuguese", API: "portuguese", WebAPI: "pt"},
+	{DisplayName: "Portuguese - Brazil", API: "brazilian", WebAPI: "pt-BR"},
+	{DisplayName: "Romanian", API: "romanian", WebAPI: "ro"},
+	{DisplayName: "Russian", API: "russian", WebAPI: "ru"},
+	{DisplayName: "Spanish - Spain", API: "spanish", WebAPI: "es"},
+	{DisplayName: "Spanish - Latin America", API: "latam", WebAPI: "es-419"},
+	{DisplayName: "Swedish", API: "swedish", WebAPI: "sv"},
+	{DisplayName: "Thai", API: "thai", WebAPI: "th"},
+	{DisplayName: "Turkish", API: "turkish", WebAPI: "tr"},
+	{DisplayName: "Ukrainian", API: "ukrainian", WebAPI: "uk"},
+	{DisplayName: "Vietnamese", API: "vietnamese", WebAPI: "vn"},
+}
+
+func init() {
+	log.Print("Starting GameBasics Init")
+	//data := []string{"2358720", "1903340", "3489700"}
+	//
+	//_, _ = FetchAppDetailsBulk(data)
+
 }
 
 // GetSteamLanguages returns the list of available Steam languages
-func GetSteamLanguages() []SteamLanguage {
+func GetSteamLanguages() []Language {
 	return steamLanguages
 }
 
@@ -161,52 +170,69 @@ func FetchAppDetailsBulk(appIDs []string) ([]*GameBasics, error) {
 	return results, nil
 }
 
-func fetchAchievementsWithKey(appID string, language string) ([]Achievement, error) {
+func fetchAchievementsWithKey(appID string, language string) []achievement {
+	// Check cache first
+	if cached, err := loadCachedAchievementData(appID, language); err == nil {
+		return cached
+	}
+
 	apiKey := os.Getenv("STEAM_API_KEY")
 
 	if apiKey == "" {
-		return nil, fmt.Errorf("STEAM_API_KEY environment variable not set")
+		log.Fatal("STEAM_API_KEY variable not set")
+		return nil
 	}
-
-	//TODO match language to config and system language or default to english
 
 	url := fmt.Sprintf(
 		"https://api.steampowered.com/ISteamUserStats/GetSchemaForGame/v2/?key=%s&appid=%s&l=%s",
 		apiKey, appID, language,
 	)
-
+	log.Printf(url)
 	resp, err := http.Get(url)
 	if err != nil {
-		return nil, err
+		return nil
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("steam API returned status: %d", resp.StatusCode)
+		return nil
 	}
 
 	var schema schemaResponse
 	if err := json.NewDecoder(resp.Body).Decode(&schema); err != nil {
-		return nil, err
+		return nil
 	}
 
-	var achievements []Achievement
+	var achievements []achievement
 	for _, a := range schema.Game.AvailableGameStats.Achievements {
-		achievements = append(achievements, Achievement{
+		// Cache the achievement icon
+		_ = cacheAchievementIcon(appID, a.Icon)
+
+		// Extract filename from URL for local path
+		parts := strings.Split(a.Icon, "/")
+		filename := parts[len(parts)-1]
+		iconLocalPath := filepath.Join("cache", "icon", appID, filename)
+
+		achievement := achievement{
 			Name:         a.Name,
 			DisplayName:  a.DisplayName,
 			Description:  a.Description,
 			Icon:         a.Icon,
 			IconGray:     a.IconGray,
+			IconLocal:    iconLocalPath,
 			DefaultValue: a.DefaultValue,
 			Hidden:       a.Hidden,
-		})
+		}
+		achievements = append(achievements, achievement)
 	}
 
-	return achievements, nil
+	// Cache the fetched achievement data
+	_ = cacheAchievementData(appID, language, achievements)
+
+	return achievements
 }
 
-func fetchAchievementsFromThirdParty(appID string, language string) ([]Achievement, error) {
+func fetchAchievementsFromThirdParty(appID string, language string) ([]achievement, error) {
 	// Check cache first
 	if cached, err := loadCachedAchievementData(appID, language); err == nil {
 		return cached, nil
@@ -287,9 +313,9 @@ func fetchAchievementsFromThirdParty(appID string, language string) ([]Achieveme
 	})
 
 	// 3. Merge data
-	var achievements []Achievement
+	var achievements []achievement
 	for _, item := range shItems {
-		a := Achievement{
+		a := achievement{
 			Name:        item.ApiName,
 			DisplayName: item.Name,
 			Description: item.Description,
@@ -301,6 +327,12 @@ func fetchAchievementsFromThirdParty(appID string, language string) ([]Achieveme
 
 			// Cache the achievement icon
 			_ = cacheAchievementIcon(appID, data.Icon)
+
+			// Extract filename from URL for local path
+			parts := strings.Split(data.Icon, "/")
+			filename := parts[len(parts)-1]
+			iconLocalPath := filepath.Join("cache", "icon", appID, filename)
+			a.IconLocal = iconLocalPath
 		}
 
 		achievements = append(achievements, a)
@@ -378,7 +410,7 @@ func fetchGameBasics(appID string) (*GameBasics, error) {
 		PortraitImage: portraitImage,
 		Achievement: struct {
 			Total int
-			List  []Achievement
+			List  []achievement
 		}{
 			Total: appData.Data.Achievement.Total,
 		},
@@ -403,8 +435,8 @@ func getGameImageCachePath(appID string, imageType string) string {
 	return filepath.Join(getCacheDir(), "icon", appID, imageType)
 }
 
-// Achievement data caching
-func cacheAchievementData(appID string, language string, achievements []Achievement) error {
+// achievement data caching
+func cacheAchievementData(appID string, language string, achievements []achievement) error {
 	cachePath := getAchievementCachePath(appID, language)
 
 	// Ensure directory exists
@@ -424,7 +456,7 @@ func cacheAchievementData(appID string, language string, achievements []Achievem
 	return nil
 }
 
-func loadCachedAchievementData(appID string, language string) ([]Achievement, error) {
+func loadCachedAchievementData(appID string, language string) ([]achievement, error) {
 	cachePath := getAchievementCachePath(appID, language)
 
 	data, err := os.ReadFile(cachePath)
@@ -432,7 +464,7 @@ func loadCachedAchievementData(appID string, language string) ([]Achievement, er
 		return nil, err
 	}
 
-	var achievements []Achievement
+	var achievements []achievement
 	if err := json.Unmarshal(data, &achievements); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal achievement data: %w", err)
 	}
@@ -440,7 +472,7 @@ func loadCachedAchievementData(appID string, language string) ([]Achievement, er
 	return achievements, nil
 }
 
-// Achievement icon caching
+// achievement icon caching
 func cacheAchievementIcon(appID string, iconURL string) error {
 	if iconURL == "" {
 		return nil
