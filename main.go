@@ -4,8 +4,8 @@ import (
 	"embed"
 	_ "embed"
 	"log"
+	"sentinel/backend/steam"
 
-	"sentinel/backend"
 	"sentinel/backend/config"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -25,8 +25,8 @@ func main() {
 		Name:        "Sentinel",
 		Description: "Steam game emulator manager",
 		Services: []application.Service{
-			application.NewService(&backend.App{}),
 			application.NewService(&config.CfgFile{}),
+			application.NewService(&steam.GameBasics{}),
 		},
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { ArrowLeft, Eye, FolderOpen, Trash2, Volume2, VolumeOff } from 'lucide-react';
 
-import { LoadConfig, AddEmulator, RemoveEmulator, ToggleEmulatorNotification, SelectDirectory } from '@wa/sentinel/backend/config/cfgfile';
+import { LoadConfig, AddEmulator, RemoveEmulator, ToggleEmulatorNotification } from '@wa/sentinel/backend/config/cfgfile';
 
 import './settings.scss';
 import EmptyState from '@/shared/components/EmptyState';

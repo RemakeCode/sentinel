@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-
 	"sentinel/backend/steam"
 )
 
@@ -18,6 +17,7 @@ type Emulator struct {
 
 //wails:bind
 type CfgFile struct {
+	Language  steam.Language
 	Emulators []Emulator `json:"emulators"`
 }
 
@@ -73,7 +73,7 @@ func init() {
 		}
 	}
 
-	_, err = os.Stat(configPath)
+	_, err := os.Stat(configPath)
 
 	if os.IsNotExist(err) {
 		// File doesn't exist - initialize default config
@@ -170,20 +170,4 @@ func (c *CfgFile) ToggleEmulatorNotification(index int) error {
 
 	return c.SaveConfig()
 
-}
-
-// GetSteamLanguages returns the list of available Steam languages
-func GetSteamLanguages() ([]SteamLanguage, error) {
-	langPath := filepath.Join(configDir, "i18n", "steam.json")
-	data, err := os.ReadFile(langPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read steam languages: %w", err)
-	}
-
-	var languages []SteamLanguage
-	if err := json.Unmarshal(data, &languages); err != nil {
-		return nil, fmt.Errorf("failed to parse steam languages: %w", err)
-	}
-
-	return languages, nil
 }
