@@ -66,6 +66,52 @@ type schemaResponse struct {
 	} `json:"game"`
 }
 
+// SteamLanguage represents a language from Steam
+type SteamLanguage struct {
+	DisplayName string `json:"displayName"`
+	API         string `json:"api"`
+	WebAPI      string `json:"webapi"`
+	Native      string `json:"native"`
+}
+
+// steamLanguages is the list of available Steam languages
+var steamLanguages = []SteamLanguage{
+	{DisplayName: "Arabic", API: "arabic", WebAPI: "ar", Native: "العربية"},
+	{DisplayName: "Bulgarian", API: "bulgarian", WebAPI: "bg", Native: "български език"},
+	{DisplayName: "Simplified Chinese", API: "schinese", WebAPI: "zh-CN", Native: "简体中文"},
+	{DisplayName: "Traditional Chinese", API: "tchinese", WebAPI: "zh-TW", Native: "繁體中文"},
+	{DisplayName: "Czech", API: "czech", WebAPI: "cs", Native: "čeština"},
+	{DisplayName: "Danish", API: "danish", WebAPI: "da", Native: "Dansk"},
+	{DisplayName: "Dutch", API: "dutch", WebAPI: "nl", Native: "Nederlands"},
+	{DisplayName: "English", API: "english", WebAPI: "en", Native: "English"},
+	{DisplayName: "Finnish", API: "finnish", WebAPI: "fi", Native: "Suomi"},
+	{DisplayName: "French", API: "french", WebAPI: "fr", Native: "Français"},
+	{DisplayName: "German", API: "german", WebAPI: "de", Native: "Deutsch"},
+	{DisplayName: "Greek", API: "greek", WebAPI: "el", Native: "Ελληνικά"},
+	{DisplayName: "Hungarian", API: "hungarian", WebAPI: "hu", Native: "Magyar"},
+	{DisplayName: "Italian", API: "italian", WebAPI: "it", Native: "Italiano"},
+	{DisplayName: "Japanese", API: "japanese", WebAPI: "ja", Native: "日本語"},
+	{DisplayName: "Korean", API: "koreana", WebAPI: "ko", Native: "한국어"},
+	{DisplayName: "Norwegian", API: "norwegian", WebAPI: "no", Native: "Norsk"},
+	{DisplayName: "Polish", API: "polish", WebAPI: "pl", Native: "Polski"},
+	{DisplayName: "Portuguese", API: "portuguese", WebAPI: "pt", Native: "Português"},
+	{DisplayName: "Portuguese - Brazil", API: "brazilian", WebAPI: "pt-BR", Native: "Português-Brasil"},
+	{DisplayName: "Romanian", API: "romanian", WebAPI: "ro", Native: "Română"},
+	{DisplayName: "Russian", API: "russian", WebAPI: "ru", Native: "Русский"},
+	{DisplayName: "Spanish - Spain", API: "spanish", WebAPI: "es", Native: "Español-España"},
+	{DisplayName: "Spanish - Latin America", API: "latam", WebAPI: "es-419", Native: "Español-Latinoamérica"},
+	{DisplayName: "Swedish", API: "swedish", WebAPI: "sv", Native: "Svenska"},
+	{DisplayName: "Thai", API: "thai", WebAPI: "th", Native: "ไทย"},
+	{DisplayName: "Turkish", API: "turkish", WebAPI: "tr", Native: "Türkçe"},
+	{DisplayName: "Ukrainian", API: "ukrainian", WebAPI: "uk", Native: "Українська"},
+	{DisplayName: "Vietnamese", API: "vietnamese", WebAPI: "vn", Native: "Tiếng Việt"},
+}
+
+// GetSteamLanguages returns the list of available Steam languages
+func GetSteamLanguages() []SteamLanguage {
+	return steamLanguages
+}
+
 func FetchAppDetailsBulk(appIDs []string) ([]*GameBasics, error) {
 	if len(appIDs) == 0 {
 		return []*GameBasics{}, nil
@@ -268,9 +314,9 @@ func fetchAchievementsFromThirdParty(appID string, language string) ([]Achieveme
 
 func fetchGameBasics(appID string) (*GameBasics, error) {
 	// Check cache for game images
-	headerImagePath, _ := loadCachedGameImage(appID, "headerImage")
-	coverImagePath, _ := loadCachedGameImage(appID, "coverImage")
-	portraitImagePath, _ := loadCachedGameImage(appID, "portraitImage")
+	headerImagePath, _ := loadCachedGameImage(appID, "header-image")
+	coverImagePath, _ := loadCachedGameImage(appID, "cover-image")
+	portraitImagePath, _ := loadCachedGameImage(appID, "portrait-image")
 
 	// If all images are cached, we can skip the API call for now
 	// Note: We still need to fetch achievement count, so we'll make the API call anyway
@@ -340,7 +386,6 @@ func fetchGameBasics(appID string) (*GameBasics, error) {
 }
 
 // Cache helper functions
-
 func getCacheDir() string {
 	p3, _ := os.UserCacheDir()
 	return filepath.Join(p3, "sentinel", "cache")
@@ -359,7 +404,6 @@ func getGameImageCachePath(appID string, imageType string) string {
 }
 
 // Achievement data caching
-
 func cacheAchievementData(appID string, language string, achievements []Achievement) error {
 	cachePath := getAchievementCachePath(appID, language)
 
@@ -397,7 +441,6 @@ func loadCachedAchievementData(appID string, language string) ([]Achievement, er
 }
 
 // Achievement icon caching
-
 func cacheAchievementIcon(appID string, iconURL string) error {
 	if iconURL == "" {
 		return nil
@@ -443,18 +486,7 @@ func cacheAchievementIcon(appID string, iconURL string) error {
 	return nil
 }
 
-func loadCachedAchievementIcon(appID string, filename string) (string, error) {
-	cachePath := getIconCachePath(appID, filename)
-
-	if _, err := os.Stat(cachePath); err != nil {
-		return "", err
-	}
-
-	return cachePath, nil
-}
-
 // Game image caching
-
 func cacheGameImage(appID string, imageURL string, imageType string) error {
 	if imageURL == "" {
 		return nil
