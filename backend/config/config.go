@@ -1,12 +1,13 @@
 package config
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 	"path/filepath"
+
+	"sentinel/backend/steam"
 )
 
 type Emulator struct {
@@ -20,8 +21,6 @@ type CfgFile struct {
 	Emulators []Emulator `json:"emulators"`
 }
 
-var ctx context.Context
-
 var p1, _ = os.UserHomeDir()
 var p2, _ = os.UserConfigDir()
 var p3, _ = os.UserCacheDir()
@@ -34,30 +33,6 @@ var cacheDir = filepath.Join(configDir, "cache")
 var cacheDataDir = filepath.Join(cacheDir, "data")
 var cacheIconDir = filepath.Join(cacheDir, "icon")
 var cacheSchemaDir = filepath.Join(cacheDir, "schema")
-
-// SteamLanguage represents a language from the Steam i18n config
-type SteamLanguage struct {
-	DisplayName string `json:"displayName"`
-	API         string `json:"api"`
-	WebAPI      string `json:"webapi"`
-	Native      string `json:"native"`
-}
-
-// GetSteamLanguages returns the list of available Steam languages
-func GetSteamLanguages() ([]SteamLanguage, error) {
-	langPath := filepath.Join(configDir, "i18n", "steam.json")
-	data, err := os.ReadFile(langPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read steam languages: %w", err)
-	}
-
-	var languages []SteamLanguage
-	if err := json.Unmarshal(data, &languages); err != nil {
-		return nil, fmt.Errorf("failed to parse steam languages: %w", err)
-	}
-
-	return languages, nil
-}
 
 var defaultEmulatorPaths = []Emulator{
 	{Path: fmt.Sprintf("%s/Public/Documents/Steam/CODEX", p1), ShouldNotify: true, IsDefault: true},
@@ -89,20 +64,16 @@ func init() {
 		log.Fatalf("Failed to create cache schema directory: %v", err)
 	}
 
-	// Create language folders in schema directory based on steam.json
-	languages, err := GetSteamLanguages()
-	if err != nil {
-		log.Printf("Warning: Failed to load Steam languages: %v", err)
-	} else {
-		for _, lang := range languages {
-			langDir := filepath.Join(cacheSchemaDir, lang.API)
-			if err := os.MkdirAll(langDir, 0755); err != nil {
-				log.Printf("Warning: Failed to create language directory %s: %v", lang.API, err)
-			}
+	// Create language folders in schema directory based on steam languages
+	languages := steam.GetSteamLanguages()
+	for _, lang := range languages {
+		langDir := filepath.Join(cacheSchemaDir, lang.API)
+		if err := os.MkdirAll(langDir, 0755); err != nil {
+			log.Printf("Warning: Failed to create language directory %s: %v", lang.API, err)
 		}
 	}
 
-	_, err := os.Stat(configPath)
+	_, err = os.Stat(configPath)
 
 	if os.IsNotExist(err) {
 		// File doesn't exist - initialize default config
@@ -201,13 +172,18 @@ func (c *CfgFile) ToggleEmulatorNotification(index int) error {
 
 }
 
-// SelectDirectory opens a directory selection dialog
-// Wails 3: This will be handled via the frontend runtime
-func (c *CfgFile) SelectDirectory() (string, error) {
-	// Wails 3: File dialogs are handled via frontend runtime
-	return "", nil
-}
+// GetSteamLanguages returns the list of available Steam languages
+func GetSteamLanguages() ([]SteamLanguage, error) {
+	langPath := filepath.Join(configDir, "i18n", "steam.json")
+	data, err := os.ReadFile(langPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read steam languages: %w", err)
+	}
 
-func (c *CfgFile) SetContext(context context.Context) {
-	ctx = context
+	var languages []SteamLanguage
+	if err := json.Unmarshal(data, &languages); err != nil {
+		return nil, fmt.Errorf("failed to parse steam languages: %w", err)
+	}
+
+	return languages, nil
 }
