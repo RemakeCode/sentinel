@@ -19,7 +19,7 @@ const Dashboard: React.FC = () => {
               </button>
               <div className='dashboard-header-left-search-bar'>
                 <Search className='dashboard-header-left-search-bar-search-icon' />
-                <input type='text' placeholder='Tango...' />
+                <input type='text' placeholder='search...' />
               </div>
             </div>
             <div className='dashboard-header-tools'>
@@ -39,9 +39,7 @@ const Dashboard: React.FC = () => {
           {/* Most Played Games */}
           <div className='dashboard-section-container'>
             <div className='dashboard-section-title'>
-              <strong className='dashboard-section-title-label'>
-                Library
-              </strong>
+              <strong className='dashboard-section-title-label'>Library</strong>
               <span className='dashboard-section-title-action'>View All</span>
             </div>
 
