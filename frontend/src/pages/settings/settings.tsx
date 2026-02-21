@@ -2,11 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { ArrowLeft, Eye, FolderOpen, Trash2, Volume2, VolumeOff } from 'lucide-react';
 
-import { LoadConfig, AddEmulator, RemoveEmulator, ToggleEmulatorNotification } from '@wa/sentinel/backend/config/cfgfile';
+import { LoadConfig, AddEmulator, RemoveEmulator, ToggleEmulatorNotification } from '@wa/sentinel/backend/config/file';
 
 import './settings.scss';
 import EmptyState from '@/shared/components/EmptyState';
-import { CfgFile, Emulator } from '@wa/sentinel/backend/config/models';
+import { File, Emulator } from '@wa/sentinel/backend/config/models';
 
 import { Dialogs } from '@wailsio/runtime';
 
@@ -26,7 +26,7 @@ interface EmulatorItem {
 }
 
 const Settings: React.FC = () => {
-  const [appConfig, setAppConfig] = useState<CfgFile | null>(null);
+  const [appConfig, setAppConfig] = useState<File | null>(null);
   const [darkMode, setDarkMode] = useState(true);
 
   useEffect(() => {

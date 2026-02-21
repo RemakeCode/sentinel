@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"sentinel/backend/steam"
@@ -16,7 +17,7 @@ type Emulator struct {
 }
 
 //wails:bind
-type CfgFile struct {
+type File struct {
 	Language  steam.Language
 	Emulators []Emulator `json:"emulators"`
 }
@@ -46,8 +47,7 @@ var defaultEmulatorPaths = []Emulator{
 }
 
 func init() {
-	log.Print("Starting Config Initialization")
-
+	slog.Info("Starting Config Initialization")
 	// Ensure config directory exists
 	if err := os.MkdirAll(configDir, 0755); err != nil {
 		log.Fatalf("Failed to create config directory: %v", err)
@@ -77,7 +77,7 @@ func init() {
 
 	if os.IsNotExist(err) {
 		// File doesn't exist - initialize default config
-		defaultConfig := CfgFile{Emulators: defaultEmulatorPaths}
+		defaultConfig := File{Emulators: defaultEmulatorPaths}
 		config, marshalErr := json.MarshalIndent(defaultConfig, "", "  ")
 		if marshalErr != nil {
 			log.Fatalf("Failed to marshal default config: %v", marshalErr)
@@ -92,10 +92,10 @@ func init() {
 		log.Fatalf("Unexpected error checking config: %v", err)
 	}
 
-	log.Print("Config Initialization Complete")
+	slog.Info("Config Initialization Complete")
 }
 
-func (c *CfgFile) LoadConfig() (*CfgFile, error) {
+func (c *File) LoadConfig() (*File, error) {
 	data, err := os.ReadFile(configPath)
 	if err != nil {
 		return nil, err
@@ -108,7 +108,7 @@ func (c *CfgFile) LoadConfig() (*CfgFile, error) {
 	return c, nil
 }
 
-func (c *CfgFile) SaveConfig() error {
+func (c *File) SaveConfig() error {
 	data, err := json.MarshalIndent(c, "", "  ")
 
 	if err != nil {
@@ -126,7 +126,7 @@ func (c *CfgFile) SaveConfig() error {
 	return nil
 }
 
-func (c *CfgFile) AddEmulator(path string) error {
+func (c *File) AddEmulator(path string) error {
 
 	emulator := Emulator{
 		Path:         path,
@@ -146,7 +146,7 @@ func (c *CfgFile) AddEmulator(path string) error {
 }
 
 // RemoveEmulator removes an emulator from the configuration by index
-func (c *CfgFile) RemoveEmulator(index int) error {
+func (c *File) RemoveEmulator(index int) error {
 	if index < 0 || index >= len(c.Emulators) {
 		return nil
 	}
@@ -157,10 +157,20 @@ func (c *CfgFile) RemoveEmulator(index int) error {
 
 	c.Emulators = append(c.Emulators[:index], c.Emulators[index+1:]...)
 	return c.SaveConfig()
+
+}
+
+// GetEmulatorPaths returns all emulator paths from the configuration
+func (c *File) GetEmulatorPaths() []string {
+	var paths []string
+	for _, emulator := range c.Emulators {
+		paths = append(paths, emulator.Path)
+	}
+	return paths
 }
 
 // ToggleEmulatorNotification toggles the notification setting for an emulator by index
-func (c *CfgFile) ToggleEmulatorNotification(index int) error {
+func (c *File) ToggleEmulatorNotification(index int) error {
 
 	if index < 0 || index >= len(c.Emulators) {
 		// Wails 3: Runtime logging handled differently
