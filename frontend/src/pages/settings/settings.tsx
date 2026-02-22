@@ -1,8 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router';
-import { ArrowLeft, Eye, FolderOpen, Trash2, Volume2, VolumeOff } from 'lucide-react';
+import { ArrowLeft, Eye, FolderOpen, Locate, Trash2, Volume2, VolumeOff } from 'lucide-react';
 
-import { LoadConfig, AddEmulator, RemoveEmulator, ToggleEmulatorNotification } from '@wa/sentinel/backend/config/file';
+import {
+  LoadConfig,
+  AddEmulator,
+  RemoveEmulator,
+  ToggleEmulatorNotification,
+  SetSteamAPIKey,
+  GetSteamAPIKeyMasked
+} from '@wa/sentinel/backend/config/file';
 
 import './settings.scss';
 import EmptyState from '@/shared/components/EmptyState';
@@ -28,10 +35,40 @@ interface EmulatorItem {
 const Settings: React.FC = () => {
   const [appConfig, setAppConfig] = useState<File | null>(null);
   const [darkMode, setDarkMode] = useState(true);
+  const [steamAPIKey, setSteamAPIKey] = useState('');
+  const [maskedSteamAPIKey, setMaskedSteamAPIKey] = useState('');
 
   useEffect(() => {
     loadConfig();
   }, []);
+
+  useEffect(() => {
+    loadSteamAPIKey();
+  }, []);
+
+  const loadSteamAPIKey = async () => {
+    try {
+      const maskedKey = await GetSteamAPIKeyMasked();
+      setMaskedSteamAPIKey(maskedKey);
+    } catch (err) {
+      console.error('Failed to load Steam API key:', err);
+      window.Oat?.toast?.show('Failed to load Steam API key', 'error');
+    }
+  };
+
+  const handleSaveSteamAPIKey = async () => {
+    try {
+      await SetSteamAPIKey(steamAPIKey);
+      window.Oat?.toast?.show('Steam API key saved', 'success');
+      // Reload the masked key from backend
+      await loadSteamAPIKey();
+      // Clear the input field
+      setSteamAPIKey('');
+    } catch (err) {
+      console.error('Failed to save Steam API key:', err);
+      window.Oat?.toast?.show('Failed to save Steam API key', 'error');
+    }
+  };
 
   const loadConfig = async () => {
     try {
@@ -85,6 +122,10 @@ const Settings: React.FC = () => {
 
   return (
     <div className='settings-container'>
+      <fieldset className='group'>
+        <input placeholder='Enter your Steam API key' value={steamAPIKey} onChange={(e) => setSteamAPIKey(e.target.value)} />
+        <button onClick={handleSaveSteamAPIKey}>Save</button>
+      </fieldset>
       <div className='settings-container-header'>
         <Link to='/' viewTransition>
           <ArrowLeft className='settings-back-icon' /> Back to Dashboard
@@ -129,6 +170,27 @@ const Settings: React.FC = () => {
                 ))}
               </tbody>
             </table>
+          )}
+        </div>
+      </div>
+
+      <hr className='settings-divider' />
+
+      <div className='card'>
+        <h4>
+          <Locate /> Steam API Key
+        </h4>
+        <div className='flex-col'>
+          <fieldset className='group'>
+            <legend>Steam API Key</legend>
+            <input type='text' placeholder='Enter your Steam API key' value={steamAPIKey} onChange={(e) => setSteamAPIKey(e.target.value)} />
+            <button onClick={handleSaveSteamAPIKey}>Save</button>
+          </fieldset>
+          {maskedSteamAPIKey && (
+            <div className='settings-steam-api-key-display'>
+              <small>Current API Key:</small>
+              <code>{maskedSteamAPIKey}</code>
+            </div>
           )}
         </div>
       </div>

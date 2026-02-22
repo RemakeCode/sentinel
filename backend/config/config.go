@@ -1,13 +1,19 @@
 package config
 
 import (
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"log/slog"
 	"os"
 	"path/filepath"
 	"sentinel/backend/steam"
+	"strings"
 )
 
 type Emulator struct {
@@ -18,8 +24,9 @@ type Emulator struct {
 
 //wails:bind
 type File struct {
-	Language  steam.Language
-	Emulators []Emulator `json:"emulators"`
+	Language    steam.Language
+	Emulators   []Emulator `json:"emulators"`
+	SteamAPIKey string     `json:"steamApiKey,omitempty"`
 }
 
 var p1, _ = os.UserHomeDir()
@@ -28,6 +35,10 @@ var p3, _ = os.UserCacheDir()
 
 var configDir = filepath.Join(p3, "sentinel")
 var configPath = filepath.Join(configDir, "config.json")
+
+// Embedded encryption key for Steam API key
+// This is intentionally weak security as noted in the design document
+var encryptionKey = []byte("sentinel-app-secret-key-32bytes!")
 
 // Cache directory paths
 var cacheDir = filepath.Join(configDir, "cache")
@@ -126,6 +137,54 @@ func (c *File) SaveConfig() error {
 	return nil
 }
 
+// SetSteamAPIKey sets the Steam API key in the configuration
+func (c *File) SetSteamAPIKey(apiKey string) error {
+	// Encrypt the API key before storing
+	encryptedKey, err := encrypt(apiKey)
+	if err != nil {
+		return fmt.Errorf("failed to encrypt API key: %w", err)
+	}
+
+	c.SteamAPIKey = encryptedKey
+	return c.SaveConfig()
+}
+
+// GetSteamAPIKey retrieves and decrypts the Steam API key from the configuration
+//
+//wails:internal
+func (c *File) GetSteamAPIKey() (string, error) {
+	if c.SteamAPIKey == "" {
+		return "", nil // No API key set
+	}
+
+	// Decrypt the API key before returning
+	decryptedKey, err := decrypt(c.SteamAPIKey)
+	if err != nil {
+		return "", fmt.Errorf("failed to decrypt API key: %w", err)
+	}
+
+	return decryptedKey, nil
+}
+
+// GetSteamAPIKeyMasked retrieves the Steam API key and returns a masked version for display
+func (c *File) GetSteamAPIKeyMasked() (string, error) {
+	if c.SteamAPIKey == "" {
+		return "", nil // No API key set
+	}
+
+	// Decrypt the API key first
+	decryptedKey, err := decrypt(c.SteamAPIKey)
+	if err != nil {
+		return "", fmt.Errorf("failed to decrypt API key: %w", err)
+	}
+
+	// Mask the key (show only last 4 characters)
+	if len(decryptedKey) > 4 {
+		return strings.Repeat("*", len(decryptedKey)-4) + decryptedKey[len(decryptedKey)-4:], nil
+	}
+	return strings.Repeat("*", len(decryptedKey)), nil
+}
+
 func (c *File) AddEmulator(path string) error {
 
 	emulator := Emulator{
@@ -158,6 +217,58 @@ func (c *File) RemoveEmulator(index int) error {
 	c.Emulators = append(c.Emulators[:index], c.Emulators[index+1:]...)
 	return c.SaveConfig()
 
+}
+
+// encrypt encrypts plaintext using AES-256-GCM
+func encrypt(plaintext string) (string, error) {
+	block, err := aes.NewCipher(encryptionKey)
+	if err != nil {
+		return "", err
+	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", err
+	}
+
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+		return "", err
+	}
+
+	ciphertext := gcm.Seal(nonce, nonce, []byte(plaintext), nil)
+	return base64.StdEncoding.EncodeToString(ciphertext), nil
+}
+
+// decrypt decrypts ciphertext using AES-256-GCM
+func decrypt(ciphertext string) (string, error) {
+	data, err := base64.StdEncoding.DecodeString(ciphertext)
+	if err != nil {
+		return "", err
+	}
+
+	block, err := aes.NewCipher(encryptionKey)
+	if err != nil {
+		return "", err
+	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", err
+	}
+
+	nonceSize := gcm.NonceSize()
+	if len(data) < nonceSize {
+		return "", fmt.Errorf("ciphertext too short")
+	}
+
+	nonce, ciphertextBytes := data[:nonceSize], data[nonceSize:]
+	plaintext, err := gcm.Open(nil, nonce, ciphertextBytes, nil)
+	if err != nil {
+		return "", err
+	}
+
+	return string(plaintext), nil
 }
 
 // GetEmulatorPaths returns all emulator paths from the configuration
