@@ -110,9 +110,6 @@ var steamLanguages = []Language{
 
 func init() {
 	log.Print("Starting GameBasics Init")
-	//data := []string{"2358720", "1903340", "3489700"}
-	//
-	//_, _ = FetchAppDetailsBulk(data)
 
 }
 
@@ -187,7 +184,7 @@ func fetchAchievementsWithKey(appID string, language string) []achievement {
 		"https://api.steampowered.com/ISteamUserStats/GetSchemaForGame/v2/?key=%s&appid=%s&l=%s",
 		apiKey, appID, language,
 	)
-	log.Printf(url)
+
 	resp, err := http.Get(url)
 	if err != nil {
 		return nil

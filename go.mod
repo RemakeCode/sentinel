@@ -4,6 +4,7 @@ go 1.26.0
 
 require (
 	github.com/PuerkitoBio/goquery v1.11.0
+	github.com/fsnotify/fsnotify v1.9.0
 	github.com/wailsapp/wails/v3 v3.0.0-alpha.72
 )
 
