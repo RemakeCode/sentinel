@@ -5,6 +5,7 @@ import (
 	_ "embed"
 	"log"
 	"sentinel/backend/steam"
+	"sentinel/backend/watcher"
 
 	"sentinel/backend/config"
 
@@ -25,8 +26,9 @@ func main() {
 		Name:        "Sentinel",
 		Description: "Steam game emulator manager",
 		Services: []application.Service{
-			application.NewService(&config.CfgFile{}),
+			application.NewService(&config.File{}),
 			application.NewService(&steam.GameBasics{}),
+			application.NewService(&watcher.Service{}),
 		},
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),
@@ -48,4 +50,5 @@ func main() {
 	if err := app.Run(); err != nil {
 		log.Fatal(err)
 	}
+
 }
