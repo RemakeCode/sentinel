@@ -2,7 +2,6 @@ package main
 
 import (
 	"embed"
-	_ "embed"
 	"log"
 	"sentinel/backend/steam"
 	"sentinel/backend/watcher"
@@ -40,10 +39,12 @@ func main() {
 
 	// Create the main window
 	app.Window.NewWithOptions(application.WebviewWindowOptions{
-		Title:  "Sentinel",
-		Width:  1024,
-		Height: 768,
-		URL:    "/",
+		Title:     "Sentinel",
+		MinWidth:  1280,
+		MinHeight: 720,
+		Width:     1920,
+		Height:    1080,
+		URL:       "/",
 	})
 
 	// Run the application
