@@ -12,7 +12,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"sentinel/backend/steam"
+	"sentinel/backend/steam/types"
 	"strings"
 )
 
@@ -24,9 +24,10 @@ type Emulator struct {
 
 //wails:bind
 type File struct {
-	Language    steam.Language
-	Emulators   []Emulator `json:"emulators"`
-	SteamAPIKey string     `json:"steamApiKey,omitempty"`
+	Language        types.Language
+	Emulators       []Emulator `json:"emulators"`
+	SteamAPIKey     string     `json:"steamApiKey,omitempty"`
+	SteamDataSource string     `json:"steamDataSource,omitempty"`
 }
 
 var p1, _ = os.UserHomeDir()
@@ -76,7 +77,7 @@ func init() {
 	}
 
 	// Create language folders in schema directory based on steam languages
-	languages := steam.GetSteamLanguages()
+	languages := types.GetSteamLanguages()
 	for _, lang := range languages {
 		langDir := filepath.Join(cacheSchemaDir, lang.API)
 		if err := os.MkdirAll(langDir, 0755); err != nil {
@@ -88,7 +89,10 @@ func init() {
 
 	if os.IsNotExist(err) {
 		// File doesn't exist - initialize default config
-		defaultConfig := File{Emulators: defaultEmulatorPaths}
+		defaultConfig := File{
+			Emulators:       defaultEmulatorPaths,
+			SteamDataSource: "external-source",
+		}
 		config, marshalErr := json.MarshalIndent(defaultConfig, "", "  ")
 		if marshalErr != nil {
 			log.Fatalf("Failed to marshal default config: %v", marshalErr)
@@ -139,6 +143,10 @@ func (c *File) SaveConfig() error {
 
 // SetSteamAPIKey sets the Steam API key in the configuration
 func (c *File) SetSteamAPIKey(apiKey string) error {
+	if apiKey == "" {
+		return fmt.Errorf("API Key is empty")
+	}
+
 	// Encrypt the API key before storing
 	encryptedKey, err := encrypt(apiKey)
 	if err != nil {
@@ -183,6 +191,20 @@ func (c *File) GetSteamAPIKeyMasked() (string, error) {
 		return strings.Repeat("*", len(decryptedKey)-4) + decryptedKey[len(decryptedKey)-4:], nil
 	}
 	return strings.Repeat("*", len(decryptedKey)), nil
+}
+
+// GetSteamDataSource retrieves the current Steam data source preference
+func (c *File) GetSteamDataSource() string {
+	if c.SteamDataSource == "" {
+		return "external-source" // Default value
+	}
+	return c.SteamDataSource
+}
+
+// SetSteamDataSource sets the Steam data source preference and saves the configuration
+func (c *File) SetSteamDataSource(source string) error {
+	c.SteamDataSource = source
+	return c.SaveConfig()
 }
 
 func (c *File) AddEmulator(path string) error {
@@ -284,7 +306,6 @@ func (c *File) GetEmulatorPaths() []string {
 func (c *File) ToggleEmulatorNotification(index int) error {
 
 	if index < 0 || index >= len(c.Emulators) {
-		// Wails 3: Runtime logging handled differently
 		return nil
 	}
 	c.Emulators[index].ShouldNotify = !c.Emulators[index].ShouldNotify

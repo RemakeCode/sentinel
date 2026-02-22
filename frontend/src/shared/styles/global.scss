@@ -26,7 +26,7 @@ body {
     font-family: var(--font-sans);
 }
 
-.divider {
-    border-bottom:1px solid var(--border);
+hr.divider {
+    border-bottom: 1px solid var(--border);
     margin: var(--space-5) 0;
 }

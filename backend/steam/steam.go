@@ -68,54 +68,9 @@ type schemaResponse struct {
 	} `json:"game"`
 }
 
-// Language represents a language from Steam
-type Language struct {
-	DisplayName string `json:"displayName"`
-	API         string `json:"api"`
-	WebAPI      string `json:"webapi"`
-}
-
-// steamLanguages is the list of available Steam languages
-var steamLanguages = []Language{
-	{DisplayName: "Arabic", API: "arabic", WebAPI: "ar"},
-	{DisplayName: "Bulgarian", API: "bulgarian", WebAPI: "bg"},
-	{DisplayName: "Simplified Chinese", API: "schinese", WebAPI: "zh-CN"},
-	{DisplayName: "Traditional Chinese", API: "tchinese", WebAPI: "zh-TW"},
-	{DisplayName: "Czech", API: "czech", WebAPI: "cs"},
-	{DisplayName: "Danish", API: "danish", WebAPI: "da"},
-	{DisplayName: "Dutch", API: "dutch", WebAPI: "nl"},
-	{DisplayName: "English", API: "english", WebAPI: "en"},
-	{DisplayName: "Finnish", API: "finnish", WebAPI: "fi"},
-	{DisplayName: "French", API: "french", WebAPI: "fr"},
-	{DisplayName: "German", API: "german", WebAPI: "de"},
-	{DisplayName: "Greek", API: "greek", WebAPI: "el"},
-	{DisplayName: "Hungarian", API: "hungarian", WebAPI: "hu"},
-	{DisplayName: "Italian", API: "italian", WebAPI: "it"},
-	{DisplayName: "Japanese", API: "japanese", WebAPI: "ja"},
-	{DisplayName: "Korean", API: "koreana", WebAPI: "ko"},
-	{DisplayName: "Norwegian", API: "norwegian", WebAPI: "no"},
-	{DisplayName: "Polish", API: "polish", WebAPI: "pl"},
-	{DisplayName: "Portuguese", API: "portuguese", WebAPI: "pt"},
-	{DisplayName: "Portuguese - Brazil", API: "brazilian", WebAPI: "pt-BR"},
-	{DisplayName: "Romanian", API: "romanian", WebAPI: "ro"},
-	{DisplayName: "Russian", API: "russian", WebAPI: "ru"},
-	{DisplayName: "Spanish - Spain", API: "spanish", WebAPI: "es"},
-	{DisplayName: "Spanish - Latin America", API: "latam", WebAPI: "es-419"},
-	{DisplayName: "Swedish", API: "swedish", WebAPI: "sv"},
-	{DisplayName: "Thai", API: "thai", WebAPI: "th"},
-	{DisplayName: "Turkish", API: "turkish", WebAPI: "tr"},
-	{DisplayName: "Ukrainian", API: "ukrainian", WebAPI: "uk"},
-	{DisplayName: "Vietnamese", API: "vietnamese", WebAPI: "vn"},
-}
-
 func init() {
 	log.Print("Starting GameBasics Init")
 
-}
-
-// GetSteamLanguages returns the list of available Steam languages
-func GetSteamLanguages() []Language {
-	return steamLanguages
 }
 
 func FetchAppDetailsBulk(appIDs []string) ([]*GameBasics, error) {
@@ -149,8 +104,7 @@ func FetchAppDetailsBulk(appIDs []string) ([]*GameBasics, error) {
 
 			// 2. Fetch Achievements
 			// Note: We are already holding a slot in the semaphore, so this is safe
-			//achievementsList, err := fetchAchievementsWithKey(id)
-			achievementsList, err := fetchAchievementsFromThirdParty(id, "english")
+			achievementsList, err := FetchAchievements(id, "english")
 
 			if err == nil {
 				details.Achievement.List = achievementsList
@@ -339,6 +293,54 @@ func fetchAchievementsFromThirdParty(appID string, language string) ([]achieveme
 	_ = cacheAchievementData(appID, language, achievements)
 
 	return achievements, nil
+}
+
+// FetchAchievements fetches achievements using the configured data source
+// It reads the configuration to determine whether to use Steam Key or External Source
+func FetchAchievements(appID string, language string) ([]achievement, error) {
+	dataSource := getSteamDataSourceFromConfig()
+
+	switch dataSource {
+	case "steam-key":
+		// Use Steam API key
+		achievements := fetchAchievementsWithKey(appID, language)
+		return achievements, nil
+	case "external-source":
+		// Use third-party source
+		return fetchAchievementsFromThirdParty(appID, language)
+	default:
+		// Unknown data source, default to external
+		log.Printf("Unknown data source '%s', using external source", dataSource)
+		return fetchAchievementsFromThirdParty(appID, language)
+	}
+}
+
+// getSteamDataSourceFromConfig reads the SteamDataSource from the config file
+func getSteamDataSourceFromConfig() string {
+	configPath := getConfigPath()
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		log.Printf("Failed to read config file: %v", err)
+		return "external-source" // Default value
+	}
+
+	var cfg struct {
+		SteamDataSource string `json:"steamDataSource"`
+	}
+	if err := json.Unmarshal(data, &cfg); err != nil {
+		log.Printf("Failed to parse config file: %v", err)
+		return "external-source" // Default value
+	}
+
+	if cfg.SteamDataSource == "" {
+		return "external-source" // Default value
+	}
+	return cfg.SteamDataSource
+}
+
+func getConfigPath() string {
+	p3, _ := os.UserCacheDir()
+	return filepath.Join(p3, "sentinel", "config.json")
 }
 
 func fetchGameBasics(appID string) (*GameBasics, error) {

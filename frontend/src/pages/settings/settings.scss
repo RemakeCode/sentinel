@@ -1,7 +1,6 @@
 .settings {
   &-container {
     padding: var(--space-8);
-    max-width: 1200px;
     margin: 0 auto;
     color: var(--foreground);
     animation: fadeIn var(--transition) ease-out;
@@ -16,10 +15,15 @@
     height: 16px;
   }
 
-  &-section-title {
-    display: flex;
-    align-items: center;
-    gap: var(--space-1);
+  &-section {
+    margin-block-start: var(--space-12);
+
+    &-title {
+      display: flex;
+      align-items: center;
+      gap: var(--space-1);
+      margin-block-end: var(--space-5);
+    }
   }
 
   &-table {
@@ -28,6 +32,45 @@
     border-radius: var(--radius-medium);
     margin-bottom: var(--space-12);
     background: var(--primary-foreground);
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    &-cell-type {
+      width: 10%;
+      min-width: 80px;
+    }
+
+    &-cell-path {
+      width: 70%;
+      min-width: 200px;
+
+      code {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 100%;
+        background: none;
+      }
+    }
+
+
+    @media (min-width: 1280px) {
+      &-cell-type {
+        width: 10%;
+      }
+
+      &-cell-path {
+        width: 70%;
+        line-clamp: 2;
+      }
+
+      &-cell-actions {
+        width: 20%;
+      }
+    }
 
     &-actions {
       text-align: right;
@@ -48,29 +91,36 @@
       }
     }
 
-    &-steam-api-key {
-      &-section {
-        display: flex;
+    &-steam-api {
+      &-form {
         flex-direction: column;
-        gap: var(--space-4);
+        max-width: 600px;
+
+        .form-inline {
+          display: flex;
+          align-items: start;
+          justify-content: center;
+          gap: var(--space-2);
+
+          > :is(button) {
+            margin-block-start: var(--space-1);
+
+          }
+        }
       }
+
 
       &-display {
         display: flex;
-        align-items: center;
         gap: var(--space-2);
-
-        small {
-          color: var(--muted-foreground);
-        }
+        padding-block-start: var(--space-2);
+        align-items: center;
+        color: var(--muted-foreground);
 
         code {
           padding: var(--space-1) var(--space-2);
-          background: var(--muted);
           border-radius: var(--radius-small);
-          font-family: var(--font-mono);
           font-size: var(--text-sm);
-          color: var(--foreground);
         }
       }
     }
