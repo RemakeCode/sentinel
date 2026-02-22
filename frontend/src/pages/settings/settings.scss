@@ -47,8 +47,35 @@
         opacity: 0.2
       }
     }
-  }
 
+    &-steam-api-key {
+      &-section {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-4);
+      }
+
+      &-display {
+        display: flex;
+        align-items: center;
+        gap: var(--space-2);
+
+        small {
+          color: var(--muted-foreground);
+        }
+
+        code {
+          padding: var(--space-1) var(--space-2);
+          background: var(--muted);
+          border-radius: var(--radius-small);
+          font-family: var(--font-mono);
+          font-size: var(--text-sm);
+          color: var(--foreground);
+        }
+      }
+    }
+
+  }
 }
 
 @keyframes fadeIn {
