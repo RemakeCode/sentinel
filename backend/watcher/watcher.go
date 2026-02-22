@@ -203,11 +203,26 @@ func (w *Service) processEvents() {
 }
 
 // handleEvent processes a file system event
-// TBD: Implement event handling logic
+// Currently logs events for future implementation
 func (w *Service) handleEvent(event fsnotify.Event) {
-	// Placeholder for event handling
-	// This function will be called when a file system event occurs
-	// Possible actions:
+	// Extract appId from the event path if it's a numeric directory
+	path := event.Name
+	appId := ""
+
+	// Check if the path contains a numeric directory (potential appId)
+	matches := numericRegex.FindString(path)
+	if matches != "" {
+		appId = matches
+	}
+
+	// Log the event with relevant details
+	w.app.Logger.Info("File system event detected",
+		"path", path,
+		"appId", appId,
+		"operation", event.Op.String(),
+	)
+
+	// Future implementation could include:
 	// - Update game state in database
 	// - Refresh UI components
 	// - Trigger notifications
