@@ -70,7 +70,6 @@ type schemaResponse struct {
 
 func init() {
 	log.Print("Starting GameBasics Init")
-
 }
 
 func FetchAppDetailsBulk(appIDs []string) ([]*GameBasics, error) {

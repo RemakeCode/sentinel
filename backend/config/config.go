@@ -22,12 +22,21 @@ type Emulator struct {
 	IsDefault    bool   `json:"isDefault"`
 }
 
-//wails:bind
+type SteamSource string
+
+const (
+	Unknown  SteamSource = ""
+	Key      SteamSource = "key"
+	External SteamSource = "external"
+)
+
+//wails:internal
 type File struct {
-	Language        types.Language
-	Emulators       []Emulator `json:"emulators"`
-	SteamAPIKey     string     `json:"steamApiKey,omitempty"`
-	SteamDataSource string     `json:"steamDataSource,omitempty"`
+	Language          types.Language `json:"language"`
+	Emulators         []Emulator     `json:"emulators"`
+	SteamAPIKey       string         `json:"-"`
+	SteamDataSource   SteamSource    `json:"steamDataSource"`
+	SteamAPIKeyMasked string         `json:"steamApiKeyMasked"`
 }
 
 var p1, _ = os.UserHomeDir()
@@ -38,7 +47,7 @@ var configDir = filepath.Join(p3, "sentinel")
 var configPath = filepath.Join(configDir, "config.json")
 
 // Embedded encryption key for Steam API key
-// This is intentionally weak security as noted in the design document
+// This is intentionally weak security.
 var encryptionKey = []byte("sentinel-app-secret-key-32bytes!")
 
 // Cache directory paths
@@ -80,8 +89,10 @@ func init() {
 	languages := types.GetSteamLanguages()
 	for _, lang := range languages {
 		langDir := filepath.Join(cacheSchemaDir, lang.API)
-		if err := os.MkdirAll(langDir, 0755); err != nil {
-			log.Printf("Warning: Failed to create language directory %s: %v", lang.API, err)
+		if _, err := os.Stat(langDir); os.IsNotExist(err) {
+			if err := os.MkdirAll(langDir, 0755); err != nil {
+				log.Printf("Warning: Failed to create language directory %s: %v", lang.API, err)
+			}
 		}
 	}
 
@@ -91,7 +102,10 @@ func init() {
 		// File doesn't exist - initialize default config
 		defaultConfig := File{
 			Emulators:       defaultEmulatorPaths,
-			SteamDataSource: "external-source",
+			SteamDataSource: "external",
+			Language: types.Language{
+				DisplayName: "English", API: "english", WebAPI: "en",
+			},
 		}
 		config, marshalErr := json.MarshalIndent(defaultConfig, "", "  ")
 		if marshalErr != nil {
@@ -119,6 +133,7 @@ func (c *File) LoadConfig() (*File, error) {
 	if err := json.Unmarshal(data, c); err != nil {
 		return nil, err
 	}
+	//delete(c, c.SteamAPIKey)
 
 	return c, nil
 }
@@ -154,6 +169,9 @@ func (c *File) SetSteamAPIKey(apiKey string) error {
 	}
 
 	c.SteamAPIKey = encryptedKey
+
+	c.SteamAPIKeyMasked = strings.Repeat("*", len(apiKey)-4) + apiKey[len(apiKey)-4:]
+
 	return c.SaveConfig()
 }
 
@@ -174,35 +192,16 @@ func (c *File) GetSteamAPIKey() (string, error) {
 	return decryptedKey, nil
 }
 
-// GetSteamAPIKeyMasked retrieves the Steam API key and returns a masked version for display
-func (c *File) GetSteamAPIKeyMasked() (string, error) {
-	if c.SteamAPIKey == "" {
-		return "", nil // No API key set
-	}
-
-	// Decrypt the API key first
-	decryptedKey, err := decrypt(c.SteamAPIKey)
-	if err != nil {
-		return "", fmt.Errorf("failed to decrypt API key: %w", err)
-	}
-
-	// Mask the key (show only last 4 characters)
-	if len(decryptedKey) > 4 {
-		return strings.Repeat("*", len(decryptedKey)-4) + decryptedKey[len(decryptedKey)-4:], nil
-	}
-	return strings.Repeat("*", len(decryptedKey)), nil
-}
-
 // GetSteamDataSource retrieves the current Steam data source preference
-func (c *File) GetSteamDataSource() string {
+func (c *File) GetSteamDataSource() SteamSource {
 	if c.SteamDataSource == "" {
-		return "external-source" // Default value
+		return "external" // Default value
 	}
 	return c.SteamDataSource
 }
 
 // SetSteamDataSource sets the Steam data source preference and saves the configuration
-func (c *File) SetSteamDataSource(source string) error {
+func (c *File) SetSteamDataSource(source SteamSource) error {
 	c.SteamDataSource = source
 	return c.SaveConfig()
 }

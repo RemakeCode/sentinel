@@ -1,30 +1,30 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router';
-import { ArrowLeft, DatabaseSearchIcon, Eye, FolderOpen, Locate, Trash2, Volume2, VolumeOff } from 'lucide-react';
+import { ArrowLeft, DatabaseSearchIcon, Eye, FolderOpen, Trash2, Volume2, VolumeOff } from 'lucide-react';
 
 import {
-  LoadConfig,
   AddEmulator,
+  LoadConfig,
   RemoveEmulator,
-  ToggleEmulatorNotification,
   SetSteamAPIKey,
-  GetSteamAPIKeyMasked,
-  GetSteamDataSource,
-  SetSteamDataSource
+  SetSteamDataSource,
+  ToggleEmulatorNotification
 } from '@wa/sentinel/backend/config/file';
 
 import './settings.scss';
 import EmptyState from '@/shared/components/EmptyState';
-import { File, Emulator } from '@wa/sentinel/backend/config/models';
+import { Emulator, File, SteamSource } from '@wa/sentinel/backend/config/models';
 
 import { Dialogs } from '@wailsio/runtime';
 
 declare global {
   interface Window {
-    Oat: {
-      toast: {
-        show: (message: string, type?: 'success' | 'error' | 'info' | 'warning') => void;
-      };
+    ot: {
+      toast: (
+        message: string,
+        title?: string,
+        options?: { variant?: 'success' | 'error' | 'info' | 'warning' }
+      ) => void;
     };
   }
 }
@@ -38,48 +38,29 @@ const Settings: React.FC = () => {
   const [appConfig, setAppConfig] = useState<File | null>(null);
   const [darkMode, setDarkMode] = useState(true);
   const [steamAPIKey, setSteamAPIKey] = useState('');
-  const [maskedSteamAPIKey, setMaskedSteamAPIKey] = useState('');
   const [steamAPIKeyHasError, setSteamAPIKeyHasError] = useState<boolean>(false);
-  const [steamDataSource, setSteamDataSource] = useState<string>('external-source');
+  const [stmSrc, setStmSrc] = useState<SteamSource>();
 
   useEffect(() => {
     loadConfig();
-    loadSteamAPIKey();
-    loadSteamDataSource();
   }, []);
 
-  const loadSteamAPIKey = async () => {
-    try {
-      const maskedKey = await GetSteamAPIKeyMasked();
-      setMaskedSteamAPIKey(maskedKey);
-    } catch (err) {
-      console.error('Failed to load Steam API key:', err);
-      window.Oat?.toast?.show('Failed to load Steam API key', 'error');
-    }
-  };
-
-  const loadSteamDataSource = async () => {
-    try {
-      const dataSource = await GetSteamDataSource();
-      setSteamDataSource(dataSource);
-    } catch (err) {
-      console.error('Failed to load Steam data source:', err);
-      window.Oat?.toast?.show('Failed to load Steam data source', 'error');
-    }
-  };
-
-  const handleSteamDataSourceChange = async (value: string) => {
-    try {
-      await SetSteamDataSource(value);
-      setSteamDataSource(value);
-      window.Oat?.toast?.show('Steam data source updated', 'success');
-    } catch (err) {
-      console.error('Failed to save Steam data source:', err);
-      window.Oat?.toast?.show('Failed to save Steam data source', 'error');
+  const handleSteamDataSourceChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value as SteamSource;
+    setStmSrc(value);
+    if (value === SteamSource.External) {
+      try {
+        await SetSteamDataSource(value);
+        window.ot?.toast('Steam data source updated', 'Success', { variant: 'success' });
+      } catch (err) {
+        console.error('Failed to save Steam data source:', err);
+        window.ot?.toast('Failed to save Steam data source', 'Error', { variant: 'error' });
+      }
     }
   };
 
   let timeout: ReturnType<typeof setTimeout>;
+
   const handleSaveSteamAPIKey = async () => {
     if (timeout) {
       clearTimeout(timeout);
@@ -91,17 +72,16 @@ const Settings: React.FC = () => {
         timeout = setTimeout(() => setSteamAPIKeyHasError(false), 5000);
         return;
       }
-      await SetSteamAPIKey(steamAPIKey);
+      await Promise.all([SetSteamDataSource(SteamSource.Key), SetSteamAPIKey(steamAPIKey)]);
 
-      window.Oat?.toast?.show('Steam API key saved', 'success');
+      window.ot?.toast('Steam API key saved', 'Success', { variant: 'success' });
 
-      //Reload from backend
-      await loadSteamAPIKey();
+      await loadConfig();
       //Clear input field
       setSteamAPIKey('');
     } catch (err) {
       console.error('Failed to save Steam API key:', err);
-      window.Oat?.toast?.show('Failed to save Steam API key', 'error');
+      window.ot?.toast('Failed to save Steam API key', 'Error', { variant: 'error' });
     }
   };
 
@@ -109,24 +89,28 @@ const Settings: React.FC = () => {
     try {
       const cfg = await LoadConfig();
       setAppConfig(cfg);
+      setStmSrc(cfg?.steamDataSource);
     } catch (err) {
-      console.error('Failed to load config:', err);
-      window.Oat?.toast?.show('Failed to load settings', 'error');
+      window.ot?.toast('Failed to load settings', 'Error', { variant: 'error' });
     }
   };
 
   const handleAddEmulator = async () => {
     try {
-      const selectedPath = await Dialogs.OpenFile({ CanChooseDirectories: true, CanChooseFiles: false, Title: 'Select A Folder to Watch' });
+      const selectedPath = await Dialogs.OpenFile({
+        CanChooseDirectories: true,
+        CanChooseFiles: false,
+        Title: 'Select A Folder to Watch'
+      });
 
       if (selectedPath) {
         await AddEmulator(selectedPath);
-        window.Oat?.toast?.show('Emulator path added', 'success');
+        window.ot?.toast('Emulator path added', 'Success', { variant: 'success' });
         await loadConfig();
       }
     } catch (err) {
       console.error('Failed to add emulator:', err);
-      window.Oat?.toast?.show('Failed to add emulator', 'error');
+      window.ot?.toast('Failed to add emulator', 'Error', { variant: 'error' });
     }
   };
 
@@ -135,19 +119,18 @@ const Settings: React.FC = () => {
       await ToggleEmulatorNotification(index);
       await loadConfig();
     } catch (err) {
-      console.error('Failed to toggle notification:', err);
-      window.Oat?.toast?.show('Failed to update setting', 'error');
+      window.ot?.toast('Failed to update setting', 'Error', { variant: 'error' });
     }
   };
 
   const handleRemoveEmulator = async (index: number) => {
     try {
       await RemoveEmulator(index);
-      window.Oat?.toast?.show('Emulator removed', 'success');
+      window.ot?.toast('Emulator removed', 'Success', { variant: 'success' });
       await loadConfig();
     } catch (err) {
       console.error('Failed to remove emulator:', err);
-      window.Oat?.toast?.show('Failed to remove emulator', 'error');
+      window.ot?.toast('Failed to remove emulator', 'Error', { variant: 'error' });
     }
   };
 
@@ -183,7 +166,11 @@ const Settings: React.FC = () => {
                   {allEmulators.map((record) => (
                     <tr key={record.index}>
                       <td className='settings-table-cell-type'>
-                        {record.emu.isDefault ? <span className='badge'>Default</span> : <span className='badge success'>Custom</span>}
+                        {record.emu.isDefault ? (
+                          <span className='badge'>Default</span>
+                        ) : (
+                          <span className='badge success'>Custom</span>
+                        )}
                       </td>
                       <td className='settings-table-cell-path'>
                         <code>{record.emu.path}</code>
@@ -197,9 +184,19 @@ const Settings: React.FC = () => {
                               checked={record.emu.shouldNotify}
                               onChange={() => handleToggleNotify(record.index)}
                             />
-                            {record.emu.shouldNotify ? <Volume2 width={20} fill='var(--success)' /> : <VolumeOff width={20} fill='var(--danger)' />}
+                            {record.emu.shouldNotify ? (
+                              <Volume2 width={20} fill='var(--success)' />
+                            ) : (
+                              <VolumeOff width={20} fill='var(--danger)' />
+                            )}
                           </label>
-                          |{<Trash2 onClick={() => handleRemoveEmulator(record.index)} className={record.emu.isDefault ? 'disabled' : ''} />}
+                          |
+                          {
+                            <Trash2
+                              onClick={() => handleRemoveEmulator(record.index)}
+                              className={record.emu.isDefault ? 'disabled' : ''}
+                            />
+                          }
                         </div>
                       </td>
                     </tr>
@@ -208,32 +205,6 @@ const Settings: React.FC = () => {
               </table>
             )}
           </div>
-          <hr className='divider' />
-          <div className='settings-table-steam-datasource'>
-            <label>Data Source</label>
-            <div className='radio-group'>
-              <label className='radio-option'>
-                <input
-                  type='radio'
-                  name='steamDataSource'
-                  value='steam-key'
-                  checked={steamDataSource === 'steam-key'}
-                  onChange={(e) => handleSteamDataSourceChange(e.target.value)}
-                />
-                <span>Steam Key</span>
-              </label>
-              <label className='radio-option'>
-                <input
-                  type='radio'
-                  name='steamDataSource'
-                  value='external-source'
-                  checked={steamDataSource === 'external-source'}
-                  onChange={(e) => handleSteamDataSourceChange(e.target.value)}
-                />
-                <span>External Source</span>
-              </label>
-            </div>
-          </div>
         </div>
 
         <div className='card settings-section'>
@@ -241,29 +212,57 @@ const Settings: React.FC = () => {
             <DatabaseSearchIcon /> Steam Data Source
           </h4>
           <hr className='divider' />
+
           <div className='settings-table-steam-api-form'>
-            <div data-field={steamAPIKeyHasError ? 'error' : ''}>
-              <label>Steam API Key</label>
-              <div className={'form-inline'}>
+            <fieldset className='hstack'>
+              <legend>Preference</legend>
+              <label className='radio-option'>
                 <input
-                  placeholder='Enter your Steam API key'
-                  value={steamAPIKey}
-                  onChange={(e) => setSteamAPIKey(e.target.value)}
-                  aria-invalid={steamAPIKeyHasError}
+                  type='radio'
+                  name='steamDataSource'
+                  value={SteamSource.Key}
+                  checked={stmSrc === SteamSource.Key}
+                  onChange={handleSteamDataSourceChange}
                 />
-                <button onClick={handleSaveSteamAPIKey}>Save</button>
-              </div>
-              <div>
-                <div className='error' role='status'>
-                  Please enter a Steam API key, if you need one
+                Steam Key
+              </label>
+              <label className='radio-option'>
+                <input
+                  type='radio'
+                  name='steamDataSource'
+                  value={SteamSource.External}
+                  checked={stmSrc === SteamSource.External}
+                  onChange={handleSteamDataSourceChange}
+                />
+                External Source
+              </label>
+            </fieldset>
+            {stmSrc === SteamSource.Key && (
+              <>
+                <div data-field={steamAPIKeyHasError ? 'error' : ''}>
+                  <label>Steam API Key</label>
+                  <div className={'form-inline'}>
+                    <input
+                      placeholder='Enter your Steam API key'
+                      value={steamAPIKey}
+                      onChange={(e) => setSteamAPIKey(e.target.value)}
+                      aria-invalid={steamAPIKeyHasError}
+                    />
+                    <button onClick={handleSaveSteamAPIKey}>Save</button>
+                  </div>
+                  <div>
+                    <div className='error' role='status'>
+                      Please enter a Steam API key, if you need one
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-            {maskedSteamAPIKey && (
-              <div className='settings-table-steam-api-display'>
-                <span>Current API Key:</span>
-                <code>{maskedSteamAPIKey}</code>
-              </div>
+                {appConfig?.steamApiKeyMasked && (
+                  <div className='settings-table-steam-api-display'>
+                    <span>Current API Key:</span>
+                    <code>{appConfig.steamApiKeyMasked}</code>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
