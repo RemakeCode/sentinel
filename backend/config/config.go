@@ -1,6 +1,7 @@
 package config
 
 import (
+	"context"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
@@ -14,6 +15,8 @@ import (
 	"path/filepath"
 	"sentinel/backend/steam/types"
 	"strings"
+
+	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 type Emulator struct {
@@ -32,6 +35,7 @@ const (
 
 //wails:internal
 type File struct {
+	app               *application.App
 	Language          types.Language `json:"language"`
 	Emulators         []Emulator     `json:"emulators"`
 	SteamAPIKey       string         `json:"-"`
@@ -67,8 +71,9 @@ var defaultEmulatorPaths = []Emulator{
 	{Path: fmt.Sprintf("%s/EMPRESS", p2), ShouldNotify: true, IsDefault: true},
 }
 
-func init() {
+func (c *File) ServiceStartup(ctx context.Context, options application.ServiceOptions) error {
 	slog.Info("Starting Config Initialization")
+
 	// Ensure config directory exists
 	if err := os.MkdirAll(configDir, 0755); err != nil {
 		log.Fatalf("Failed to create config directory: %v", err)
@@ -122,6 +127,14 @@ func init() {
 	}
 
 	slog.Info("Config Initialization Complete")
+
+	_, err = c.LoadConfig()
+
+	if err != nil {
+		log.Fatalf("Failed to load config file: %v", err)
+	}
+
+	return nil
 }
 
 func (c *File) LoadConfig() (*File, error) {
@@ -133,7 +146,6 @@ func (c *File) LoadConfig() (*File, error) {
 	if err := json.Unmarshal(data, c); err != nil {
 		return nil, err
 	}
-	//delete(c, c.SteamAPIKey)
 
 	return c, nil
 }
