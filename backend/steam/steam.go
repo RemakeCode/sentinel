@@ -11,6 +11,8 @@ import (
 	"strings"
 	"sync"
 
+	"sentinel/backend/config"
+
 	"github.com/PuerkitoBio/goquery"
 )
 
@@ -297,14 +299,22 @@ func fetchAchievementsFromThirdParty(appID string, language string) ([]achieveme
 // FetchAchievements fetches achievements using the configured data source
 // It reads the configuration to determine whether to use Steam Key or External Source
 func FetchAchievements(appID string, language string) ([]achievement, error) {
-	dataSource := getSteamDataSourceFromConfig()
+	// Load config to get the steam data source
+	cfg := &config.File{}
+	_, err := cfg.LoadConfig()
+	if err != nil {
+		log.Printf("Failed to load config, using external source: %v", err)
+		return fetchAchievementsFromThirdParty(appID, language)
+	}
+
+	dataSource := cfg.GetSteamDataSource()
 
 	switch dataSource {
-	case "steam-key":
+	case "key":
 		// Use Steam API key
 		achievements := fetchAchievementsWithKey(appID, language)
 		return achievements, nil
-	case "external-source":
+	case "external":
 		// Use third-party source
 		return fetchAchievementsFromThirdParty(appID, language)
 	default:
@@ -312,34 +322,6 @@ func FetchAchievements(appID string, language string) ([]achievement, error) {
 		log.Printf("Unknown data source '%s', using external source", dataSource)
 		return fetchAchievementsFromThirdParty(appID, language)
 	}
-}
-
-// getSteamDataSourceFromConfig reads the SteamDataSource from the config file
-func getSteamDataSourceFromConfig() string {
-	configPath := getConfigPath()
-	data, err := os.ReadFile(configPath)
-	if err != nil {
-		log.Printf("Failed to read config file: %v", err)
-		return "external-source" // Default value
-	}
-
-	var cfg struct {
-		SteamDataSource string `json:"steamDataSource"`
-	}
-	if err := json.Unmarshal(data, &cfg); err != nil {
-		log.Printf("Failed to parse config file: %v", err)
-		return "external-source" // Default value
-	}
-
-	if cfg.SteamDataSource == "" {
-		return "external-source" // Default value
-	}
-	return cfg.SteamDataSource
-}
-
-func getConfigPath() string {
-	p3, _ := os.UserCacheDir()
-	return filepath.Join(p3, "sentinel", "config.json")
 }
 
 func fetchGameBasics(appID string) (*GameBasics, error) {
