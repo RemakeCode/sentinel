@@ -3,10 +3,9 @@ package main
 import (
 	"embed"
 	"log"
+	"sentinel/backend/config"
 	"sentinel/backend/steam"
 	"sentinel/backend/watcher"
-
-	"sentinel/backend/config"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
