@@ -28,6 +28,7 @@ func main() {
 			application.NewService(&steam.GameBasics{}),
 			application.NewService(&watcher.Service{}),
 		},
+
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),
 		},
