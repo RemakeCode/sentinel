@@ -7,14 +7,17 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
 	"log/slog"
 	"os"
 	"path/filepath"
+	"sentinel/backend"
 	"sentinel/backend/steam/types"
 	"strings"
+	"sync"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
@@ -43,57 +46,63 @@ type File struct {
 	SteamAPIKeyMasked string         `json:"steamApiKeyMasked"`
 }
 
-var p1, _ = os.UserHomeDir()
-var p2, _ = os.UserConfigDir()
-var p3, _ = os.UserCacheDir()
+var defaultEmulatorPaths = []Emulator{
+	{Path: fmt.Sprintf("%s/Public/Documents/Steam/CODEX", backend.UserHomeDir), ShouldNotify: true, IsDefault: true},
+	{Path: fmt.Sprintf("%s/Public/Documents/Steam/RUNE", backend.UserHomeDir), ShouldNotify: true, IsDefault: true},
+	{Path: fmt.Sprintf("%s/Public/Documents/Steam/OnlineFix", backend.UserHomeDir), ShouldNotify: true, IsDefault: true},
+	{Path: fmt.Sprintf("%s/Public/Documents/EMPRESS", backend.UserHomeDir), ShouldNotify: true, IsDefault: true},
+	{Path: fmt.Sprintf("%s/Steam/CODEX", backend.UserHomeDir), ShouldNotify: true, IsDefault: true},
+	{Path: fmt.Sprintf("%s/Goldberg SteamEmu Saves", backend.UserCacheDir), ShouldNotify: true, IsDefault: true},
+	{Path: fmt.Sprintf("%s/GSE Saves", backend.UserCacheDir), ShouldNotify: true, IsDefault: true},
+	{Path: fmt.Sprintf("%s/EMPRESS", backend.UserCacheDir), ShouldNotify: true, IsDefault: true},
+}
 
-var configDir = filepath.Join(p3, "sentinel")
-var configPath = filepath.Join(configDir, "config.json")
-
-// Embedded encryption key for Steam API key
-// This is intentionally weak security.
+// Not a secure Key. Left this way intentionally.
 var encryptionKey = []byte("sentinel-app-secret-key-32bytes!")
 
-// Cache directory paths
-var cacheDir = filepath.Join(configDir, "cache")
-var cacheDataDir = filepath.Join(cacheDir, "data")
-var cacheIconDir = filepath.Join(cacheDir, "icon")
-var cacheSchemaDir = filepath.Join(cacheDir, "schema")
+var (
+	instance     *File
+	instanceOnce sync.Once
+	instanceErr  error
+)
 
-var defaultEmulatorPaths = []Emulator{
-	{Path: fmt.Sprintf("%s/Public/Documents/Steam/CODEX", p1), ShouldNotify: true, IsDefault: true},
-	{Path: fmt.Sprintf("%s/Public/Documents/Steam/RUNE", p1), ShouldNotify: true, IsDefault: true},
-	{Path: fmt.Sprintf("%s/Public/Documents/Steam/OnlineFix", p1), ShouldNotify: true, IsDefault: true},
-	{Path: fmt.Sprintf("%s/Public/Documents/EMPRESS", p1), ShouldNotify: true, IsDefault: true},
-	{Path: fmt.Sprintf("%s/Steam/CODEX", p2), ShouldNotify: true, IsDefault: true},
-	{Path: fmt.Sprintf("%s/Goldberg SteamEmu Saves", p2), ShouldNotify: true, IsDefault: true},
-	{Path: fmt.Sprintf("%s/GSE Saves", p2), ShouldNotify: true, IsDefault: true},
-	{Path: fmt.Sprintf("%s/EMPRESS", p2), ShouldNotify: true, IsDefault: true},
+// Get returns the package-level singleton *File, loading it on first call.
+// Safe to call from multiple goroutines.
+func Get() (*File, error) {
+	instanceOnce.Do(func() {
+		f := &File{}
+		if _, err := f.LoadConfig(); err != nil {
+			instanceErr = fmt.Errorf("config: failed to load: %w", err)
+			return
+		}
+		instance = f
+	})
+	return instance, instanceErr
 }
 
 func (c *File) ServiceStartup(ctx context.Context, options application.ServiceOptions) error {
 	slog.Info("Starting Config Initialization")
 
 	// Ensure config directory exists
-	if err := os.MkdirAll(configDir, 0755); err != nil {
+	if err := os.MkdirAll(backend.ConfigDir, 0755); err != nil {
 		log.Fatalf("Failed to create config directory: %v", err)
 	}
 
 	// Ensure cache directories exist
-	if err := os.MkdirAll(cacheDataDir, 0755); err != nil {
+	if err := os.MkdirAll(backend.ACHCacheDataDir, 0755); err != nil {
 		log.Fatalf("Failed to create cache data directory: %v", err)
 	}
-	if err := os.MkdirAll(cacheIconDir, 0755); err != nil {
+	if err := os.MkdirAll(backend.ACHCacheIconDir, 0755); err != nil {
 		log.Fatalf("Failed to create cache icon directory: %v", err)
 	}
-	if err := os.MkdirAll(cacheSchemaDir, 0755); err != nil {
-		log.Fatalf("Failed to create cache schema directory: %v", err)
+	if err := os.MkdirAll(backend.GameCacheDir, 0755); err != nil {
+		log.Fatalf("Failed to create game cache directory: %v", err)
 	}
 
-	// Create language folders in schema directory based on steam languages
+	// Create language folders in game cache directory based on steam languages
 	languages := types.GetSteamLanguages()
 	for _, lang := range languages {
-		langDir := filepath.Join(cacheSchemaDir, lang.API)
+		langDir := filepath.Join(backend.GameCacheDir, lang.API)
 		if _, err := os.Stat(langDir); os.IsNotExist(err) {
 			if err := os.MkdirAll(langDir, 0755); err != nil {
 				log.Printf("Warning: Failed to create language directory %s: %v", lang.API, err)
@@ -101,7 +110,7 @@ func (c *File) ServiceStartup(ctx context.Context, options application.ServiceOp
 		}
 	}
 
-	_, err := os.Stat(configPath)
+	_, err := os.Stat(backend.ConfigPath)
 
 	if os.IsNotExist(err) {
 		// File doesn't exist - initialize default config
@@ -117,7 +126,7 @@ func (c *File) ServiceStartup(ctx context.Context, options application.ServiceOp
 			log.Fatalf("Failed to marshal default config: %v", marshalErr)
 		}
 
-		err := os.WriteFile(configPath, config, 0644)
+		err := os.WriteFile(backend.ConfigPath, config, 0644)
 		if err != nil {
 			log.Fatalf("Failed to write default config: %v", err)
 		}
@@ -138,13 +147,13 @@ func (c *File) ServiceStartup(ctx context.Context, options application.ServiceOp
 }
 
 func (c *File) LoadConfig() (*File, error) {
-	data, err := os.ReadFile(configPath)
+	data, err := os.ReadFile(backend.ConfigPath)
 	if err != nil {
 		return nil, err
 	}
 
 	if err := json.Unmarshal(data, c); err != nil {
-		return nil, err
+		return nil, errors.New("unable to unmarshal config")
 	}
 
 	return c, nil
@@ -157,11 +166,11 @@ func (c *File) SaveConfig() error {
 		return fmt.Errorf("failed to marshal config: %w", err)
 	}
 
-	if err := os.MkdirAll(filepath.Dir(configPath), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(backend.ConfigPath), 0755); err != nil {
 		return fmt.Errorf("failed to create config dir: %w", err)
 	}
 
-	if err := os.WriteFile(configPath, data, 0644); err != nil {
+	if err := os.WriteFile(backend.ConfigPath, data, 0644); err != nil {
 		return fmt.Errorf("failed to write config: %w", err)
 	}
 
@@ -305,12 +314,12 @@ func decrypt(ciphertext string) (string, error) {
 }
 
 // GetEmulatorPaths returns all emulator paths from the configuration
-func (c *File) GetEmulatorPaths() []string {
+func (c *File) GetEmulatorPaths() ([]string, error) {
 	var paths []string
 	for _, emulator := range c.Emulators {
 		paths = append(paths, emulator.Path)
 	}
-	return paths
+	return paths, nil
 }
 
 // ToggleEmulatorNotification toggles the notification setting for an emulator by index
