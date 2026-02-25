@@ -520,7 +520,13 @@ func (s *GameBasics) cacheGameImage(appID string, imageURL string, imageType str
 		return nil
 	}
 
-	cachePath := s.getGameImageCachePath(appID, imageType)
+	// Extract extension from image URL
+	ext := filepath.Ext(imageURL)
+	if ext == "" {
+		ext = ".jpg" // Default to .jpg if no extension found
+	}
+
+	cachePath := s.getGameImageCachePath(appID, imageType+ext)
 
 	// Check if already cached
 	if _, err := os.Stat(cachePath); err == nil {
@@ -557,11 +563,19 @@ func (s *GameBasics) cacheGameImage(appID string, imageURL string, imageType str
 }
 
 func (s *GameBasics) loadCachedGameImage(appID string, imageType string) (string, error) {
-	cachePath := s.getGameImageCachePath(appID, imageType)
+	cacheDir := s.getGameImageCachePath(appID, "")
 
-	if _, err := os.Stat(cachePath); err != nil {
+	// Search for file with matching prefix and any extension
+	entries, err := os.ReadDir(cacheDir)
+	if err != nil {
 		return "", err
 	}
 
-	return cachePath, nil
+	for _, entry := range entries {
+		if strings.HasPrefix(entry.Name(), imageType) {
+			return filepath.Join(cacheDir, entry.Name()), nil
+		}
+	}
+
+	return "", errors.New("cached image not found")
 }
