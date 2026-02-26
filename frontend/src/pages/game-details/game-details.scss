@@ -29,7 +29,7 @@
     transform: translateY(-50%);
     z-index: 1;
 
-    >img {
+    > img {
       width: 100%;
       height: max-content;
       aspect-ratio: 9/13;
@@ -93,12 +93,25 @@
 
   &-ach-title {
     font-weight: var(--font-semibold);
-    font-size: var(--text-6);
+    font-size: var(--text-3);
   }
 
   &-ach-desc {
     color: var(--muted-foreground);
-    font-size: var(--text-8);
+    font-size: var(--text-5);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+
+    >.blur {
+      filter: blur(5px);
+      cursor: pointer;
+      transition: filter var(--transition);
+
+      &:hover {
+        filter: none
+      }
+    }
   }
 
   &-info-section {
