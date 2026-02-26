@@ -3,15 +3,22 @@ package main
 import (
 	"embed"
 	"log"
+	"sentinel/backend"
 	"sentinel/backend/config"
 	"sentinel/backend/steam"
 	"sentinel/backend/watcher"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
+	"github.com/wailsapp/wails/v3/pkg/events"
 )
 
-//go:embed all:frontend/dist
+//go:embed all:frontend
 var assets embed.FS
+
+func init() {
+	application.RegisterEvent[application.Void]("sentinel::ready")
+	application.RegisterEvent[backend.FetchStatusEvt]("sentinel::fetch-status")
+}
 
 func main() {
 
@@ -25,7 +32,7 @@ func main() {
 		Description: "Steam game emulator manager",
 		Services: []application.Service{
 			application.NewService(&config.File{}),
-			application.NewService(&steam.GameBasics{}),
+			application.NewService(&steam.Service{}),
 			application.NewService(&watcher.Service{}),
 		},
 
@@ -45,6 +52,11 @@ func main() {
 		Width:     1920,
 		Height:    1080,
 		URL:       "/",
+	})
+
+	app.Event.OnApplicationEvent(events.Common.ApplicationStarted, func(e *application.ApplicationEvent) {
+		app.Logger.Info("Application ready!")
+		app.Event.Emit("app:ready", e)
 	})
 
 	// Run the application
