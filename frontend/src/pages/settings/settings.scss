@@ -1,20 +1,7 @@
 .settings {
-  &-container {
-    padding: var(--space-8);
-    margin: 0 auto;
-    color: var(--foreground);
-    animation: fadeIn var(--transition) ease-out;
-
-    &-header {
-      margin-bottom: var(--space-6);
-    }
+  &-header {
+    gap: var(--space-3);
   }
-
-  &-back-icon {
-    width: 16px;
-    height: 16px;
-  }
-
   &-section {
     margin-block-start: var(--space-12);
 
@@ -81,7 +68,7 @@
         justify-content: center;
       }
 
-      > svg {
+      >svg {
         cursor: pointer
       }
 

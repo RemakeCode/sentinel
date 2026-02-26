@@ -2,6 +2,7 @@
 frontend/node_modules
 /frontend/bindings/
 frontend/dist
+.agents/
 .agent/
 .idea/
 dist/

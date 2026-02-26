@@ -1,45 +1,53 @@
-import React, { useEffect } from 'react';
-import { useParams, Link } from 'react-router';
+import React from 'react';
+import { useParams, Link, useLocation } from 'react-router';
 import { ArrowLeft } from 'lucide-react';
+import { GameBasics } from '@wa/sentinel/backend/steam';
 import './game-details.scss';
+import { Header } from '@/shared/components/Header/Header';
 
 const GameDetails: React.FC = () => {
-    const { id } = useParams<{ id: string }>();
+  const { id } = useParams<{ id: string }>();
+  const location = useLocation();
+  const game = location.state?.game as GameBasics | undefined;
 
-    // Mock data based on ID (deterministic enough for demo)
-    const imageSeed = parseInt(id || '1') + 100;
-    const imageUrl = `https://picsum.photos/seed/${imageSeed}/300/450`;
-
-    return (
-        <div className="game-details-container">
-            <div className="game-details-container-image-section">
-                <Link to="/" viewTransition className="game-details-back-link">
-                    <div className="game-details-container-image-section-back-button">
-                        <ArrowLeft className="game-details-back-icon" /> Back to Dashboard
-                    </div>
-                </Link>
-                <img
-                    src={imageUrl}
-                    alt={`Game ${id}`}
-                    className="game-details-container-image-section-large-image"
-                    data-view-transition={`game-image-${id}`}
-                />
+  return (
+    <main className='full-layout'>
+      <Header className={'game-details-header'}>
+        <Link to='/' viewTransition>
+          <ArrowLeft />
+        </Link>
+        <h2>Achievements</h2>
+      </Header>
+      <section className='main-content'>
+        <div className='game-details-section'>
+          <div
+            className='game-details-image-container'
+            style={{ viewTransitionName: `game-image-${id}` } as React.CSSProperties}
+          >
+            <div className='game-details-image card'>
+              <img src={game?.PortraitImage} alt={game?.Name} />
             </div>
-
-            <div className="game-details-container-info-section">
-                <h1>Game Title {parseInt(id || '0') + 1}</h1>
-
-                <ul className="game-details-container-info-section-dummy-list">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                        <li key={i}>
-                            <span className="game-details-container-info-section-dummy-list-item-title">Achievement {i + 1}</span>
-                            <span className="game-details-container-info-section-dummy-list-item-desc">Unlocked at {new Date().toLocaleDateString()}</span>
-                        </li>
-                    ))}
-                </ul>
-            </div>
+          </div>
+          <div className='game-details-ach'>
+            <h1>{game?.Name}</h1>
+            <ul className='game-details-ach-list'>
+              {game?.Achievement.List.map((ach, i) => (
+                <li key={i} className='game-details-ach-item'>
+                  <div className='game-details-ach-icon'>
+                    <img src={ach.Icon} alt={ach.DisplayName} width={64} height={64} />
+                  </div>
+                  <div className='game-details-ach-info'>
+                    <span className='game-details-ach-title'>{ach.DisplayName}</span>
+                    <span className='game-details-ach-desc'>{ach.Description || 'No description available'}</span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
-    );
+      </section>
+    </main>
+  );
 };
 
 export default GameDetails;

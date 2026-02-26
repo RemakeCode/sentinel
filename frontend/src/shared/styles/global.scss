@@ -21,6 +21,11 @@
 @import '@knadh/oat/css/utilities.css';
 
 
+
+:root {
+    --game-card-width: 160px;
+    --game-card-height: 210px;
+}
 body {
     margin: 0;
     font-family: var(--font-sans);
@@ -30,3 +35,17 @@ hr.divider {
     border-bottom: 1px solid var(--border);
     margin: var(--space-5) 0;
 }
+
+
+.full-layout {
+    min-height: 100vh;
+    background-color: var(--background);
+}
+
+.main-content {
+    padding-block: var(--space-10);
+    padding-inline: var(--space-10);
+}
+
+
+
