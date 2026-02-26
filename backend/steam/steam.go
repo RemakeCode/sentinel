@@ -27,7 +27,6 @@ type achievement struct {
 	Description  string
 	Icon         string
 	IconGray     string
-	IconLocal    string
 	DefaultValue int `default:"0"`
 	Hidden       int `default:"0"`
 }
@@ -222,18 +221,12 @@ func (s *Service) fetchAchievementsWithKey(appID string, language string) []achi
 		// Cache the achievement icon
 		_ = s.cacheAchievementIcon(appID, a.Icon)
 
-		// Extract filename from URL for local path
-		parts := strings.Split(a.Icon, "/")
-		filename := parts[len(parts)-1]
-		iconLocalPath := filename
-
 		achievement := achievement{
 			Name:         a.Name,
 			DisplayName:  a.DisplayName,
 			Description:  a.Description,
 			Icon:         a.Icon,
 			IconGray:     a.IconGray,
-			IconLocal:    iconLocalPath,
 			DefaultValue: a.DefaultValue,
 			Hidden:       a.Hidden,
 		}
@@ -334,11 +327,6 @@ func (s *Service) fetchAchievementsFromThirdParty(appID string, language string)
 			// Cache the achievement icon
 			_ = s.cacheAchievementIcon(appID, data.Icon)
 
-			// Extract filename from URL for local path
-			parts := strings.Split(data.Icon, "/")
-			filename := parts[len(parts)-1]
-			iconLocalPath := filepath.Join("cache", "icon", appID, filename)
-			a.IconLocal = iconLocalPath
 		}
 
 		achievements = append(achievements, a)
