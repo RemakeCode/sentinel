@@ -1,59 +1,103 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import './dashboard.scss';
-import { Search, Bell, Settings, Home } from 'lucide-react';
-import { Link } from 'react-router';
+import { Search, Settings } from 'lucide-react';
+import { data, Link } from 'react-router';
 import EmptyState from '@/shared/components/EmptyState';
+import { LoadAllCachedGameData } from '@wa/sentinel/backend/steam/service';
+import { Events } from '@wailsio/runtime';
+import { GameBasics } from '@wa/sentinel/backend/steam';
+import { Header } from '@/shared/components/Header/Header';
+
+// Cache globally so returning to Dashboard doesn't trigger Skeletons and break view transitions
+let globalCachedGames: (GameBasics | null)[] | null = null;
 
 const Dashboard: React.FC = () => {
-  const [games, setGames] = useState<[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [games, setGames] = useState<(GameBasics | null)[]>(globalCachedGames || []);
+  const [loading, setLoading] = useState(!globalCachedGames);
+  const [status, setStatus] = useState<number>(0);
+
+  useEffect(() => {
+    Events.On('sentinel::fetch-status', (event) => {
+      const percentage = Math.floor((event.data.Current / event.data.Total) * 100);
+      setStatus(percentage);
+    });
+    return () => Events.Off('sentinel::fetch-status');
+  }, []);
+
+  useEffect(() => {
+    if (globalCachedGames) return;
+    const handleGames = async () => {
+      try {
+        const data = await LoadAllCachedGameData();
+        globalCachedGames = data;
+        setGames(data);
+        setLoading(false);
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    handleGames();
+  }, []);
+
+  //TODO: Only show the page when status is at 100%.
   return (
-    <div className='dashboard-layout'>
-      <div className='dashboard-main-content'>
-        <div>
-          {/* Header */}
-          <div className='dashboard-header'>
-            <div className='dashboard-header-left'>
-              <button className='dashboard-header-left-home-btn'>
-                <Home />
-              </button>
-              <div className='dashboard-header-left-search-bar'>
-                <Search className='dashboard-header-left-search-bar-search-icon' />
-                <input type='text' placeholder='search...' />
-              </div>
-            </div>
-            <div className='dashboard-header-tools'>
-              <button className='dashboard-header-tools-icon-btn'>
-                <Bell />
-              </button>
-              <Link to='/settings' viewTransition className='dashboard-settings-link'>
-                <div className='dashboard-header-tools-settings-entry-point'>
-                  <button className='dashboard-header-tools-icon-btn'>
-                    <Settings className='dashboard-header-tools-settings-entry-point-icon' />
-                  </button>
+    <main className='full-layout'>
+      <Header>
+        <div className='dashboard-header-search-bar'>
+          <fieldset className='group'>
+            <input type='text' placeholder='search...' />
+            <button className='outline'>
+              <Search />
+            </button>
+          </fieldset>
+        </div>
+
+        {/*<div>{status}%</div>*/}
+        <Link to='/settings' viewTransition className='dashboard-header-settings-link'>
+          <Settings className='dashboard-header-settings-link-icon' />
+        </Link>
+      </Header>
+      <section className='main-content'>
+        <div className='dashboard-section-header'>
+          <h2 className='dashboard-section-header-label'>Library</h2>
+          <div className='dashboard-section-header-actions'>View All</div>
+        </div>
+
+        {loading ? (
+          <div className='dashboard-loader'>
+            {Array(100)
+              .fill(1)
+              .map((_, i) => (
+                <div role='status' className='skeleton box' key={i} />
+              ))}
+          </div>
+        ) : games.length === 0 ? (
+          <EmptyState message='No games found. Add an emulator path in settings!' />
+        ) : (
+          <div className='games-container'>
+            {games.map((game, idx) => (
+              <Link
+                to={`/game/${idx}`}
+                state={{ game }}
+                viewTransition
+                className='games-item'
+                key={`${game?.Name}#${idx}`}
+              >
+                <div
+                  className='games-item-card card'
+                  style={{ viewTransitionName: `game-image-${idx}` } as React.CSSProperties}
+                >
+                  <img src={game?.PortraitImage} alt={game?.Name || ''} />
+                  <div className='games-item-overlay'>
+                    <div className='games-item-title'>{game?.Name}</div>
+                  </div>
                 </div>
               </Link>
-            </div>
+            ))}
           </div>
-
-          {/* Most Played Games */}
-          <div className='dashboard-section-container'>
-            <div className='dashboard-section-title'>
-              <strong className='dashboard-section-title-label'>Library</strong>
-              <span className='dashboard-section-title-action'>View All</span>
-            </div>
-
-            {loading ? (
-              <div className='dashboard-loading-container'>
-                <div className='spinner' data-size='large'></div>
-              </div>
-            ) : games.length === 0 ? (
-              <EmptyState message='No games found. Add an emulator path in settings!' />
-            ) : null}
-          </div>
-        </div>
-      </div>
-    </div>
+        )}
+      </section>
+    </main>
   );
 };
 

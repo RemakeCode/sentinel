@@ -16,6 +16,7 @@ import EmptyState from '@/shared/components/EmptyState';
 import { Emulator, File, SteamSource } from '@wa/sentinel/backend/config/models';
 
 import { Dialogs } from '@wailsio/runtime';
+import { Header } from '@/shared/components/Header/Header';
 
 declare global {
   interface Window {
@@ -139,14 +140,14 @@ const Settings: React.FC = () => {
   const allEmulators: EmulatorItem[] = emulators.map((emu: Emulator, index: number) => ({ emu, index }));
 
   return (
-    <>
-      <div className='settings-container'>
-        <div className='settings-container-header'>
-          <Link to='/' viewTransition>
-            <ArrowLeft className='settings-back-icon' /> Back to Dashboard
-          </Link>
-        </div>
+    <main className='full-layout'>
+      <Header className='settings-header'>
+        <Link to='/' viewTransition>
+          <ArrowLeft />
+        </Link>
         <h2>Settings</h2>
+      </Header>
+      <div className='main-content'>
         <div className='card settings-section'>
           <div className='flex justify-between items-center'>
             <h4 className='settings-section-title'>
@@ -288,7 +289,7 @@ const Settings: React.FC = () => {
           </ul>
         </div>
       </div>
-    </>
+    </main>
   );
 };
 
