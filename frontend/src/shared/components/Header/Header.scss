@@ -1,0 +1,19 @@
+header {
+  background-color: var(--card);
+  display: flex;
+  align-items: center;
+  width:100%;
+  box-shadow: var(--shadow-small);
+  position: sticky;
+  top: 0;
+  height: 80px;
+  z-index: 10;
+  padding-inline: var(--space-10);
+  >h2 {
+    margin:0;
+  }
+  >a {
+    line-height: normal;
+  }
+}
+
