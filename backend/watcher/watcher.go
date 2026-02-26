@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
+	"sync"
 	"time"
 
 	"sentinel/backend"
@@ -49,6 +51,44 @@ func (s *Service) ServiceStartup(ctx context.Context, options application.Servic
 		return err
 	}
 	return nil
+}
+
+var (
+	watchlistInstance *[]string
+	watchlistOnce     sync.Once
+	watchlistErr      error
+)
+
+// GetWatchlist returns the current watchlist from disk as a singleton
+func GetWatchlist() ([]string, error) {
+	watchlistOnce.Do(func() {
+		watchlistPath := filepath.Join(backend.ConfigDir, "watchlist.jsonc")
+		data, err := os.ReadFile(watchlistPath)
+		if err != nil {
+			watchlistErr = fmt.Errorf("failed to read watchlist: %w", err)
+			return
+		}
+
+		// Split by lines and skip the first line (comment)
+		lines := strings.SplitN(string(data), "\n", 2)
+		if len(lines) < 2 {
+			watchlistErr = fmt.Errorf("invalid watchlist format")
+			return
+		}
+
+		var paths []string
+		if err := json.Unmarshal([]byte(lines[1]), &paths); err != nil {
+			watchlistErr = fmt.Errorf("failed to unmarshal watchlist: %w", err)
+			return
+		}
+
+		watchlistInstance = &paths
+	})
+
+	if watchlistInstance == nil {
+		return nil, watchlistErr
+	}
+	return *watchlistInstance, watchlistErr
 }
 
 // scan scans multiple paths for steam emulator appid folders
