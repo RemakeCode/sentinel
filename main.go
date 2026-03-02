@@ -5,6 +5,7 @@ import (
 	"log"
 	"sentinel/backend"
 	"sentinel/backend/config"
+	"sentinel/backend/notifier"
 	"sentinel/backend/steam"
 	"sentinel/backend/watcher"
 
@@ -12,7 +13,7 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/events"
 )
 
-//go:embed all:frontend
+//go:embed all:frontend/dist
 var assets embed.FS
 
 func init() {
@@ -20,8 +21,9 @@ func init() {
 	application.RegisterEvent[backend.FetchStatusEvt]("sentinel::fetch-status")
 }
 
-func main() {
+// Create a new notification service
 
+func main() {
 	// Create a new Wails application by providing the necessary options.
 	// Variables 'Name' and 'Description' are for application metadata.
 	// 'Assets' configures the asset server with the 'FS' variable pointing to the frontend files.
@@ -34,6 +36,7 @@ func main() {
 			application.NewService(&config.File{}),
 			application.NewService(&steam.Service{}),
 			application.NewService(&watcher.Service{}),
+			application.NewService(&notifier.Service{}),
 		},
 
 		Assets: application.AssetOptions{
