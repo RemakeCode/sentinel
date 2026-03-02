@@ -27,8 +27,8 @@ type achievement struct {
 	Description  string
 	Icon         string
 	IconGray     string
-	DefaultValue int `default:"0"`
-	Hidden       int `default:"0"`
+	DefaultValue int
+	Hidden       int
 }
 
 type GameBasics struct {
@@ -154,6 +154,7 @@ func (s *Service) FetchAppDetailsBulk(appIDs []string, language types.Language) 
 	return results, nil
 }
 
+// Used FE
 func (s *Service) LoadAllCachedGameData() ([]*GameBasics, error) {
 	var cached []*GameBasics
 	language := cfg.Language.API
