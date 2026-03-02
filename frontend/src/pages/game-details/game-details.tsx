@@ -21,12 +21,25 @@ const GameDetails: React.FC = () => {
       </Header>
       <section className='main-content'>
         <div className='game-details-section'>
-          <div
-            className='game-details-image-container'
-            style={{ viewTransitionName: `game-image-${id}` } as React.CSSProperties}
-          >
-            <div className='game-details-image card'>
-              <img src={game?.PortraitImage} alt={game?.Name} />
+          <div className='game-details-container'>
+            <div className='game-details-container-inner'>
+              <div
+                className='game-details-image card'
+                style={{ viewTransitionName: `game-image-${id}` } as React.CSSProperties}
+              >
+                <img src={game?.PortraitImage} alt={game?.Name} />
+              </div>
+
+              <div className='game-details-stats'>
+                <div>{game?.Name} 2021</div>
+                <div>stats</div>
+                <div>stats</div>
+                <div>stats</div>
+                <div>stats</div>
+                <div>stats</div>
+                <div>stats</div>
+                <div>stats</div>
+              </div>
             </div>
           </div>
           <div className='game-details-ach'>
