@@ -107,7 +107,7 @@ func IsAvailable() bool {
 }
 
 // TODO: Uses Wails Notification - no support for icons. Remove this function, it's just for testing
-func (s *Service) TempNotification(appId string, earnedAchievement map[string]ach.Achievement) {
+func (s *Service) TempNotification(appId string, earnedAchievement map[string]ach.Achievement) error {
 	notifier := notifications.New()
 	authorized, err := notifier.CheckNotificationAuthorization()
 	if err != nil {
@@ -121,14 +121,21 @@ func (s *Service) TempNotification(appId string, earnedAchievement map[string]ac
 				for _, achievement := range achievements {
 
 					if strings.ToLower(achievement.Name) == strings.ToLower(id) {
+						icon := strings.Split(strings.Replace(achievement.Icon, "https://", "", 1), "/")
+						imagePath := filepath.Join(backend.ACHCacheIconDir, appId, icon[len(icon)-1])
+
 						err := notifier.SendNotification(notifications.NotificationOptions{
 							ID:    uuid.New().String(),
 							Title: achievement.DisplayName,
 							Body:  achievement.Description,
+							//hints how to???
+							Data: map[string]interface{}{
+								"image-data": imagePath,
+							},
 						})
 
 						if err != nil {
-							return
+							return err
 						}
 
 						break
@@ -136,7 +143,7 @@ func (s *Service) TempNotification(appId string, earnedAchievement map[string]ac
 				}
 
 				if e != nil {
-					return
+					return e
 				}
 
 			}
@@ -147,6 +154,7 @@ func (s *Service) TempNotification(appId string, earnedAchievement map[string]ac
 		authorized, err = notifier.RequestNotificationAuthorization()
 	}
 
+	return nil
 }
 
 func (s *Service) getAchDataForNotification(appId string) (*steam.GameBasics, error) {
