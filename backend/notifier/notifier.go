@@ -66,7 +66,7 @@ func (s *Service) SendNotification(appId string, earnedAchievement map[string]ac
 					message := achievement.Description
 					imagePath := filepath.Join(backend.ACHCacheIconDir, appId, icon[len(icon)-1])
 
-					args := []string{title, message, "--urgency", "normal", "-t", "10000", "-a", "sentinel"}
+					args := []string{title, message, "--urgency", "normal", "-t", "10000", "-a", title}
 
 					// Add icon if provided and exists
 					if imagePath != "" {

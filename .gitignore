@@ -9,8 +9,11 @@ dist/
 .roo/
 .kilocode/
 openspec/
+
 /build/frontend/
 /build/.task/
 /build/bin/
 /bin
+
+*/**/.DS_Store
 
