@@ -43,6 +43,9 @@
   &-stats {
     display: flex;
     flex-direction: column;
+    animation-name: fadeIn;
+    animation-timing-function: ease-in;
+    animation-duration: 300ms;
   }
 
   &-ach {
@@ -170,3 +173,21 @@
     }
   }
 }
+
+progress {
+  -webkit-appearance: none;
+}
+
+::-webkit-progress-bar {
+  background-color: orange;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
