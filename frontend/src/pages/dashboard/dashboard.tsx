@@ -7,9 +7,12 @@ import { LoadAllCachedGameData } from '@wa/sentinel/backend/steam/service';
 import { Events } from '@wailsio/runtime';
 import { GameBasics } from '@wa/sentinel/backend/steam';
 import { Header } from '@/shared/components/Header/Header';
+import ProgressBar from '@/shared/components/ProgressBar';
 
 // Cache globally so returning to Dashboard doesn't trigger Skeletons and break view transitions
 let globalCachedGames: (GameBasics | null)[] | null = null;
+
+const computeProgress = (game: GameBasics | null) => {};
 
 const Dashboard: React.FC = () => {
   const [games, setGames] = useState<(GameBasics | null)[]>(globalCachedGames || []);
@@ -92,6 +95,7 @@ const Dashboard: React.FC = () => {
                     <div className='games-item-title'>{game?.Name}</div>
                   </div>
                 </div>
+                <ProgressBar progress={45 + idx} />
               </Link>
             ))}
           </div>
