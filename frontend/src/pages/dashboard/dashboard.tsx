@@ -1,18 +1,33 @@
-import React, { useEffect, useState } from 'react';
 import './dashboard.scss';
+import React, { useEffect, useState } from 'react';
+
 import { Search, Settings } from 'lucide-react';
-import { data, Link } from 'react-router';
+import { Link } from 'react-router';
 import EmptyState from '@/shared/components/EmptyState';
 import { LoadAllCachedGameData } from '@wa/sentinel/backend/steam/service';
 import { Events } from '@wailsio/runtime';
 import { GameBasics } from '@wa/sentinel/backend/steam';
 import { Header } from '@/shared/components/Header/Header';
-import ProgressBar from '@/shared/components/ProgressBar';
+import { Achievement } from '@wa/sentinel/backend/ach';
 
 // Cache globally so returning to Dashboard doesn't trigger Skeletons and break view transitions
 let globalCachedGames: (GameBasics | null)[] | null = null;
 
-const computeProgress = (game: GameBasics | null) => {};
+/**
+ * Computes the progress percentage based on earned achievements
+ * @param currentAch Object containing achievements with their earned status
+ * @returns Progress percentage rounded to two decimal places
+ */
+const computeProgress = (currentAch: { [p: string]: Achievement | undefined } | undefined): number => {
+  if (!currentAch) return 0;
+
+  const achievements = Object.values(currentAch);
+  if (achievements.length === 0) return 0;
+
+  const earnedCount = achievements.filter((ach) => ach?.earned).length;
+
+  return Math.round((earnedCount / achievements.length) * 100);
+};
 
 const Dashboard: React.FC = () => {
   const [games, setGames] = useState<(GameBasics | null)[]>(globalCachedGames || []);
@@ -34,6 +49,7 @@ const Dashboard: React.FC = () => {
         const data = await LoadAllCachedGameData();
         globalCachedGames = data;
         setGames(data);
+
         setLoading(false);
       } catch (e) {
         console.error(e);
@@ -78,26 +94,33 @@ const Dashboard: React.FC = () => {
           <EmptyState message='No games found. Add an emulator path in settings!' />
         ) : (
           <div className='games-container'>
-            {games.map((game, idx) => (
-              <Link
-                to={`/game/${idx}`}
-                state={{ game }}
-                viewTransition
-                className='games-item'
-                key={`${game?.Name}#${idx}`}
-              >
-                <div
-                  className='games-item-card card'
-                  style={{ viewTransitionName: `game-image-${idx}` } as React.CSSProperties}
+            {games.map((game, idx) => {
+              const progress = computeProgress(game?.CurrentAch);
+
+              return (
+                <Link
+                  to={`/game/${idx}`}
+                  state={{ game }}
+                  viewTransition
+                  className='games-item'
+                  key={`${game?.Name}#${idx}`}
                 >
-                  <img src={game?.PortraitImage} alt={game?.Name || ''} />
-                  <div className='games-item-overlay'>
-                    <div className='games-item-title'>{game?.Name}</div>
+                  <div
+                    className='games-item-card card'
+                    style={{ viewTransitionName: `game-image-${idx}` } as React.CSSProperties}
+                  >
+                    <div className='games-item-progress'>
+                      <progress value={progress} max={100} />
+                    </div>
+                    <img src={game?.PortraitImage} alt={game?.Name || ''} />
+
+                    <div className='games-item-overlay'>
+                      <div className='games-item-title'>{game?.Name}</div>
+                    </div>
                   </div>
-                </div>
-                <ProgressBar progress={45 + idx} />
-              </Link>
-            ))}
+                </Link>
+              );
+            })}
           </div>
         )}
       </section>
