@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"sentinel/backend"
+	"sentinel/backend/ach"
 	"sentinel/backend/config"
 	"sentinel/backend/steam/types"
 	"strings"
@@ -40,6 +41,7 @@ type GameBasics struct {
 		Total int
 		List  []achievement
 	}
+	CurrentAch map[string]ach.Achievement
 }
 
 type gameBasicsResponse struct {
@@ -80,7 +82,7 @@ func (s *Service) ServiceStartup(ctx context.Context, options application.Servic
 		return err
 	}
 	cfg = c
-	log.Println("steam: service startup complete")
+	slog.Info("steam: service startup complete")
 	return nil
 }
 
@@ -154,7 +156,7 @@ func (s *Service) FetchAppDetailsBulk(appIDs []string, language types.Language) 
 	return results, nil
 }
 
-// Used FE
+// Used in FE
 func (s *Service) LoadAllCachedGameData() ([]*GameBasics, error) {
 	var cached []*GameBasics
 	language := cfg.Language.API
@@ -172,6 +174,13 @@ func (s *Service) LoadAllCachedGameData() ([]*GameBasics, error) {
 		return nil, err
 	}
 
+	// Load all cached current Achievements
+	allAch, err := ach.LoadAllCachedAch()
+
+	if err != nil {
+		slog.Warn("Couldn't load all cached current ach")
+	}
+
 	for _, dir := range dirs {
 		cachePath := filepath.Join(schemaPath, dir.Name())
 		data, err := os.ReadFile(cachePath)
@@ -182,9 +191,15 @@ func (s *Service) LoadAllCachedGameData() ([]*GameBasics, error) {
 		}
 
 		var gb GameBasics
+
 		if err := json.Unmarshal(data, &gb); err != nil {
 			slog.Error("Unable to unmarshal cached game data for FE")
 			return nil, errors.New("unable to unmarshal cached game data for FE")
+		}
+
+		// Map achievement data by appId to each GameBasics.CurrentAch
+		if achData, ok := allAch[gb.AppID]; ok {
+			gb.CurrentAch = achData.Achievements
 		}
 
 		cached = append(cached, &gb)
