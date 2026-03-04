@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"sentinel/backend"
+	"strings"
 )
 
 // Achievement represents a single achievement's progress
@@ -52,13 +53,22 @@ func LoadCachedAch(appId string) (*AchievementData, error) {
 }
 
 // SaveAch saves the given achievements to the cache
-func SaveAch(appId string, data *AchievementData) error {
+func SaveAch(path string) error {
 	if err := os.MkdirAll(backend.ACHCacheDataDir, 0755); err != nil {
 		return err
 	}
 
+	// Extract filename from URL
+	parts := strings.Split(path, string(os.PathSeparator))
+	appId := parts[len(parts)-1]
+
+	file, err := os.ReadFile(filepath.Join(path, "achievements.json"))
+	if err != nil {
+		return err
+	}
+
 	cachePath := filepath.Join(backend.ACHCacheDataDir, appId+".json")
-	jsonData, err := json.MarshalIndent(data, "", "  ")
+	jsonData, err := json.MarshalIndent(file, "", "  ")
 	if err != nil {
 		return err
 	}
