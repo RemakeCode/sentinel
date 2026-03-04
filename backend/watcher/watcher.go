@@ -277,6 +277,7 @@ func (s *Service) handleEvent(event fsnotify.Event) {
 		oldAch, _ := ach.LoadCachedAch(appId)
 
 		diff := newAch.Diff(oldAch)
+
 		if len(diff) > 0 {
 			notifierService := notifier.Service{}
 			err := notifierService.SendNotification(appId, diff)
