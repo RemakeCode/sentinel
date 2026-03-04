@@ -2,6 +2,8 @@ package ach
 
 import (
 	"encoding/json"
+	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"sentinel/backend"
@@ -22,6 +24,8 @@ type AchievementData struct {
 }
 
 // ParseAch reads and parses achievements.json from the given path without saving to cache
+
+// wails:internal
 func ParseAch(path string) (*AchievementData, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -37,22 +41,56 @@ func ParseAch(path string) (*AchievementData, error) {
 }
 
 // LoadCachedAch loads the cached achievement data for a given appId
+// wails:internal
 func LoadCachedAch(appId string) (*AchievementData, error) {
 	cachePath := filepath.Join(backend.ACHCacheDataDir, appId+".json")
 	data, err := os.ReadFile(cachePath)
+
 	if err != nil {
 		return nil, err
 	}
 
-	var achData AchievementData
-	if err := json.Unmarshal(data, &achData); err != nil {
+	var achievements map[string]Achievement
+	if err := json.Unmarshal(data, &achievements); err != nil {
+		slog.Error(err.Error())
 		return nil, err
 	}
 
-	return &achData, nil
+	return &AchievementData{Achievements: achievements}, nil
+}
+
+// LoadAllCachedAch loads all cached achievement data from the cache directory
+// wails: internal
+func LoadAllCachedAch() (map[string]*AchievementData, error) {
+	files, err := os.ReadDir(backend.ACHCacheDataDir)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make(map[string]*AchievementData)
+
+	for _, file := range files {
+		if !strings.HasSuffix(file.Name(), ".json") {
+			continue
+		}
+
+		appId := strings.TrimSuffix(file.Name(), ".json")
+
+		achData, err := LoadCachedAch(appId)
+
+		if err != nil {
+			log.Printf("failed to load cached ach for %s: %v", appId, err)
+			continue
+		}
+
+		result[appId] = achData
+	}
+
+	return result, nil
 }
 
 // SaveAch saves the given achievements to the cache
+// wails:internal
 func SaveAch(path string) error {
 	if err := os.MkdirAll(backend.ACHCacheDataDir, 0755); err != nil {
 		return err
@@ -68,15 +106,17 @@ func SaveAch(path string) error {
 	}
 
 	cachePath := filepath.Join(backend.ACHCacheDataDir, appId+".json")
-	jsonData, err := json.MarshalIndent(file, "", "  ")
-	if err != nil {
-		return err
+
+	if _, err := os.Stat(cachePath); err == nil {
+		return nil
 	}
 
-	return os.WriteFile(cachePath, jsonData, 0644)
+	return os.WriteFile(cachePath, file, 0644)
 }
 
 // Diff compares two AchievementData and returns a map of newly earned achievements
+
+// wails:internal
 func (a *AchievementData) Diff(old *AchievementData) map[string]Achievement {
 	newlyEarned := make(map[string]Achievement)
 	if old == nil {
