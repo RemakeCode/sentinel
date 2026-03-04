@@ -122,6 +122,10 @@ func (s *Service) Start() error {
 
 	// Add all appId paths to the watcher
 	for _, path := range scanResult.AppIDPaths {
+		if err := ach.SaveAch(path); err != nil {
+			slog.Warn("Could not cache ach from path", "path", path, "error", err)
+		}
+
 		if err := s.watchPath(path); err != nil {
 			slog.Warn("Failed to watch path", "path", path, "error", err)
 			s.failedPaths = append(s.failedPaths, path)
@@ -279,11 +283,6 @@ func (s *Service) handleEvent(event fsnotify.Event) {
 			if err != nil {
 				return
 			}
-		}
-
-		// Update cache
-		if err := ach.SaveAch(appId, newAch); err != nil {
-			slog.Error("Failed to save achievements to cache", "error", err)
 		}
 	}
 }
