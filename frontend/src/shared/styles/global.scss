@@ -21,31 +21,42 @@
 @import '@knadh/oat/css/utilities.css';
 
 
-
 :root {
-    --game-card-width: 160px;
-    --game-card-height: 210px;
+  --game-card-width: 160px;
+  --game-card-height: 210px;
 }
+
+html {
+  scroll-behavior: smooth;
+}
+
 body {
-    margin: 0;
-    font-family: var(--font-sans);
+  margin: 0;
 }
 
 hr.divider {
-    border-bottom: 1px solid var(--border);
-    margin: var(--space-5) 0;
+  border-bottom: 1px solid var(--border);
+  margin: var(--space-5) 0;
 }
 
 
 .full-layout {
-    min-height: 100vh;
-    background-color: var(--background);
+  min-height: 100vh;
+  background-color: var(--background);
 }
 
 .main-content {
-    padding-block: var(--space-10);
-    padding-inline: var(--space-10);
+  padding-block: var(--space-10);
+  padding-inline: var(--space-10);
 }
 
+progress {
+  --webkit-appearance: none;
+  border: 1px solid var(--faint-foreground);
+  opacity: 1;
+  &::-webkit-progress-bar {
+    background-color: transparent;
+  }
+}
 
 
