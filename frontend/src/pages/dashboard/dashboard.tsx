@@ -9,25 +9,10 @@ import { Events } from '@wailsio/runtime';
 import { GameBasics } from '@wa/sentinel/backend/steam';
 import { Header } from '@/shared/components/Header/Header';
 import { Achievement } from '@wa/sentinel/backend/ach';
+import { computeProgress } from '@/shared/utils';
 
 // Cache globally so returning to Dashboard doesn't trigger Skeletons and break view transitions
 let globalCachedGames: (GameBasics | null)[] | null = null;
-
-/**
- * Computes the progress percentage based on earned achievements
- * @param currentAch Object containing achievements with their earned status
- * @returns Progress percentage rounded to two decimal places
- */
-const computeProgress = (currentAch: { [p: string]: Achievement | undefined } | undefined): number => {
-  if (!currentAch) return 0;
-
-  const achievements = Object.values(currentAch);
-  if (achievements.length === 0) return 0;
-
-  const earnedCount = achievements.filter((ach) => ach?.earned).length;
-
-  return Math.round((earnedCount / achievements.length) * 100);
-};
 
 const Dashboard: React.FC = () => {
   const [games, setGames] = useState<(GameBasics | null)[]>(globalCachedGames || []);
@@ -48,6 +33,7 @@ const Dashboard: React.FC = () => {
       try {
         const data = await LoadAllCachedGameData();
         globalCachedGames = data;
+        console.log(data);
         setGames(data);
 
         setLoading(false);
@@ -95,7 +81,7 @@ const Dashboard: React.FC = () => {
         ) : (
           <div className='games-container'>
             {games.map((game, idx) => {
-              const progress = computeProgress(game?.CurrentAch);
+              const progress = computeProgress(game?.Achievement.List);
 
               return (
                 <Link
