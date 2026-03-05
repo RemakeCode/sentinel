@@ -30,6 +30,7 @@ type achievement struct {
 	IconGray     string
 	DefaultValue int
 	Hidden       int
+	CurrentAch   ach.Achievement // or map[string]ach.Achievement if you strictly wanted a map, but since a single achievement has only one progress object, ach.Achievement is better.
 }
 
 type GameBasics struct {
@@ -41,7 +42,6 @@ type GameBasics struct {
 		Total int
 		List  []achievement
 	}
-	CurrentAch map[string]ach.Achievement
 }
 
 type gameBasicsResponse struct {
@@ -197,9 +197,14 @@ func (s *Service) LoadAllCachedGameData() ([]*GameBasics, error) {
 			return nil, errors.New("unable to unmarshal cached game data for FE")
 		}
 
-		// Map achievement data by appId to each GameBasics.CurrentAch
+		// Map achievement data by appId to each GameBasics.Achievement.List element
 		if achData, ok := allAch[gb.AppID]; ok {
-			gb.CurrentAch = achData.Achievements
+			for i, a := range gb.Achievement.List {
+				if progress, exists := achData.Achievements[a.Name]; exists {
+					a.CurrentAch = progress
+					gb.Achievement.List[i] = a
+				}
+			}
 		}
 
 		cached = append(cached, &gb)
