@@ -4,8 +4,10 @@ import { ArrowLeft, DatabaseSearchIcon, Eye, FolderOpen, Trash2, Volume2, Volume
 
 import {
   AddEmulator,
+  AddPrefix,
   LoadConfig,
   RemoveEmulator,
+  RemovePrefix,
   SetSteamAPIKey,
   SetSteamDataSource,
   ToggleEmulatorNotification
@@ -13,7 +15,7 @@ import {
 
 import './settings.scss';
 import EmptyState from '@/shared/components/EmptyState';
-import { Emulator, File, SteamSource } from '@wa/sentinel/backend/config/models';
+import { Emulator, File, Prefix, SteamSource } from '@wa/sentinel/backend/config/models';
 
 import { Dialogs } from '@wailsio/runtime';
 import { Header } from '@/shared/components/Header/Header';
@@ -32,6 +34,11 @@ declare global {
 
 interface EmulatorItem {
   emu: Emulator;
+  index: number;
+}
+
+interface PrefixItem {
+  prefix: Prefix;
   index: number;
 }
 
@@ -135,9 +142,41 @@ const Settings: React.FC = () => {
     }
   };
 
+  const handleAddPrefix = async () => {
+    try {
+      const selectedPath = await Dialogs.OpenFile({
+        CanChooseDirectories: true,
+        CanChooseFiles: false,
+        Title: 'Select A Prefix Folder'
+      });
+
+      if (selectedPath) {
+        await AddPrefix(selectedPath);
+        window.ot?.toast('Prefix path added', 'Success', { variant: 'success' });
+        await loadConfig();
+      }
+    } catch (err) {
+      console.error('Failed to add prefix:', err);
+      window.ot?.toast('Failed to add prefix', 'Error', { variant: 'error' });
+    }
+  };
+
+  const handleRemovePrefix = async (index: number) => {
+    try {
+      await RemovePrefix(index);
+      window.ot?.toast('Prefix removed', 'Success', { variant: 'success' });
+      await loadConfig();
+    } catch (err) {
+      console.error('Failed to remove prefix:', err);
+      window.ot?.toast('Failed to remove prefix', 'Error', { variant: 'error' });
+    }
+  };
+
   const emulators = appConfig?.emulators || [];
+  const prefixes = appConfig?.prefixes || [];
 
   const allEmulators: EmulatorItem[] = emulators.map((emu: Emulator, index: number) => ({ emu, index }));
+  const allPrefixes: PrefixItem[] = prefixes.map((prefix: Prefix, index: number) => ({ prefix, index }));
 
   return (
     <main className='full-layout'>
@@ -148,6 +187,43 @@ const Settings: React.FC = () => {
         <h2>Settings</h2>
       </Header>
       <div className='main-content'>
+        <div className='card settings-section'>
+          <div className='flex justify-between items-center'>
+            <h4 className='settings-section-title'>
+              <FolderOpen /> <span>Prefix Paths</span>
+            </h4>
+            <button data-variant='primary' onClick={handleAddPrefix}>
+              <FolderOpen /> Add Prefix Folder
+            </button>
+          </div>
+          <hr className='divider' />
+          <div className='settings-table'>
+            {allPrefixes.length === 0 ? (
+              <EmptyState message='No prefix paths configured' />
+            ) : (
+              <table>
+                <tbody>
+                  {allPrefixes.map((record) => (
+                    <tr key={record.index}>
+                      <td className='settings-table-cell-type'>
+                        <span className='badge'>Prefix</span>
+                      </td>
+                      <td className='settings-table-cell-path'>
+                        <code>{record.prefix.path}</code>
+                      </td>
+                      <td className='settings-table-cell-actions'>
+                        <div className='settings-table-actions hstack gap-4'>
+                          <Trash2 onClick={() => handleRemovePrefix(record.index)} />
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+
         <div className='card settings-section'>
           <div className='flex justify-between items-center'>
             <h4 className='settings-section-title'>

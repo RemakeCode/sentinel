@@ -7,6 +7,7 @@ frontend/dist
 .idea/
 dist/
 .roo/
+.opencode/
 .kilocode/
 openspec/
 .opencode/

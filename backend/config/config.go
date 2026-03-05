@@ -22,6 +22,9 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
+type Prefix struct {
+	Path string `json:"path"`
+}
 type Emulator struct {
 	Path         string `json:"path"`
 	ShouldNotify bool   `json:"shouldNotify"`
@@ -41,20 +44,22 @@ type File struct {
 	app               *application.App
 	Language          types.Language `json:"language"`
 	Emulators         []Emulator     `json:"emulators"`
+	Prefixes          []Prefix       `json:"prefixes"`
 	SteamAPIKey       string         `json:"-"`
 	SteamDataSource   SteamSource    `json:"steamDataSource"`
 	SteamAPIKeyMasked string         `json:"steamApiKeyMasked"`
 }
 
 var defaultEmulatorPaths = []Emulator{
-	{Path: fmt.Sprintf("%s/Public/Documents/Steam/CODEX", backend.UserHomeDir), ShouldNotify: true, IsDefault: true},
-	{Path: fmt.Sprintf("%s/Public/Documents/Steam/RUNE", backend.UserHomeDir), ShouldNotify: true, IsDefault: true},
-	{Path: fmt.Sprintf("%s/Public/Documents/Steam/OnlineFix", backend.UserHomeDir), ShouldNotify: true, IsDefault: true},
-	{Path: fmt.Sprintf("%s/Public/Documents/EMPRESS", backend.UserHomeDir), ShouldNotify: true, IsDefault: true},
-	{Path: fmt.Sprintf("%s/Steam/CODEX", backend.UserHomeDir), ShouldNotify: true, IsDefault: true},
-	{Path: fmt.Sprintf("%s/Goldberg SteamEmu Saves", backend.UserCacheDir), ShouldNotify: true, IsDefault: true},
 	{Path: fmt.Sprintf("%s/GSE Saves", backend.UserCacheDir), ShouldNotify: true, IsDefault: true},
-	{Path: fmt.Sprintf("%s/EMPRESS", backend.UserCacheDir), ShouldNotify: true, IsDefault: true},
+	//{Path: fmt.Sprintf("%s/Public/Documents/Steam/CODEX", backend.UserHomeDir), ShouldNotify: true, IsDefault: true},
+	//{Path: fmt.Sprintf("%s/Public/Documents/Steam/RUNE", backend.UserHomeDir), ShouldNotify: true, IsDefault: true},
+	//{Path: fmt.Sprintf("%s/Public/Documents/Steam/OnlineFix", backend.UserHomeDir), ShouldNotify: true, IsDefault: true},
+	//{Path: fmt.Sprintf("%s/Public/Documents/EMPRESS", backend.UserHomeDir), ShouldNotify: true, IsDefault: true},
+	//{Path: fmt.Sprintf("%s/Steam/CODEX", backend.UserHomeDir), ShouldNotify: true, IsDefault: true},
+	//{Path: fmt.Sprintf("%s/Goldberg SteamEmu Saves", backend.UserCacheDir), ShouldNotify: true, IsDefault: true},
+	//
+	//{Path: fmt.Sprintf("%s/EMPRESS", backend.UserCacheDir), ShouldNotify: true, IsDefault: true},
 }
 
 // Not a secure Key. Left this way intentionally.
@@ -259,6 +264,36 @@ func (c *File) RemoveEmulator(index int) error {
 	c.Emulators = append(c.Emulators[:index], c.Emulators[index+1:]...)
 	return c.SaveConfig()
 
+}
+
+func (c *File) AddPrefix(path string) error {
+	prefix := Prefix{Path: path}
+
+	for _, p := range c.Prefixes {
+		if p.Path == prefix.Path {
+			return nil
+		}
+	}
+
+	c.Prefixes = append(c.Prefixes, prefix)
+	return c.SaveConfig()
+}
+
+func (c *File) RemovePrefix(index int) error {
+	if index < 0 || index >= len(c.Prefixes) {
+		return nil
+	}
+
+	c.Prefixes = append(c.Prefixes[:index], c.Prefixes[index+1:]...)
+	return c.SaveConfig()
+}
+
+func (c *File) GetPrefixPaths() ([]string, error) {
+	var paths []string
+	for _, prefix := range c.Prefixes {
+		paths = append(paths, prefix.Path)
+	}
+	return paths, nil
 }
 
 // encrypt encrypts plaintext using AES-256-GCM
