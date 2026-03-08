@@ -170,7 +170,7 @@ func (s *Service) LoadAllCachedGameData() ([]*GameBasics, error) {
 	}
 
 	if len(dirs) == 0 {
-		slog.Error(fmt.Sprintf("Game cache directory is empty for %s", language))
+		slog.Info(fmt.Sprintf("Game cache directory is empty for %s", language))
 		return nil, err
 	}
 
