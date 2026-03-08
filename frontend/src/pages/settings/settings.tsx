@@ -1,12 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router';
-import { ArrowLeft, DatabaseSearchIcon, Eye, FolderOpen, Trash2, Volume2, VolumeOff } from 'lucide-react';
+import { ArrowLeft, DatabaseSearchIcon, Eye, EyeOff, FolderOpen, Trash2, Volume2, VolumeOff } from 'lucide-react';
 
 import {
-  AddEmulator,
   AddPrefix,
   LoadConfig,
-  RemoveEmulator,
   RemovePrefix,
   SetSteamAPIKey,
   SetSteamDataSource,
@@ -19,6 +17,7 @@ import { Emulator, File, Prefix, SteamSource } from '@wa/sentinel/backend/config
 
 import { Dialogs } from '@wailsio/runtime';
 import { Header } from '@/shared/components/Header/Header';
+import { Start, Stop } from '@wa/sentinel/backend/watcher/service';
 
 declare global {
   interface Window {
@@ -48,6 +47,7 @@ const Settings: React.FC = () => {
   const [steamAPIKey, setSteamAPIKey] = useState('');
   const [steamAPIKeyHasError, setSteamAPIKeyHasError] = useState<boolean>(false);
   const [stmSrc, setStmSrc] = useState<SteamSource>();
+  let timeout: ReturnType<typeof setTimeout>;
 
   useEffect(() => {
     loadConfig();
@@ -67,8 +67,6 @@ const Settings: React.FC = () => {
     }
   };
 
-  let timeout: ReturnType<typeof setTimeout>;
-
   const handleSaveSteamAPIKey = async () => {
     if (timeout) {
       clearTimeout(timeout);
@@ -80,15 +78,12 @@ const Settings: React.FC = () => {
         timeout = setTimeout(() => setSteamAPIKeyHasError(false), 5000);
         return;
       }
-      await Promise.all([SetSteamDataSource(SteamSource.Key), SetSteamAPIKey(steamAPIKey)]);
+      await Promise.all([SetSteamDataSource(SteamSource.Key), SetSteamAPIKey(steamAPIKey), loadConfig()]);
 
       window.ot?.toast('Steam API key saved', 'Success', { variant: 'success' });
 
-      await loadConfig();
-      //Clear input field
       setSteamAPIKey('');
     } catch (err) {
-      console.error('Failed to save Steam API key:', err);
       window.ot?.toast('Failed to save Steam API key', 'Error', { variant: 'error' });
     }
   };
@@ -103,42 +98,12 @@ const Settings: React.FC = () => {
     }
   };
 
-  const handleAddEmulator = async () => {
-    try {
-      const selectedPath = await Dialogs.OpenFile({
-        CanChooseDirectories: true,
-        CanChooseFiles: false,
-        Title: 'Select A Folder to Watch'
-      });
-
-      if (selectedPath) {
-        await AddEmulator(selectedPath);
-        window.ot?.toast('Emulator path added', 'Success', { variant: 'success' });
-        await loadConfig();
-      }
-    } catch (err) {
-      console.error('Failed to add emulator:', err);
-      window.ot?.toast('Failed to add emulator', 'Error', { variant: 'error' });
-    }
-  };
-
   const handleToggleNotify = async (index: number) => {
     try {
       await ToggleEmulatorNotification(index);
       await loadConfig();
     } catch (err) {
       window.ot?.toast('Failed to update setting', 'Error', { variant: 'error' });
-    }
-  };
-
-  const handleRemoveEmulator = async (index: number) => {
-    try {
-      await RemoveEmulator(index);
-      window.ot?.toast('Emulator removed', 'Success', { variant: 'success' });
-      await loadConfig();
-    } catch (err) {
-      console.error('Failed to remove emulator:', err);
-      window.ot?.toast('Failed to remove emulator', 'Error', { variant: 'error' });
     }
   };
 
@@ -152,8 +117,9 @@ const Settings: React.FC = () => {
 
       if (selectedPath) {
         await AddPrefix(selectedPath);
+        await Stop(); // stops watcher
         window.ot?.toast('Prefix path added', 'Success', { variant: 'success' });
-        await loadConfig();
+        await Promise.all([Start(), loadConfig()]);
       }
     } catch (err) {
       console.error('Failed to add prefix:', err);
@@ -165,11 +131,18 @@ const Settings: React.FC = () => {
     try {
       await RemovePrefix(index);
       window.ot?.toast('Prefix removed', 'Success', { variant: 'success' });
+
       await loadConfig();
     } catch (err) {
-      console.error('Failed to remove prefix:', err);
+      await Stop(); // stops watcher
       window.ot?.toast('Failed to remove prefix', 'Error', { variant: 'error' });
+      await Promise.all([Start(), loadConfig()]);
     }
+  };
+
+  const handleTogglePrefix = async (index: number) => {
+    // TODO: Implement TogglePrefix in backend
+    console.error('TogglePrefix not implemented yet');
   };
 
   const emulators = appConfig?.emulators || [];
@@ -192,7 +165,7 @@ const Settings: React.FC = () => {
             <h4 className='settings-section-title'>
               <FolderOpen /> <span>Prefix Paths</span>
             </h4>
-            <button data-variant='primary' onClick={handleAddPrefix}>
+            <button className='outline' onClick={handleAddPrefix}>
               <FolderOpen /> Add Prefix Folder
             </button>
           </div>
@@ -206,13 +179,27 @@ const Settings: React.FC = () => {
                   {allPrefixes.map((record) => (
                     <tr key={record.index}>
                       <td className='settings-table-cell-type'>
-                        <span className='badge'>Prefix</span>
+                        <span className='badge success'>Prefix</span>
                       </td>
                       <td className='settings-table-cell-path'>
                         <code>{record.prefix.path}</code>
                       </td>
                       <td className='settings-table-cell-actions'>
                         <div className='settings-table-actions hstack gap-4'>
+                          <label>
+                            <input
+                              type='checkbox'
+                              role='switch'
+                              checked={true}
+                              onChange={() => handleTogglePrefix(record.index)}
+                            />
+                            {true ? (
+                              <Eye width={20} fill='var(--success)' />
+                            ) : (
+                              <EyeOff width={20} fill='var(--danger)' />
+                            )}
+                          </label>
+                          |
                           <Trash2 onClick={() => handleRemovePrefix(record.index)} />
                         </div>
                       </td>
@@ -229,9 +216,6 @@ const Settings: React.FC = () => {
             <h4 className='settings-section-title'>
               <FolderOpen /> <span>Emulator Paths</span>
             </h4>
-            <button data-variant='primary' onClick={handleAddEmulator}>
-              <FolderOpen /> Add Emulator Folder
-            </button>
           </div>
           <hr className='divider' />
           <div className='settings-table'>
@@ -267,13 +251,6 @@ const Settings: React.FC = () => {
                               <VolumeOff width={20} fill='var(--danger)' />
                             )}
                           </label>
-                          |
-                          {
-                            <Trash2
-                              onClick={() => handleRemoveEmulator(record.index)}
-                              className={record.emu.isDefault ? 'disabled' : ''}
-                            />
-                          }
                         </div>
                       </td>
                     </tr>

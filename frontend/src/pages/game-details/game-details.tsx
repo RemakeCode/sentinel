@@ -1,10 +1,9 @@
 import React from 'react';
-import { useParams, Link, useLocation } from 'react-router';
+import { Link, useLocation, useParams } from 'react-router';
 import { ArrowLeft, EyeOff } from 'lucide-react';
 import { GameBasics } from '@wa/sentinel/backend/steam';
 import './game-details.scss';
 import { Header } from '@/shared/components/Header/Header';
-import { EyeClosed } from 'lucide-react';
 
 const GameDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -32,13 +31,7 @@ const GameDetails: React.FC = () => {
 
               <div className='game-details-stats'>
                 <div>{game?.Name} 2021</div>
-                <div>stats</div>
-                <div>stats</div>
-                <div>stats</div>
-                <div>stats</div>
-                <div>stats</div>
-                <div>stats</div>
-                <div>stats</div>
+                <pre></pre>
               </div>
             </div>
           </div>
@@ -57,6 +50,7 @@ const GameDetails: React.FC = () => {
                       {ach.Hidden === 1 && <EyeOff width={18} height={18} />}
                     </span>
                   </div>
+                  <div className='game-details-ach-unlocktime'></div>
                 </li>
               ))}
             </ul>
