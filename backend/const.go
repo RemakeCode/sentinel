@@ -5,7 +5,8 @@ import (
 	"path/filepath"
 )
 
-var UserHomeDir, _ = os.UserHomeDir()
+var EmuDir = filepath.Join("AppData", "Roaming", "GSE Saves")
+
 var UserCacheDir, _ = os.UserCacheDir()
 
 var ConfigDir = filepath.Join(UserCacheDir, "sentinel")

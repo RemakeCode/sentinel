@@ -51,15 +51,7 @@ type File struct {
 }
 
 var defaultEmulatorPaths = []Emulator{
-	{Path: fmt.Sprintf("%s/GSE Saves", backend.UserCacheDir), ShouldNotify: true, IsDefault: true},
-	//{Path: fmt.Sprintf("%s/Public/Documents/Steam/CODEX", backend.UserHomeDir), ShouldNotify: true, IsDefault: true},
-	//{Path: fmt.Sprintf("%s/Public/Documents/Steam/RUNE", backend.UserHomeDir), ShouldNotify: true, IsDefault: true},
-	//{Path: fmt.Sprintf("%s/Public/Documents/Steam/OnlineFix", backend.UserHomeDir), ShouldNotify: true, IsDefault: true},
-	//{Path: fmt.Sprintf("%s/Public/Documents/EMPRESS", backend.UserHomeDir), ShouldNotify: true, IsDefault: true},
-	//{Path: fmt.Sprintf("%s/Steam/CODEX", backend.UserHomeDir), ShouldNotify: true, IsDefault: true},
-	//{Path: fmt.Sprintf("%s/Goldberg SteamEmu Saves", backend.UserCacheDir), ShouldNotify: true, IsDefault: true},
-	//
-	//{Path: fmt.Sprintf("%s/EMPRESS", backend.UserCacheDir), ShouldNotify: true, IsDefault: true},
+	{Path: backend.EmuDir, ShouldNotify: true},
 }
 
 // Not a secure Key. Left this way intentionally.
@@ -230,40 +222,6 @@ func (c *File) GetSteamDataSource() SteamSource {
 func (c *File) SetSteamDataSource(source SteamSource) error {
 	c.SteamDataSource = source
 	return c.SaveConfig()
-}
-
-func (c *File) AddEmulator(path string) error {
-
-	emulator := Emulator{
-		Path:         path,
-		IsDefault:    false,
-		ShouldNotify: true,
-	}
-
-	// Check for duplicates
-	for _, emu := range c.Emulators {
-		if emu.Path == emulator.Path {
-			return nil // Already exists
-		}
-	}
-
-	c.Emulators = append(c.Emulators, emulator)
-	return c.SaveConfig()
-}
-
-// RemoveEmulator removes an emulator from the configuration by index
-func (c *File) RemoveEmulator(index int) error {
-	if index < 0 || index >= len(c.Emulators) {
-		return nil
-	}
-
-	if c.Emulators[index].IsDefault {
-		return nil // Cannot remove default emulators
-	}
-
-	c.Emulators = append(c.Emulators[:index], c.Emulators[index+1:]...)
-	return c.SaveConfig()
-
 }
 
 func (c *File) AddPrefix(path string) error {
