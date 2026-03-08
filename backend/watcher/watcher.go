@@ -2,6 +2,8 @@ package watcher
 
 import (
 	"context"
+	"errors"
+	"log"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -43,6 +45,17 @@ func (s *Service) ServiceStartup(ctx context.Context, options application.Servic
 		return err
 	}
 
+	prefixPaths, err := s.config.GetPrefixPaths()
+
+	if err != nil {
+		return err
+	}
+
+	if len(prefixPaths) == 0 {
+		slog.Info("Prefix is not set yet and watcher is not working")
+		return nil
+	}
+
 	err = s.Start()
 
 	if err != nil {
@@ -58,6 +71,7 @@ func (s *Service) scan(paths []string) scanResult {
 	for _, path := range paths {
 		entries, err := os.ReadDir(path)
 
+		log.Println("path", path)
 		if err != nil {
 			continue
 		}
@@ -83,7 +97,7 @@ func (s *Service) scan(paths []string) scanResult {
 // Start initializes the file system watcher and begins monitoring paths
 func (s *Service) Start() error {
 
-	emuPaths, err := s.config.GetEmulatorPaths()
+	prefixPaths, err := s.config.GetPrefixPaths()
 
 	if err != nil {
 		slog.Error(err.Error())
@@ -91,13 +105,21 @@ func (s *Service) Start() error {
 
 	var paths []string
 
-	if len(emuPaths) == 0 {
-		slog.Info("No emulator paths configured, watcher not started")
-		return nil
-	}
+	if len(prefixPaths) > 0 {
+		for _, prefix := range prefixPaths {
+			fullPaths, err := s.computeFullPath(prefix)
 
-	for _, emu := range emuPaths {
-		paths = append(paths, emu)
+			if err != nil {
+				slog.Warn("Failed to compute additional path", "prefix", prefix, "error", err)
+				continue
+			}
+			for _, fullPath := range fullPaths {
+				paths = append(paths, fullPath)
+			}
+		}
+		slog.Info("Prefix paths configured, scanning prefix × emulator paths", "prefixes", len(prefixPaths))
+	} else {
+		slog.Info("No prefix paths configured, scanning emulator paths directly")
 	}
 
 	scanResult := s.scan(paths)
@@ -307,4 +329,48 @@ func (s *Service) triggerMetadataFetch(appIDs []string) {
 
 		slog.Info("Metadata fetched successfully", "count", len(appIDs))
 	}()
+}
+
+func (s *Service) computeFullPath(prefixPath string) ([]string, error) {
+	emuPaths, err := s.config.GetEmulatorPaths()
+	if err != nil {
+		return nil, err
+	}
+
+	var search func(dir string) []string
+	search = func(dir string) []string {
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			return nil
+		}
+
+		var results []string
+		for _, entry := range entries {
+			if !entry.IsDir() {
+				continue
+			}
+
+			if strings.EqualFold(entry.Name(), "drive_c") {
+				basePath := filepath.Join(dir, entry.Name(), "users", "steamuser")
+				if len(emuPaths) > 0 {
+					for _, emuPath := range emuPaths {
+						results = append(results, filepath.Join(basePath, emuPath))
+					}
+				} else {
+					results = append(results, basePath)
+				}
+			}
+
+			subPath := filepath.Join(dir, entry.Name())
+			results = append(results, search(subPath)...)
+		}
+
+		return results
+	}
+
+	result := search(prefixPath)
+	if len(result) == 0 {
+		return nil, errors.New("could not find drive_c in prefix path")
+	}
+	return result, nil
 }
