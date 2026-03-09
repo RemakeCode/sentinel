@@ -4,6 +4,7 @@ import { ArrowLeft, EyeOff } from 'lucide-react';
 import { GameBasics } from '@wa/sentinel/backend/steam';
 import './game-details.scss';
 import { Header } from '@/shared/components/Header/Header';
+import { computeProgress } from '@/shared/utils';
 
 const GameDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -30,7 +31,8 @@ const GameDetails: React.FC = () => {
               </div>
 
               <div className='game-details-stats'>
-                <div>{game?.Name} 2021</div>
+                <div>
+                  <progress value={computeProgress(game?.Achievement.List)} max={100}></progress>
                 <pre></pre>
               </div>
             </div>

@@ -15,9 +15,7 @@ import (
 	"sentinel/backend/steam"
 	"strings"
 
-	"github.com/google/uuid"
 	"github.com/wailsapp/wails/v3/pkg/application"
-	"github.com/wailsapp/wails/v3/pkg/services/notifications"
 )
 
 var cfg *config.File
@@ -104,57 +102,6 @@ func (s *Service) SendNotification(appId string, earnedAchievement map[string]ac
 func IsAvailable() bool {
 	_, err := exec.LookPath("notify-send")
 	return err == nil
-}
-
-// TODO: Uses Wails Notification - no support for icons. Remove this function, it's just for testing
-func (s *Service) TempNotification(appId string, earnedAchievement map[string]ach.Achievement) error {
-	notifier := notifications.New()
-	authorized, err := notifier.CheckNotificationAuthorization()
-	if err != nil {
-		// Handle authorization error
-	}
-	if authorized {
-		for id, a := range earnedAchievement {
-			if a.Earned {
-				notificationAch, e := s.getAchDataForNotification(appId)
-				achievements := notificationAch.Achievement.List
-				for _, achievement := range achievements {
-
-					if strings.ToLower(achievement.Name) == strings.ToLower(id) {
-						icon := strings.Split(strings.Replace(achievement.Icon, "https://", "", 1), "/")
-						imagePath := filepath.Join(backend.ACHCacheIconDir, appId, icon[len(icon)-1])
-
-						err := notifier.SendNotification(notifications.NotificationOptions{
-							ID:    uuid.New().String(),
-							Title: achievement.DisplayName,
-							Body:  achievement.Description,
-							//hints how to???
-							Data: map[string]interface{}{
-								"image-data": imagePath,
-							},
-						})
-
-						if err != nil {
-							return err
-						}
-
-						break
-					}
-				}
-
-				if e != nil {
-					return e
-				}
-
-			}
-
-		}
-	} else {
-		// Request authorization
-		authorized, err = notifier.RequestNotificationAuthorization()
-	}
-
-	return nil
 }
 
 func (s *Service) getAchDataForNotification(appId string) (*steam.GameBasics, error) {

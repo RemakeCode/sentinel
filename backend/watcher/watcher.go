@@ -52,7 +52,7 @@ func (s *Service) ServiceStartup(ctx context.Context, options application.Servic
 	}
 
 	if len(prefixPaths) == 0 {
-		slog.Info("Prefix is not set yet and watcher is not working")
+		slog.Info("Prefix is not set yet. Watcher will not working")
 		return nil
 	}
 
@@ -275,11 +275,7 @@ func (s *Service) handleEvent(event fsnotify.Event) {
 	// Extract appId from the event path if it's a numeric directory
 	path := event.Name
 
-	sep := string(os.PathSeparator)
-	appId := ""
-	if parts := strings.Split(path, sep); len(parts) > 1 {
-		appId = parts[len(parts)-2]
-	}
+	appId := filepath.Base(filepath.Dir(path))
 
 	// Log the event with relevant details
 	slog.Info("File system event detected",

@@ -85,15 +85,9 @@ func (c *File) ServiceStartup(ctx context.Context, options application.ServiceOp
 		log.Fatalf("Failed to create config directory: %v", err)
 	}
 
-	// Ensure cache directories exist
-	if err := os.MkdirAll(backend.ACHCacheDataDir, 0755); err != nil {
-		log.Fatalf("Failed to create cache data directory: %v", err)
-	}
-	if err := os.MkdirAll(backend.ACHCacheIconDir, 0755); err != nil {
-		log.Fatalf("Failed to create cache icon directory: %v", err)
-	}
-	if err := os.MkdirAll(backend.GameCacheDir, 0755); err != nil {
-		log.Fatalf("Failed to create game cache directory: %v", err)
+	// Ensure cache directory exists (subdirectories are created automatically)
+	if err := os.MkdirAll(backend.ACHCacheDir, 0755); err != nil {
+		log.Fatalf("Failed to create cache directory: %v", err)
 	}
 
 	// Create language folders in game cache directory based on steam languages

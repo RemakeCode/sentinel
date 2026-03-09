@@ -30,7 +30,7 @@ func main() {
 	// 'Mac' options tailor the application when running an macOS.
 	app := application.New(application.Options{
 		Name:        "Sentinel",
-		Description: "Steam game emulator manager",
+		Description: "Achievement Watcher",
 		Services: []application.Service{
 			application.NewService(&config.File{}),
 			application.NewService(&steam.Service{}),
@@ -46,7 +46,7 @@ func main() {
 	})
 
 	// Create the main window
-	app.Window.NewWithOptions(application.WebviewWindowOptions{
+	window := app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title:     "Sentinel",
 		MinWidth:  1280,
 		MinHeight: 720,
@@ -55,9 +55,9 @@ func main() {
 		URL:       "/",
 	})
 
-	app.Event.OnApplicationEvent(events.Common.ApplicationStarted, func(e *application.ApplicationEvent) {
+	window.OnWindowEvent(events.Common.WindowRuntimeReady, func(e *application.WindowEvent) {
 		app.Logger.Info("Application ready!")
-		app.Event.Emit("app:ready", e)
+		app.Event.Emit("sentinel::ready")
 	})
 
 	// Run the application
