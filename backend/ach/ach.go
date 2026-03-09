@@ -96,9 +96,8 @@ func SaveAch(path string) error {
 		return err
 	}
 
-	// Extract filename from URL
-	parts := strings.Split(path, string(os.PathSeparator))
-	appId := parts[len(parts)-1]
+	// Extract appId from path
+	appId := filepath.Base(path)
 
 	file, err := os.ReadFile(filepath.Join(path, "achievements.json"))
 	if err != nil {

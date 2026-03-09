@@ -96,12 +96,9 @@ func (s *Service) FetchAppDetailsBulk(appIDs []string, language types.Language) 
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 
-	app := application.Get()
-
 	// Use a semaphore to limit total concurrent requests (both app details and achievements)
 	sem := make(chan struct{}, 5)
 
-	totalDone := 1
 	for _, id := range appIDs {
 		wg.Add(1)
 
@@ -120,13 +117,6 @@ func (s *Service) FetchAppDetailsBulk(appIDs []string, language types.Language) 
 				mu.Unlock()
 				return
 			}
-			//Only emit for non-cached details
-			app.Event.Emit("sentinel::fetch-status", backend.FetchStatusEvt{
-				Current: totalDone,
-				Total:   len(appIDs),
-			})
-
-			totalDone++
 
 			// 1. Fetch App Details
 			details, err := s.fetchGameDetails(id, language.API)
@@ -136,6 +126,7 @@ func (s *Service) FetchAppDetailsBulk(appIDs []string, language types.Language) 
 			}
 
 			// 2. Fetch Achievements
+
 			achievementsList, err := s.fetchAchievements(id, language.API)
 
 			if err == nil {
@@ -498,8 +489,7 @@ func (s *Service) cacheAchievementIcon(appID string, iconURL string) error {
 	}
 
 	// Extract filename from URL
-	parts := strings.Split(iconURL, "/")
-	filename := parts[len(parts)-1]
+	filename := filepath.Base(iconURL)
 
 	cachePath := s.getIconCachePath(appID, filename)
 
