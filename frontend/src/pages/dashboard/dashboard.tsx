@@ -8,7 +8,6 @@ import { LoadAllCachedGameData } from '@wa/sentinel/backend/steam/service';
 import { Events } from '@wailsio/runtime';
 import { GameBasics } from '@wa/sentinel/backend/steam';
 import { Header } from '@/shared/components/Header/Header';
-import { Achievement } from '@wa/sentinel/backend/ach';
 import { computeProgress } from '@/shared/utils';
 
 // Cache globally so returning to Dashboard doesn't trigger Skeletons and break view transitions
@@ -20,12 +19,17 @@ const Dashboard: React.FC = () => {
   const [status, setStatus] = useState<number>(0);
 
   useEffect(() => {
-    Events.On('sentinel::fetch-status', (event) => {
+    const unsubscribe = Events.On('sentinel::fetch-status', (event) => {
       const percentage = Math.floor((event.data.Current / event.data.Total) * 100);
       setStatus(percentage);
+
+      if (percentage === 100) {
+        setLoading(false);
+      }
     });
-    return () => Events.Off('sentinel::fetch-status');
-  }, []);
+
+    return () => unsubscribe();
+  }, [games]);
 
   useEffect(() => {
     if (globalCachedGames) return;
@@ -33,18 +37,19 @@ const Dashboard: React.FC = () => {
       try {
         const data = await LoadAllCachedGameData();
         globalCachedGames = data;
-        console.log(data);
         setGames(data);
 
-        setLoading(false);
+        if (status === 0 || status === 100) {
+          setLoading(false);
+        }
       } catch (e) {
         console.error(e);
+        setLoading(false);
       }
     };
     handleGames();
   }, []);
 
-  //TODO: Only show the page when status is at 100%.
   return (
     <main className='full-layout'>
       <Header>
@@ -57,7 +62,6 @@ const Dashboard: React.FC = () => {
           </fieldset>
         </div>
 
-        {/*<div>{status}%</div>*/}
         <Link to='/settings' viewTransition className='dashboard-header-settings-link'>
           <Settings className='dashboard-header-settings-link-icon' />
         </Link>
@@ -77,7 +81,7 @@ const Dashboard: React.FC = () => {
               ))}
           </div>
         ) : games.length === 0 ? (
-          <EmptyState message='No games found. Add an emulator path in settings!' />
+          <EmptyState message='No games found. Add a Prefix Path' />
         ) : (
           <div className='games-container'>
             {games.map((game, idx) => {

@@ -31,8 +31,7 @@ const GameDetails: React.FC = () => {
               </div>
 
               <div className='game-details-stats'>
-                <div>
-                  <progress value={computeProgress(game?.Achievement.List)} max={100}></progress>
+                <progress value={computeProgress(game?.Achievement.List)} max={100} />
                 <pre></pre>
               </div>
             </div>

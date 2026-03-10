@@ -45,7 +45,7 @@ type File struct {
 	Language          types.Language `json:"language"`
 	Emulators         []Emulator     `json:"emulators"`
 	Prefixes          []Prefix       `json:"prefixes"`
-	SteamAPIKey       string         `json:"-"`
+	SteamAPIKey       string         `json:"SteamAPIKey"`
 	SteamDataSource   SteamSource    `json:"steamDataSource"`
 	SteamAPIKeyMasked string         `json:"steamApiKeyMasked"`
 }
@@ -96,7 +96,7 @@ func (c *File) ServiceStartup(ctx context.Context, options application.ServiceOp
 		langDir := filepath.Join(backend.GameCacheDir, lang.API)
 		if _, err := os.Stat(langDir); os.IsNotExist(err) {
 			if err := os.MkdirAll(langDir, 0755); err != nil {
-				log.Printf("Warning: Failed to create language directory %s: %v", lang.API, err)
+				slog.Info("Warning: Failed to create language directory %s: %v", lang.API, err)
 			}
 		}
 	}
@@ -128,7 +128,12 @@ func (c *File) ServiceStartup(ctx context.Context, options application.ServiceOp
 
 	slog.Info("Config Initialization Complete")
 
-	_, err = c.LoadConfig()
+	cfg, err := Get()
+	if err != nil {
+		log.Fatalf("Failed to get config: %v", err)
+	}
+
+	_, err = cfg.LoadConfig()
 
 	if err != nil {
 		log.Fatalf("Failed to load config file: %v", err)
@@ -137,6 +142,12 @@ func (c *File) ServiceStartup(ctx context.Context, options application.ServiceOp
 	return nil
 }
 
+func (c *File) getConfig() *File {
+	cfg, _ := Get()
+	return cfg
+}
+
+//wails:internal
 func (c *File) LoadConfig() (*File, error) {
 	data, err := os.ReadFile(backend.ConfigPath)
 	if err != nil {
@@ -148,6 +159,10 @@ func (c *File) LoadConfig() (*File, error) {
 	}
 
 	return c, nil
+}
+
+func (c *File) GetConfig() (*File, error) {
+	return Get()
 }
 
 func (c *File) SaveConfig() error {
@@ -170,6 +185,7 @@ func (c *File) SaveConfig() error {
 
 // SetSteamAPIKey sets the Steam API key in the configuration
 func (c *File) SetSteamAPIKey(apiKey string) error {
+	cfg := c.getConfig()
 	if apiKey == "" {
 		return fmt.Errorf("API Key is empty")
 	}
@@ -180,23 +196,24 @@ func (c *File) SetSteamAPIKey(apiKey string) error {
 		return fmt.Errorf("failed to encrypt API key: %w", err)
 	}
 
-	c.SteamAPIKey = encryptedKey
+	cfg.SteamAPIKey = encryptedKey
 
-	c.SteamAPIKeyMasked = strings.Repeat("*", len(apiKey)-4) + apiKey[len(apiKey)-4:]
+	cfg.SteamAPIKeyMasked = strings.Repeat("*", len(apiKey)-4) + apiKey[len(apiKey)-4:]
 
-	return c.SaveConfig()
+	return cfg.SaveConfig()
 }
 
 // GetSteamAPIKey retrieves and decrypts the Steam API key from the configuration
 //
 //wails:internal
 func (c *File) GetSteamAPIKey() (string, error) {
-	if c.SteamAPIKey == "" {
-		return "", nil // No API key set
+	cfg := c.getConfig()
+	if cfg.SteamAPIKey == "" {
+		return "", errors.New("no API Key set") // No API key set
 	}
 
 	// Decrypt the API key before returning
-	decryptedKey, err := decrypt(c.SteamAPIKey)
+	decryptedKey, err := decrypt(cfg.SteamAPIKey)
 	if err != nil {
 		return "", fmt.Errorf("failed to decrypt API key: %w", err)
 	}
@@ -206,43 +223,48 @@ func (c *File) GetSteamAPIKey() (string, error) {
 
 // GetSteamDataSource retrieves the current Steam data source preference
 func (c *File) GetSteamDataSource() SteamSource {
-	if c.SteamDataSource == "" {
+	cfg := c.getConfig()
+	if cfg.SteamDataSource == "" {
 		return "external" // Default value
 	}
-	return c.SteamDataSource
+	return cfg.SteamDataSource
 }
 
 // SetSteamDataSource sets the Steam data source preference and saves the configuration
 func (c *File) SetSteamDataSource(source SteamSource) error {
-	c.SteamDataSource = source
-	return c.SaveConfig()
+	cfg := c.getConfig()
+	cfg.SteamDataSource = source
+	return cfg.SaveConfig()
 }
 
 func (c *File) AddPrefix(path string) error {
+	cfg := c.getConfig()
 	prefix := Prefix{Path: path}
 
-	for _, p := range c.Prefixes {
+	for _, p := range cfg.Prefixes {
 		if p.Path == prefix.Path {
 			return nil
 		}
 	}
 
-	c.Prefixes = append(c.Prefixes, prefix)
-	return c.SaveConfig()
+	cfg.Prefixes = append(cfg.Prefixes, prefix)
+	return cfg.SaveConfig()
 }
 
 func (c *File) RemovePrefix(index int) error {
-	if index < 0 || index >= len(c.Prefixes) {
+	cfg := c.getConfig()
+	if index < 0 || index >= len(cfg.Prefixes) {
 		return nil
 	}
 
-	c.Prefixes = append(c.Prefixes[:index], c.Prefixes[index+1:]...)
-	return c.SaveConfig()
+	cfg.Prefixes = append(cfg.Prefixes[:index], cfg.Prefixes[index+1:]...)
+	return cfg.SaveConfig()
 }
 
 func (c *File) GetPrefixPaths() ([]string, error) {
+	cfg := c.getConfig()
 	var paths []string
-	for _, prefix := range c.Prefixes {
+	for _, prefix := range cfg.Prefixes {
 		paths = append(paths, prefix.Path)
 	}
 	return paths, nil
@@ -302,8 +324,9 @@ func decrypt(ciphertext string) (string, error) {
 
 // GetEmulatorPaths returns all emulator paths from the configuration
 func (c *File) GetEmulatorPaths() ([]string, error) {
+	cfg := c.getConfig()
 	var paths []string
-	for _, emulator := range c.Emulators {
+	for _, emulator := range cfg.Emulators {
 		paths = append(paths, emulator.Path)
 	}
 	return paths, nil
@@ -311,12 +334,13 @@ func (c *File) GetEmulatorPaths() ([]string, error) {
 
 // ToggleEmulatorNotification toggles the notification setting for an emulator by index
 func (c *File) ToggleEmulatorNotification(index int) error {
+	cfg := c.getConfig()
 
-	if index < 0 || index >= len(c.Emulators) {
+	if index < 0 || index >= len(cfg.Emulators) {
 		return nil
 	}
-	c.Emulators[index].ShouldNotify = !c.Emulators[index].ShouldNotify
+	cfg.Emulators[index].ShouldNotify = !cfg.Emulators[index].ShouldNotify
 
-	return c.SaveConfig()
+	return cfg.SaveConfig()
 
 }

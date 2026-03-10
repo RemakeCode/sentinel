@@ -3,7 +3,6 @@ package watcher
 import (
 	"context"
 	"errors"
-	"log"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -25,7 +24,6 @@ type Service struct {
 	done        chan struct{}
 	failedPaths []string // Tracks paths that failed to watch
 	retryTimer  *time.Timer
-	config      *config.File
 	steam       *steam.Service
 }
 
@@ -37,15 +35,16 @@ type scanResult struct {
 	AppIDPaths []string // Array of full paths to app ID folders
 }
 
-func (s *Service) ServiceStartup(ctx context.Context, options application.ServiceOptions) error {
-	s.config = &config.File{}
-	_, err := s.config.LoadConfig()
+var cfg *config.File
 
+func (s *Service) ServiceStartup(ctx context.Context, options application.ServiceOptions) error {
+	c, err := config.Get()
 	if err != nil {
 		return err
 	}
+	cfg = c
 
-	prefixPaths, err := s.config.GetPrefixPaths()
+	prefixPaths, err := cfg.GetPrefixPaths()
 
 	if err != nil {
 		return err
@@ -71,7 +70,6 @@ func (s *Service) scan(paths []string) scanResult {
 	for _, path := range paths {
 		entries, err := os.ReadDir(path)
 
-		log.Println("path", path)
 		if err != nil {
 			continue
 		}
@@ -92,13 +90,11 @@ func (s *Service) scan(paths []string) scanResult {
 }
 
 //TODO Start method should be refactored into watchPathForNotification
-//TODO Create a new method that watches teh Emupaths.
+//TODO Create a new method that watches the Emupaths.
 
 // Start initializes the file system watcher and begins monitoring paths
 func (s *Service) Start() error {
-
-	prefixPaths, err := s.config.GetPrefixPaths()
-
+	prefixPaths, err := cfg.GetPrefixPaths()
 	if err != nil {
 		slog.Error(err.Error())
 	}
@@ -316,7 +312,7 @@ func (s *Service) triggerMetadataFetch(appIDs []string) {
 	go func() {
 		slog.Info("Fetching metadata", "appIDs", appIDs)
 
-		_, err := s.steam.FetchAppDetailsBulk(appIDs, s.config.Language)
+		_, err := s.steam.FetchAppDetailsBulk(appIDs, cfg.Language)
 
 		if err != nil {
 			slog.Error("Failed to fetch metadata", "error", err)
@@ -328,7 +324,7 @@ func (s *Service) triggerMetadataFetch(appIDs []string) {
 }
 
 func (s *Service) computeFullPath(prefixPath string) ([]string, error) {
-	emuPaths, err := s.config.GetEmulatorPaths()
+	emuPaths, err := cfg.GetEmulatorPaths()
 	if err != nil {
 		return nil, err
 	}
