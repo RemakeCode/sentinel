@@ -4,7 +4,7 @@ import { ArrowLeft, DatabaseSearchIcon, Eye, EyeOff, FolderOpen, Trash2, Volume2
 
 import {
   AddPrefix,
-  LoadConfig,
+  GetConfig,
   RemovePrefix,
   SetSteamAPIKey,
   SetSteamDataSource,
@@ -90,7 +90,7 @@ const Settings: React.FC = () => {
 
   const loadConfig = async () => {
     try {
-      const cfg = await LoadConfig();
+      const cfg = await GetConfig();
       setAppConfig(cfg);
       setStmSrc(cfg?.steamDataSource);
     } catch (err) {
@@ -131,12 +131,9 @@ const Settings: React.FC = () => {
     try {
       await RemovePrefix(index);
       window.ot?.toast('Prefix removed', 'Success', { variant: 'success' });
-
-      await loadConfig();
+      await Promise.all([loadConfig()]);
     } catch (err) {
-      await Stop(); // stops watcher
       window.ot?.toast('Failed to remove prefix', 'Error', { variant: 'error' });
-      await Promise.all([Start(), loadConfig()]);
     }
   };
 

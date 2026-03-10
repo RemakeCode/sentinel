@@ -2,7 +2,6 @@ package ach
 
 import (
 	"encoding/json"
-	"log"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -79,7 +78,7 @@ func LoadAllCachedAch() (map[string]*AchievementData, error) {
 		achData, err := LoadCachedAch(appId)
 
 		if err != nil {
-			log.Printf("failed to load cached ach for %s: %v", appId, err)
+			slog.Error("failed to load cached ach for %s: %v", appId, err)
 			continue
 		}
 

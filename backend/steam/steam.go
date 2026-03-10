@@ -96,7 +96,12 @@ func (s *Service) FetchAppDetailsBulk(appIDs []string, language types.Language) 
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 
-	// Use a semaphore to limit total concurrent requests (both app details and achievements)
+	app := application.Get()
+	total := len(appIDs)
+	var completed int
+
+	app.Event.Emit("sentinel::fetch-status", backend.FetchStatusEvt{Current: 0, Total: total})
+
 	sem := make(chan struct{}, 5)
 
 	for _, id := range appIDs {
@@ -106,26 +111,26 @@ func (s *Service) FetchAppDetailsBulk(appIDs []string, language types.Language) 
 
 			defer wg.Done()
 
-			// Acquire semaphore
 			sem <- struct{}{}
-			defer func() { <-sem }() // Release
+			defer func() { <-sem }()
 
-			// Check unified cache first
 			if cached, err := s.loadCachedGameData(id, language.API); err == nil {
 				mu.Lock()
 				results = append(results, cached)
+				completed++
 				mu.Unlock()
+				app.Event.Emit("sentinel::fetch-status", backend.FetchStatusEvt{Current: completed, Total: total})
 				return
 			}
 
-			// 1. Fetch App Details
 			details, err := s.fetchGameDetails(id, language.API)
 			if err != nil {
-				// Log error possibly? For now, we just skip this app
+				mu.Lock()
+				completed++
+				mu.Unlock()
+				app.Event.Emit("sentinel::fetch-status", backend.FetchStatusEvt{Current: completed, Total: total})
 				return
 			}
-
-			// 2. Fetch Achievements
 
 			achievementsList, err := s.fetchAchievements(id, language.API)
 
@@ -133,12 +138,14 @@ func (s *Service) FetchAppDetailsBulk(appIDs []string, language types.Language) 
 				details.Achievement.List = achievementsList
 			}
 
-			// Cache the unified complete GameBasics record
 			_ = s.cacheGameData(id, language.API, details)
 
 			mu.Lock()
 			results = append(results, details)
+			completed++
 			mu.Unlock()
+
+			app.Event.Emit("sentinel::fetch-status", backend.FetchStatusEvt{Current: completed, Total: total})
 		}(id)
 	}
 
@@ -205,8 +212,8 @@ func (s *Service) LoadAllCachedGameData() ([]*GameBasics, error) {
 
 }
 
-func (s *Service) fetchAchievementsWithKey(appID string, language string) []achievement {
-	apiKey := cfg.SteamAPIKey
+func (s *Service) fetchAchievementsWithKey(appID string, language string) ([]achievement, error) {
+	apiKey, _ := cfg.GetSteamAPIKey()
 
 	url := fmt.Sprintf(
 		"https://api.steampowered.com/ISteamUserStats/GetSchemaForGame/v2/?key=%s&appid=%s&l=%s",
@@ -214,21 +221,25 @@ func (s *Service) fetchAchievementsWithKey(appID string, language string) []achi
 	)
 
 	resp, err := http.Get(url)
+
 	if err != nil {
-		return nil
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil
+		return nil, errors.New("steam api returned " + resp.Status)
 	}
 
 	var schema schemaResponse
 	if err := json.NewDecoder(resp.Body).Decode(&schema); err != nil {
-		return nil
+		return nil, nil
 	}
 
 	var achievements []achievement
+
+	log.Println("schema", schema)
+
 	for _, a := range schema.Game.AvailableGameStats.Achievements {
 		// Cache the achievement icon
 		_ = s.cacheAchievementIcon(appID, a.Icon)
@@ -245,7 +256,7 @@ func (s *Service) fetchAchievementsWithKey(appID string, language string) []achi
 		achievements = append(achievements, achievement)
 	}
 
-	return achievements
+	return achievements, nil
 }
 
 func (s *Service) fetchAchievementsFromThirdParty(appID string, language string) ([]achievement, error) {
@@ -355,14 +366,14 @@ func (s *Service) fetchAchievements(appID string, language string) ([]achievemen
 	switch dataSource {
 	case "key":
 		// Use Steam API key
-		achievements := s.fetchAchievementsWithKey(appID, language)
-		return achievements, nil
+		return s.fetchAchievementsWithKey(appID, language)
+
 	case "external":
 		// Use third-party external source
 		return s.fetchAchievementsFromThirdParty(appID, language)
 	default:
 		// Unknown data source, default to external
-		log.Printf("Unknown data source '%s', using external source", dataSource)
+		slog.Warn("Unknown data source '%s', using external source", dataSource)
 		return s.fetchAchievementsFromThirdParty(appID, language)
 	}
 }
