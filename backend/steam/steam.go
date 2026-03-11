@@ -88,7 +88,14 @@ func (s *Service) ServiceStartup(ctx context.Context, options application.Servic
 
 //wails:internal
 func (s *Service) FetchAppDetailsBulk(appIDs []string, language types.Language) ([]*GameBasics, error) {
+	app := application.Get()
+
+	// Emit 0% immediately to signal fetch is starting (even if no appIDs)
+	app.Event.Emit("sentinel::fetch-status", backend.FetchStatusEvt{Current: 0, Total: len(appIDs)})
+
 	if len(appIDs) == 0 {
+		// Emit 100% for "no games" case so frontend knows to load from cache
+		app.Event.Emit("sentinel::fetch-status", backend.FetchStatusEvt{Current: 100, Total: 100})
 		return []*GameBasics{}, nil
 	}
 
@@ -96,7 +103,6 @@ func (s *Service) FetchAppDetailsBulk(appIDs []string, language types.Language) 
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 
-	app := application.Get()
 	total := len(appIDs)
 	var completed int
 
