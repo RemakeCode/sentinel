@@ -15,21 +15,27 @@ let globalCachedGames: (GameBasics | null)[] | null = null;
 
 const Dashboard: React.FC = () => {
   const [games, setGames] = useState<(GameBasics | null)[]>(globalCachedGames || []);
-  const [loading, setLoading] = useState(!globalCachedGames);
+  const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<number>(0);
 
   useEffect(() => {
-    const unsubscribe = Events.On('sentinel::fetch-status', (event) => {
-      const percentage = Math.floor((event.data.Current / event.data.Total) * 100);
+    const unsubscribe = Events.On('sentinel::fetch-status', async (event) => {
+      const current = event.data.Current;
+      const total = event.data.Total;
+      const percentage = Math.floor((current / total) * 100);
       setStatus(percentage);
+      setLoading(true);
 
-      if (percentage === 100) {
+      if (current === total) {
+        const data = await LoadAllCachedGameData();
+        globalCachedGames = data;
+        setGames(data);
         setLoading(false);
       }
     });
 
     return () => unsubscribe();
-  }, [games]);
+  }, []);
 
   useEffect(() => {
     if (globalCachedGames) return;
@@ -38,10 +44,7 @@ const Dashboard: React.FC = () => {
         const data = await LoadAllCachedGameData();
         globalCachedGames = data;
         setGames(data);
-
-        if (status === 0 || status === 100) {
-          setLoading(false);
-        }
+        setLoading(false);
       } catch (e) {
         console.error(e);
         setLoading(false);
@@ -50,6 +53,7 @@ const Dashboard: React.FC = () => {
     handleGames();
   }, []);
 
+  console.log({ loading, status });
   return (
     <main className='full-layout'>
       <Header>
@@ -80,8 +84,8 @@ const Dashboard: React.FC = () => {
                 <div role='status' className='skeleton box' key={i} />
               ))}
           </div>
-        ) : games.length === 0 ? (
-          <EmptyState message='No games found. Add a Prefix Path' />
+        ) : games.length === 0 && status === 0 ? (
+          <EmptyState message='No games found.' />
         ) : (
           <div className='games-container'>
             {games.map((game, idx) => {
