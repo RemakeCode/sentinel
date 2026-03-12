@@ -13,7 +13,7 @@
     "format": "prettier --write ."
   },
   "dependencies": {
-    "@knadh/oat": "^0.4.1",
+    "@knadh/oat": "^0.4.2",
     "@wailsio/runtime": "^3.0.0-alpha.79",
     "lucide-react": "^0.574.0",
     "react": "^19.1.0",
