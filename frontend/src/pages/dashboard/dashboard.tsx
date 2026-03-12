@@ -53,7 +53,6 @@ const Dashboard: React.FC = () => {
     handleGames();
   }, []);
 
-  console.log({ loading, status });
   return (
     <main className='full-layout'>
       <Header>
