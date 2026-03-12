@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"log/slog"
 	"net/http"
 	"os"
@@ -90,8 +89,10 @@ func (s *Service) ServiceStartup(ctx context.Context, options application.Servic
 func (s *Service) FetchAppDetailsBulk(appIDs []string, language types.Language) ([]*GameBasics, error) {
 	app := application.Get()
 
+	total := len(appIDs)
+
 	// Emit 0% immediately to signal fetch is starting (even if no appIDs)
-	app.Event.Emit("sentinel::fetch-status", backend.FetchStatusEvt{Current: 0, Total: len(appIDs)})
+	app.Event.Emit("sentinel::fetch-status", backend.FetchStatusEvt{Current: 0, Total: total})
 
 	if len(appIDs) == 0 {
 		// Emit 100% for "no games" case so frontend knows to load from cache
@@ -103,7 +104,6 @@ func (s *Service) FetchAppDetailsBulk(appIDs []string, language types.Language) 
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 
-	total := len(appIDs)
 	var completed int
 
 	app.Event.Emit("sentinel::fetch-status", backend.FetchStatusEvt{Current: 0, Total: total})
@@ -243,8 +243,6 @@ func (s *Service) fetchAchievementsWithKey(appID string, language string) ([]ach
 	}
 
 	var achievements []achievement
-
-	log.Println("schema", schema)
 
 	for _, a := range schema.Game.AvailableGameStats.Achievements {
 		// Cache the achievement icon

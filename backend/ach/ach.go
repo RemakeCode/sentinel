@@ -92,6 +92,7 @@ func LoadAllCachedAch() (map[string]*AchievementData, error) {
 // wails:internal
 func SaveAch(path string) error {
 	if err := os.MkdirAll(backend.ACHCacheDataDir, 0755); err != nil {
+		slog.Error(err.Error())
 		return err
 	}
 
