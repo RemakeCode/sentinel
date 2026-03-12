@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sentinel/backend"
+	"slices"
 	"strings"
 	"time"
 
@@ -25,6 +27,8 @@ type Service struct {
 	failedPaths []string // Tracks paths that failed to watch
 	retryTimer  *time.Timer
 	steam       *steam.Service
+	prefixPaths []string // Top-level prefix paths from config to watch for new games
+	appIDPaths  []string // All appId paths being watched
 }
 
 var numericRegex = regexp.MustCompile(`^\d+$`)
@@ -99,7 +103,13 @@ func (s *Service) Start() error {
 		slog.Error(err.Error())
 	}
 
-	var paths []string
+	if err != nil {
+		slog.Error(err.Error())
+	}
+
+	s.prefixPaths = prefixPaths
+
+	var scanPaths []string
 
 	if len(prefixPaths) > 0 {
 		for _, prefix := range prefixPaths {
@@ -110,7 +120,7 @@ func (s *Service) Start() error {
 				continue
 			}
 			for _, fullPath := range fullPaths {
-				paths = append(paths, fullPath)
+				scanPaths = append(scanPaths, fullPath)
 			}
 		}
 		slog.Info("Prefix paths configured, scanning prefix × emulator paths", "prefixes", len(prefixPaths))
@@ -118,7 +128,7 @@ func (s *Service) Start() error {
 		slog.Info("No prefix paths configured, scanning emulator paths directly")
 	}
 
-	scanResult := s.scan(paths)
+	scanResult := s.scan(scanPaths)
 
 	// Fetch metadata for all discovered appIds
 	if len(scanResult.AppIDs) > 0 {
@@ -158,6 +168,9 @@ func (s *Service) Start() error {
 	// Start event processing loop
 	go s.processEvents()
 
+	// Start path walker for finding new games while app is running
+	go s.PathWalker()
+
 	slog.Info("Watcher started successfully")
 	return nil
 }
@@ -183,6 +196,55 @@ func (s *Service) Stop() {
 	}
 
 	slog.Info("Watcher stopped")
+}
+
+// PathWalker periodically walks prefix directories to find new games
+func (s *Service) PathWalker() {
+	slog.Info("Path walker started. It would periodically search for new games in prefix and update watcher")
+	ticker := time.NewTicker(backend.WalkerInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-s.done:
+			return
+		case <-ticker.C:
+			for _, prefix := range s.prefixPaths {
+				s.scanAndWatchPrefix(prefix)
+			}
+		}
+	}
+}
+
+// scanAndWatchPrefix walks a prefix directory and watches any new game directories found
+func (s *Service) scanAndWatchPrefix(prefix string) {
+	watchlist := s.watcher.WatchList()
+
+	err := filepath.WalkDir(prefix, func(path string, d os.DirEntry, err error) error {
+		if d.IsDir() && strings.EqualFold(d.Name(), "drive_c") && slices.ContainsFunc(watchlist, func(s string) bool { return strings.Contains(s, path) }) {
+			return filepath.SkipDir
+		}
+
+		if d.IsDir() && numericRegex.MatchString(d.Name()) {
+			if err := s.watchPath(path); err != nil {
+				return err
+			}
+
+			if err := ach.SaveAch(path); err != nil {
+				return err
+			}
+
+			s.triggerMetadataFetch([]string{filepath.Base(path)})
+
+		}
+
+		return nil
+
+	})
+
+	if err != nil {
+		return
+	}
 }
 
 // watchPath adds a path to the file system watcher
@@ -280,24 +342,29 @@ func (s *Service) handleEvent(event fsnotify.Event) {
 		"operation", event.Op.String(),
 	)
 
-	// Only process write events for achievements.json files
+	// Handle WRITE events for achievements.json files
 	if event.Has(fsnotify.Write) && strings.HasSuffix(path, "achievements.json") {
-		newAch, err := ach.ParseAch(path)
+		s.handleAchievementsWriteEvent(path, appId)
+	}
+}
+
+// handleAchievementsWriteEvent processes write events on achievements.json files
+func (s *Service) handleAchievementsWriteEvent(path, appId string) {
+	newAch, err := ach.ParseAch(path)
+	if err != nil {
+		slog.Error("Failed to parse achievements", "error", err)
+		return
+	}
+
+	oldAch, _ := ach.LoadCachedAch(appId)
+
+	diff := newAch.Diff(oldAch)
+
+	if len(diff) > 0 {
+		notifierService := notifier.Service{}
+		err := notifierService.SendNotification(appId, diff)
 		if err != nil {
-			slog.Error("Failed to parse achievements", "error", err)
 			return
-		}
-
-		oldAch, _ := ach.LoadCachedAch(appId)
-
-		diff := newAch.Diff(oldAch)
-
-		if len(diff) > 0 {
-			notifierService := notifier.Service{}
-			err := notifierService.SendNotification(appId, diff)
-			if err != nil {
-				return
-			}
 		}
 	}
 }
