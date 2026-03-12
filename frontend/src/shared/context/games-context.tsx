@@ -1,0 +1,80 @@
+import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
+import { GameBasics } from '@wa/sentinel/backend/steam';
+import { Events } from '@wailsio/runtime';
+import { LoadAllCachedGameData } from '@wa/sentinel/backend/steam/service';
+
+interface GamesContextType {
+  games: (GameBasics | null)[];
+  loading: boolean;
+  status: number;
+  refresh: () => Promise<void>;
+}
+
+const GamesContext = createContext<GamesContextType | undefined>(undefined);
+
+export const useGames = () => {
+  const context = useContext(GamesContext);
+  if (!context) {
+    throw new Error('useGames must be used within a GamesProvider');
+  }
+  return context;
+};
+
+interface GamesProviderProps {
+  children: ReactNode;
+}
+
+export const GamesProvider: React.FC<GamesProviderProps> = ({ children }) => {
+  const [games, setGames] = useState<(GameBasics | null)[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState<number>(0);
+
+  const refresh = async () => {
+    setLoading(true);
+    const data = await LoadAllCachedGameData();
+    setGames(data);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    const unsubscribe = Events.On('sentinel::fetch-status', async (event) => {
+      const current = event.data.Current;
+      const total = event.data.Total;
+      const percentage = Math.floor((current / total) * 100);
+      setStatus(percentage);
+      setLoading(true);
+
+      if (current === total) {
+        await refresh();
+        setLoading(false);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = Events.On('sentinel::data-updated', async () => {
+      console.log('data updated');
+      await refresh();
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const handleInitialLoad = async () => {
+      try {
+        const data = await LoadAllCachedGameData();
+        setGames(data);
+        setLoading(false);
+      } catch (e) {
+        console.error(e);
+        setLoading(false);
+      }
+    };
+    handleInitialLoad();
+  }, []);
+
+  return <GamesContext.Provider value={{ games, loading, status, refresh }}>{children}</GamesContext.Provider>;
+};

@@ -18,6 +18,7 @@ var assets embed.FS
 func init() {
 	application.RegisterEvent[application.Void]("sentinel::ready")
 	application.RegisterEvent[backend.FetchStatusEvt]("sentinel::fetch-status")
+	application.RegisterEvent[application.Void]("sentinel::data-updated")
 }
 
 // Create a new notification service
