@@ -1,18 +1,14 @@
 import '@wailsio/runtime';
 
 import { Outlet, ScrollRestoration } from 'react-router';
-import { Events } from '@wailsio/runtime';
-
-Events.On('sentinel::ready', () => {
-  console.log(`[Event Registered]`);
-});
+import { GamesProvider } from '@/shared/context/games-context';
 
 const App = () => {
   return (
-    <>
+    <GamesProvider>
       <Outlet />
       <ScrollRestoration />
-    </>
+    </GamesProvider>
   );
 };
 export default App;

@@ -44,6 +44,8 @@ func (s *Service) ServiceStartup(ctx context.Context, options application.Servic
 // It uses fixed urgency "normal" and system default expiration.
 // Accessible via Wails bindings.
 func (s *Service) SendNotification(appId string, earnedAchievement map[string]ach.Achievement) error {
+	app := application.Get()
+	app.Event.Emit("sentinel::data-updated")
 
 	if !IsAvailable() {
 		err := fmt.Errorf("notify-send not found in PATH")

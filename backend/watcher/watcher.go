@@ -366,6 +366,7 @@ func (s *Service) handleAchievementsWriteEvent(path, appId string) {
 		if err != nil {
 			return
 		}
+
 	}
 }
 

@@ -1,57 +1,15 @@
 import './dashboard.scss';
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 
 import { Search, Settings } from 'lucide-react';
 import { Link } from 'react-router';
 import EmptyState from '@/shared/components/EmptyState';
-import { LoadAllCachedGameData } from '@wa/sentinel/backend/steam/service';
-import { Events } from '@wailsio/runtime';
-import { GameBasics } from '@wa/sentinel/backend/steam';
 import { Header } from '@/shared/components/Header/Header';
 import { computeProgress } from '@/shared/utils';
-
-// Cache globally so returning to Dashboard doesn't trigger Skeletons and break view transitions
-let globalCachedGames: (GameBasics | null)[] | null = null;
+import { useGames } from '@/shared/context/games-context';
 
 const Dashboard: React.FC = () => {
-  const [games, setGames] = useState<(GameBasics | null)[]>(globalCachedGames || []);
-  const [loading, setLoading] = useState(false);
-  const [status, setStatus] = useState<number>(0);
-
-  useEffect(() => {
-    const unsubscribe = Events.On('sentinel::fetch-status', async (event) => {
-      const current = event.data.Current;
-      const total = event.data.Total;
-      const percentage = Math.floor((current / total) * 100);
-      setStatus(percentage);
-      setLoading(true);
-
-      if (current === total) {
-        const data = await LoadAllCachedGameData();
-        globalCachedGames = data;
-        setGames(data);
-        setLoading(false);
-      }
-    });
-
-    return () => unsubscribe();
-  }, []);
-
-  useEffect(() => {
-    if (globalCachedGames) return;
-    const handleGames = async () => {
-      try {
-        const data = await LoadAllCachedGameData();
-        globalCachedGames = data;
-        setGames(data);
-        setLoading(false);
-      } catch (e) {
-        console.error(e);
-        setLoading(false);
-      }
-    };
-    handleGames();
-  }, []);
+  const { games, loading, status } = useGames();
 
   return (
     <main className='full-layout'>
