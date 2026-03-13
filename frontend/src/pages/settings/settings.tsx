@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router';
-import { ArrowLeft, DatabaseSearchIcon, Eye, FolderOpen, Globe, Trash2, Volume2, VolumeOff } from 'lucide-react';
+import { ArrowLeft, DatabaseSearchIcon, Eye, FolderOpen, Globe, Info, Trash2, Volume2, VolumeOff } from 'lucide-react';
 
 import {
   AddPrefix,
@@ -14,11 +14,11 @@ import {
 } from '@wa/sentinel/backend/config/file';
 
 import './settings.scss';
-import EmptyState from '@/shared/components/EmptyState';
+import EmptyState from '@/shared/components/empty-state';
 import { Emulator, File, Prefix, SteamSource } from '@wa/sentinel/backend/config/models';
 
 import { Dialogs } from '@wailsio/runtime';
-import { Header } from '@/shared/components/Header/Header';
+import { Header } from '@/shared/components/header/header';
 import { Start, Stop } from '@wa/sentinel/backend/watcher/service';
 
 declare global {
@@ -51,6 +51,7 @@ const Settings: React.FC = () => {
   const [stmSrc, setStmSrc] = useState<SteamSource>();
   const [selectedLanguage, setSelectedLanguage] = useState<string>('');
   const [languages, setLanguages] = useState<{ api: string; displayName: string }[]>([]);
+  const [showAbout, setShowAbout] = useState(false);
   let timeout: ReturnType<typeof setTimeout>;
 
   useEffect(() => {
@@ -164,6 +165,13 @@ const Settings: React.FC = () => {
     }
   };
 
+  const handleAboutDialog = async () => {
+    await Dialogs.Info({
+      Title: 'About Sentinel',
+      Message: 'Program version 1.1.0 \n\n' + '© 2025, My Company\n\n'
+    });
+  };
+
   const handleTogglePrefix = async (index: number) => {
     console.error('TogglePrefix not implemented yet');
   };
@@ -181,6 +189,10 @@ const Settings: React.FC = () => {
           <ArrowLeft />
         </Link>
         <h2>Settings</h2>
+
+        <div className='icon-btn' onClick={handleAboutDialog} title='About'>
+          <Info size={20} />
+        </div>
       </Header>
 
       <div className='page-content'>

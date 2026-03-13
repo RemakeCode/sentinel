@@ -1,7 +1,7 @@
 [Desktop Entry]
 Version=1.0
-Name=My Product
-Comment=A sentinel application
+Name=Sentinel
+Comment=An Achievement Watcher for Linux
 # The Exec line includes %u to pass the URL to the application
 Exec=/usr/local/bin/sentinel %u
 Terminal=false
@@ -10,4 +10,4 @@ Icon=sentinel
 Categories=Utility;
 StartupWMClass=sentinel
 
-
+ 

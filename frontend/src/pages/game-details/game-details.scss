@@ -24,7 +24,6 @@
     }
   }
 
-
   &-image {
     display: flex;
     padding: 0;
@@ -135,7 +134,7 @@
       display: flex;
       gap: var(--space-4);
 
-      > [role="button"] {
+      > [role='button'] {
         transition: all var(--transition);
         cursor: pointer;
 
@@ -217,7 +216,7 @@
         transition: filter var(--transition);
 
         &:hover {
-          filter: none
+          filter: none;
         }
       }
     }
@@ -269,4 +268,3 @@ progress {
     opacity: 1;
   }
 }
-

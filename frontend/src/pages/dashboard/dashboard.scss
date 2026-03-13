@@ -1,7 +1,7 @@
 .dashboard {
-
-
   &-header {
+    display: flex;
+    justify-content: space-between;
     &-search-bar {
       background-color: var(--card);
       width: 400px;
@@ -19,7 +19,6 @@
       }
     }
 
-
     &-settings-link {
       display: inline-flex;
       view-transition-name: settings-icon;
@@ -28,30 +27,12 @@
         color: var(--foreground);
       }
     }
-
   }
 
   &-section {
     &-header {
       color: var(--muted-foreground);
-      margin-block: var(--space-8) var(--space-5);
-      margin-inline: 0;
-      font-size: var(--text-6);
-      font-weight: var(--font-medium);
-      display: flex;
-      justify-content: space-between;
-
-      &-label,
-      &-actions {
-        color: var(--muted-foreground);
-      }
-
-      > .action {
-        cursor: pointer;
-      }
     }
-
-
   }
 
   &-loader {
@@ -81,7 +62,10 @@
     flex-direction: column;
     width: 100%;
     cursor: pointer;
-    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1), z-index 0s;
+    transition:
+      transform 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+      box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+      z-index 0s;
     border-radius: var(--radius-3, 8px);
     position: relative;
     z-index: 1;
@@ -95,7 +79,6 @@
       .games-item-overlay {
         opacity: 1;
       }
-
     }
 
     &-card {
@@ -151,6 +134,4 @@
       }
     }
   }
-
-
 }
