@@ -44,16 +44,20 @@ func main() {
 		Mac: application.MacOptions{
 			ApplicationShouldTerminateAfterLastWindowClosed: true,
 		},
+		Linux: application.LinuxOptions{
+			ProgramName: "Sentinel",
+		},
 	})
 
 	// Create the main window
 	window := app.Window.NewWithOptions(application.WebviewWindowOptions{
-		Title:     "Sentinel",
-		MinWidth:  1280,
-		MinHeight: 720,
-		Width:     1920,
-		Height:    1080,
-		URL:       "/",
+		Title:                      "Sentinel",
+		MinWidth:                   1280,
+		MinHeight:                  720,
+		Width:                      1920,
+		Height:                     1080,
+		URL:                        "/",
+		DefaultContextMenuDisabled: false,
 	})
 
 	window.OnWindowEvent(events.Common.WindowRuntimeReady, func(e *application.WindowEvent) {

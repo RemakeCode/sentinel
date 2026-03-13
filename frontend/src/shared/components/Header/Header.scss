@@ -2,7 +2,7 @@ header {
   background-color: var(--card);
   display: flex;
   align-items: center;
-  width:100%;
+  width: 100%;
   box-shadow: var(--shadow-small);
   position: sticky;
   top: 0;
@@ -10,11 +10,10 @@ header {
   z-index: 10;
   padding-inline: var(--space-10);
   view-transition-name: none;
-  >h2 {
-    margin:0;
+  > h2 {
+    margin: 0;
   }
-  >a {
+  > a {
     line-height: normal;
   }
 }
-

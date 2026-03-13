@@ -8,16 +8,16 @@
     !define INFO_PROJECTNAME "sentinel"
 !endif
 !ifndef INFO_COMPANYNAME
-    !define INFO_COMPANYNAME "My Company"
+    !define INFO_COMPANYNAME "Remake Code"
 !endif
 !ifndef INFO_PRODUCTNAME
-    !define INFO_PRODUCTNAME "My Product"
+    !define INFO_PRODUCTNAME "Sentinel"
 !endif
 !ifndef INFO_PRODUCTVERSION
-    !define INFO_PRODUCTVERSION "0.1.0"
+    !define INFO_PRODUCTVERSION "0.0.1"
 !endif
 !ifndef INFO_COPYRIGHT
-    !define INFO_COPYRIGHT "© 2026, My Company"
+    !define INFO_COPYRIGHT "(c) 2026"
 !endif
 !ifndef PRODUCT_EXECUTABLE
     !define PRODUCT_EXECUTABLE "${INFO_PROJECTNAME}.exe"
@@ -163,17 +163,17 @@ RequestExecutionLevel "${REQUEST_EXECUTION_LEVEL}"
             Goto ok
         ${EndIf}
      ${EndIf}
-
+    
 	SetDetailsPrint both
     DetailPrint "${WAILS_INSTALL_WEBVIEW_DETAILPRINT}"
     SetDetailsPrint listonly
-
+    
     InitPluginsDir
     CreateDirectory "$pluginsdir\webview2bootstrapper"
     SetOutPath "$pluginsdir\webview2bootstrapper"
     File "MicrosoftEdgeWebview2Setup.exe"
     ExecWait '"$pluginsdir\webview2bootstrapper\MicrosoftEdgeWebview2Setup.exe" /silent /install'
-
+    
     SetDetailsPrint both
     ok:
 !macroend
@@ -203,12 +203,12 @@ RequestExecutionLevel "${REQUEST_EXECUTION_LEVEL}"
 
 !macro wails.associateFiles
     ; Create file associations
-
+    
 !macroend
 
 !macro wails.unassociateFiles
     ; Delete app associations
-
+    
 !macroend
 
 !macro CUSTOM_PROTOCOL_ASSOCIATE PROTOCOL DESCRIPTION ICON COMMAND
@@ -227,10 +227,10 @@ RequestExecutionLevel "${REQUEST_EXECUTION_LEVEL}"
 
 !macro wails.associateCustomProtocols
     ; Create custom protocols associations
-
+    
 !macroend
 
 !macro wails.unassociateCustomProtocols
     ; Delete app custom protocol associations
-
+    
 !macroend

@@ -1,6 +1,32 @@
 .settings {
   &-header {
     gap: var(--space-3);
+
+    &-actions {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+    }
+  }
+
+  .icon-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-small);
+    background: var(--card);
+    color: var(--foreground);
+    cursor: pointer;
+    transition: var(--transition);
+
+    &:hover {
+      background: var(--muted);
+      border-color: var(--muted-foreground);
+    }
   }
 
   &-section {
@@ -19,7 +45,6 @@
     flex-direction: column;
     gap: var(--space-3);
     padding: var(--space-4);
-
 
     &-item {
       display: grid;
@@ -44,7 +69,6 @@
       &-label {
         font-weight: var(--font-semibold);
       }
-
     }
 
     &-actions {
@@ -97,7 +121,6 @@
   min-width: 150px;
 }
 
-
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -109,4 +132,3 @@
     transform: translateY(0);
   }
 }
-

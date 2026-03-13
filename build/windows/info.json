@@ -1,15 +1,15 @@
 {
 	"fixed": {
-		"file_version": "0.1.0"
+		"file_version": "0.0.1"
 	},
 	"info": {
 		"0000": {
-			"ProductVersion": "0.1.0",
-			"CompanyName": "My Company",
-			"FileDescription": "A sentinel application",
-			"LegalCopyright": "© 2026, My Company",
-			"ProductName": "My Product",
-			"Comments": "This is a comment"
+			"ProductVersion": "0.0.1",
+			"CompanyName": "Remake Code",
+			"FileDescription": "An Achievement Watcher for Linux",
+			"LegalCopyright": "(c) 2026",
+			"ProductName": "Sentinel",
+			"Comments": "https://github.com/RemakeCode/Sentinel"
 		}
 	}
 }

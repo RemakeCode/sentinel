@@ -3,8 +3,8 @@ import React from 'react';
 
 import { Search, Settings } from 'lucide-react';
 import { Link } from 'react-router';
-import EmptyState from '@/shared/components/EmptyState';
-import { Header } from '@/shared/components/Header/Header';
+import EmptyState from '@/shared/components/empty-state';
+import { Header } from '@/shared/components/header/header';
 import { computeProgress } from '@/shared/utils';
 import { useGames } from '@/shared/context/games-context';
 
@@ -13,7 +13,7 @@ const Dashboard: React.FC = () => {
 
   return (
     <main className='full-layout'>
-      <Header>
+      <Header className={'dashboard-header'}>
         <div className='dashboard-header-search-bar'>
           <fieldset className='group'>
             <input type='text' placeholder='search...' />
@@ -28,10 +28,7 @@ const Dashboard: React.FC = () => {
         </Link>
       </Header>
       <section className='page-content'>
-        <div className='dashboard-section-header'>
-          <h2 className='dashboard-section-header-label'>Library</h2>
-          <div className='dashboard-section-header-actions'>View All</div>
-        </div>
+        <h2 className='dashboard-section-header'>Library</h2>
 
         {loading ? (
           <div className='dashboard-loader'>

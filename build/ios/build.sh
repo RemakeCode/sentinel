@@ -3,9 +3,9 @@ set -e
 
 # Build configuration
 APP_NAME="sentinel"
-BUNDLE_ID="com.example.sentinel"
-VERSION="0.1.0"
-BUILD_NUMBER="0.1.0"
+BUNDLE_ID="dev.sentinel"
+VERSION="0.0.1"
+BUILD_NUMBER="0.0.1"
 BUILD_DIR="build/ios"
 TARGET="simulator"
 

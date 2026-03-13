@@ -3,7 +3,7 @@ import { Link, useLocation, useParams } from 'react-router';
 import { ArrowDown, ArrowLeft, ArrowUp, Clock, EyeOff, Ghost, Glasses, History, ListCheck, Trophy } from 'lucide-react';
 import { GameBasics } from '@wa/sentinel/backend/steam';
 import './game-details.scss';
-import { Header } from '@/shared/components/Header/Header';
+import { Header } from '@/shared/components/header/header';
 import { computeProgress } from '@/shared/utils';
 
 interface AchievementProgress {
