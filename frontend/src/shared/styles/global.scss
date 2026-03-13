@@ -24,6 +24,8 @@
 :root {
   --game-card-width: 160px;
   --game-card-height: 210px;
+  --blue: #0557c8;
+  --blue-foreground: #7ab1f4;
 }
 
 html {
@@ -43,9 +45,10 @@ hr.divider {
 .full-layout {
   min-height: 100vh;
   background-color: var(--background);
+  padding:0; //Resets Oat's padding on main
 }
 
-.main-content {
+.page-content {
   padding-block: var(--space-10);
   padding-inline: var(--space-10);
 }

@@ -344,3 +344,23 @@ func (c *File) ToggleEmulatorNotification(index int) error {
 	return cfg.SaveConfig()
 
 }
+
+// SetLanguage sets the language preference
+func (c *File) SetLanguage(api string) error {
+	cfg := c.getConfig()
+
+	languages := types.GetSteamLanguages()
+	for _, lang := range languages {
+		if lang.API == api {
+			cfg.Language = lang
+			return cfg.SaveConfig()
+		}
+	}
+
+	return fmt.Errorf("language not found: %s", api)
+}
+
+// GetSteamLanguages returns the list of available Steam languages
+func (c *File) GetSteamLanguages() []types.Language {
+	return types.GetSteamLanguages()
+}

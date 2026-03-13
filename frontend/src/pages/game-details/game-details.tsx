@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router';
-import { ArrowDown, ArrowLeft, ArrowUp, Clock, EyeOff, History } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowUp, Clock, EyeOff, Ghost, Glasses, History, ListCheck, Trophy } from 'lucide-react';
 import { GameBasics } from '@wa/sentinel/backend/steam';
 import './game-details.scss';
 import { Header } from '@/shared/components/Header/Header';
@@ -106,7 +106,7 @@ const GameDetails: React.FC = () => {
         </Link>
         <h2>Achievements</h2>
       </Header>
-      <section className='main-content'>
+      <section className='page-content'>
         <div className='game-details-section'>
           <div className='game-details-container'>
             <div className='game-details-container-inner'>
@@ -116,25 +116,29 @@ const GameDetails: React.FC = () => {
               >
                 <img src={game?.PortraitImage} alt={game?.Name} />
               </div>
-
+              <progress value={stats.percentage} max={100} className='mt-6'></progress>
               <div className='game-details-stats'>
                 <div className='game-details-stat-card card'>
+                  <Trophy className='game-details-stat-icon' />
                   <span className='game-details-stat-value'>{stats.percentage}%</span>
                   <span className='game-details-stat-label'>Complete</span>
                 </div>
                 <div className='game-details-stat-card card'>
+                  <ListCheck className='game-details-stat-icon' />
                   <span className='game-details-stat-value'>
                     {stats.achievedCount} / {stats.totalCount}
                   </span>
                   <span className='game-details-stat-label'>Total</span>
                 </div>
                 <div className='game-details-stat-card card'>
+                  <Ghost className='game-details-stat-icon' />
                   <span className='game-details-stat-value'>
                     {stats.hiddenEarned} / {stats.hiddenTotal}
                   </span>
                   <span className='game-details-stat-label'>Hidden</span>
                 </div>
                 <div className='game-details-stat-card card'>
+                  <Glasses className='game-details-stat-icon' />
                   <span className='game-details-stat-value'>
                     {stats.visibleEarned} / {stats.visibleTotal}
                   </span>

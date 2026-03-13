@@ -1,4 +1,4 @@
-import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
+import { createContext, FC, ReactNode, useContext, useEffect, useState } from 'react';
 import { GameBasics } from '@wa/sentinel/backend/steam';
 import { Events } from '@wailsio/runtime';
 import { LoadAllCachedGameData } from '@wa/sentinel/backend/steam/service';
@@ -24,7 +24,7 @@ interface GamesProviderProps {
   children: ReactNode;
 }
 
-export const GamesProvider: React.FC<GamesProviderProps> = ({ children }) => {
+export const GamesProvider: FC<GamesProviderProps> = ({ children }) => {
   const [games, setGames] = useState<(GameBasics | null)[]>([]);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<number>(0);
@@ -55,7 +55,6 @@ export const GamesProvider: React.FC<GamesProviderProps> = ({ children }) => {
 
   useEffect(() => {
     const unsubscribe = Events.On('sentinel::data-updated', async () => {
-      console.log('data updated');
       await refresh();
     });
 
