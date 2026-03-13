@@ -57,7 +57,7 @@ func main() {
 	})
 
 	window.OnWindowEvent(events.Common.WindowRuntimeReady, func(e *application.WindowEvent) {
-		app.Logger.Info("Application ready!")
+		app.Logger.Info("Sentinel ready!")
 		app.Event.Emit("sentinel::ready")
 	})
 

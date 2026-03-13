@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router';
-import { ArrowLeft, DatabaseSearchIcon, Eye, EyeOff, FolderOpen, Trash2, Volume2, VolumeOff } from 'lucide-react';
+import { ArrowLeft, DatabaseSearchIcon, Eye, FolderOpen, Globe, Trash2, Volume2, VolumeOff } from 'lucide-react';
 
 import {
   AddPrefix,
   GetConfig,
+  GetSteamLanguages,
   RemovePrefix,
+  SetLanguage,
   SetSteamAPIKey,
   SetSteamDataSource,
   ToggleEmulatorNotification
@@ -47,10 +49,13 @@ const Settings: React.FC = () => {
   const [steamAPIKey, setSteamAPIKey] = useState('');
   const [steamAPIKeyHasError, setSteamAPIKeyHasError] = useState<boolean>(false);
   const [stmSrc, setStmSrc] = useState<SteamSource>();
+  const [selectedLanguage, setSelectedLanguage] = useState<string>('');
+  const [languages, setLanguages] = useState<{ api: string; displayName: string }[]>([]);
   let timeout: ReturnType<typeof setTimeout>;
 
   useEffect(() => {
     loadConfig();
+    loadLanguages();
   }, []);
 
   const handleSteamDataSourceChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -93,8 +98,30 @@ const Settings: React.FC = () => {
       const cfg = await GetConfig();
       setAppConfig(cfg);
       setStmSrc(cfg?.steamDataSource);
+      setSelectedLanguage(cfg?.language?.api || 'english');
     } catch (err) {
       window.ot?.toast('Failed to load settings', 'Error', { variant: 'error' });
+    }
+  };
+
+  const loadLanguages = async () => {
+    try {
+      const langs = await GetSteamLanguages();
+      setLanguages(langs);
+    } catch (err) {
+      console.error('Failed to load languages:', err);
+    }
+  };
+
+  const handleLanguageChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
+    try {
+      await SetLanguage(value);
+      setSelectedLanguage(value);
+      window.ot?.toast('Language updated', 'Success', { variant: 'success' });
+      await loadConfig();
+    } catch (err) {
+      window.ot?.toast('Failed to update language', 'Error', { variant: 'error' });
     }
   };
 
@@ -138,7 +165,6 @@ const Settings: React.FC = () => {
   };
 
   const handleTogglePrefix = async (index: number) => {
-    // TODO: Implement TogglePrefix in backend
     console.error('TogglePrefix not implemented yet');
   };
 
@@ -156,7 +182,8 @@ const Settings: React.FC = () => {
         </Link>
         <h2>Settings</h2>
       </Header>
-      <div className='main-content'>
+
+      <div className='page-content'>
         <div className='card settings-section'>
           <div className='flex justify-between items-center'>
             <h4 className='settings-section-title'>
@@ -167,43 +194,31 @@ const Settings: React.FC = () => {
             </button>
           </div>
           <hr className='divider' />
-          <div className='settings-table'>
+          <div className='settings-grid'>
             {allPrefixes.length === 0 ? (
               <EmptyState message='No prefix paths configured' />
             ) : (
-              <table>
-                <tbody>
-                  {allPrefixes.map((record) => (
-                    <tr key={record.index}>
-                      <td className='settings-table-cell-type'>
-                        <span className='badge success'>Prefix</span>
-                      </td>
-                      <td className='settings-table-cell-path'>
-                        <code>{record.prefix.path}</code>
-                      </td>
-                      <td className='settings-table-cell-actions'>
-                        <div className='settings-table-actions hstack gap-4'>
-                          <label>
-                            <input
-                              type='checkbox'
-                              role='switch'
-                              checked={true}
-                              onChange={() => handleTogglePrefix(record.index)}
-                            />
-                            {true ? (
-                              <Eye width={20} fill='var(--success)' />
-                            ) : (
-                              <EyeOff width={20} fill='var(--danger)' />
-                            )}
-                          </label>
-                          |
-                          <Trash2 onClick={() => handleRemovePrefix(record.index)} />
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <>
+                {allPrefixes.map((record) => (
+                  <div key={record.index} className='settings-grid-item'>
+                    <span className='badge success'>Prefix</span>
+                    <code>{record.prefix.path}</code>
+
+                    <label className='switch'>
+                      <input
+                        type='checkbox'
+                        role='switch'
+                        checked={true}
+                        disabled
+                        onChange={() => handleTogglePrefix(record.index)}
+                      />
+                    </label>
+                    <div className='settings-grid-actions' title={'Delete Prefix'}>
+                      <Trash2 size={20} onClick={() => handleRemovePrefix(record.index)} />
+                    </div>
+                  </div>
+                ))}
+              </>
             )}
           </div>
         </div>
@@ -215,45 +230,30 @@ const Settings: React.FC = () => {
             </h4>
           </div>
           <hr className='divider' />
-          <div className='settings-table'>
+          <div className='settings-grid'>
             {allEmulators.length === 0 ? (
               <EmptyState message='No emulator paths configured' />
             ) : (
-              <table>
-                <tbody>
-                  {allEmulators.map((record) => (
-                    <tr key={record.index}>
-                      <td className='settings-table-cell-type'>
-                        {record.emu.isDefault ? (
-                          <span className='badge'>Default</span>
-                        ) : (
-                          <span className='badge success'>Custom</span>
-                        )}
-                      </td>
-                      <td className='settings-table-cell-path'>
-                        <code>{record.emu.path}</code>
-                      </td>
-                      <td className='settings-table-cell-actions'>
-                        <div className='settings-table-actions hstack gap-4'>
-                          <label>
-                            <input
-                              type='checkbox'
-                              role='switch'
-                              checked={record.emu.shouldNotify}
-                              onChange={() => handleToggleNotify(record.index)}
-                            />
-                            {record.emu.shouldNotify ? (
-                              <Volume2 width={20} fill='var(--success)' />
-                            ) : (
-                              <VolumeOff width={20} fill='var(--danger)' />
-                            )}
-                          </label>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <>
+                {allEmulators.map((record) => (
+                  <div key={record.index} className='settings-grid-item'>
+                    <span className={`badge success'}`}>Path</span>
+
+                    <code>{record.emu.path}</code>
+
+                    <label className='switch' title={'Toggle Notification for this path'}>
+                      <input
+                        type='checkbox'
+                        role='switch'
+                        checked={record.emu.shouldNotify}
+                        onChange={() => handleToggleNotify(record.index)}
+                      />
+                      {record.emu.shouldNotify ? <Volume2 size={18} /> : <VolumeOff size={18} />}
+                    </label>
+                    <div />
+                  </div>
+                ))}
+              </>
             )}
           </div>
         </div>
@@ -264,7 +264,7 @@ const Settings: React.FC = () => {
           </h4>
           <hr className='divider' />
 
-          <div className='settings-table-steam-api-form'>
+          <div className='settings-table-form'>
             <fieldset className='hstack'>
               <legend>Preference</legend>
               <label className='radio-option'>
@@ -308,7 +308,7 @@ const Settings: React.FC = () => {
                   </div>
                 </div>
                 {appConfig?.steamApiKeyMasked && (
-                  <div className='settings-table-steam-api-display'>
+                  <div className='settings-table-form-display'>
                     <span>Current API Key:</span>
                     <code>{appConfig.steamApiKeyMasked}</code>
                   </div>
@@ -323,20 +323,51 @@ const Settings: React.FC = () => {
             <Eye /> Appearance
           </h4>
           <hr className='divider' />
-          <ul className='list horizontal'>
-            <li>
-              <div className='list-item-content'>
-                <strong>Dark Mode</strong>
-                <small>Use dark theme across the application</small>
+          <div className='settings-grid'>
+            <div className='settings-grid-item'>
+              <span className='settings-grid-item-label'>Dark Mode</span>
+
+              <div>
+                <span className='badge'>Coming Soon</span>
               </div>
-              <div className='list-item-actions'>
-                <label className='switch'>
-                  <input type='checkbox' checked={darkMode} onChange={(e) => setDarkMode(e.target.checked)} />
-                  <span className='slider'></span>
-                </label>
-              </div>
-            </li>
-          </ul>
+              <label className='switch'>
+                <input
+                  type='checkbox'
+                  role='switch'
+                  checked={darkMode}
+                  disabled={true}
+                  onChange={(e) => setDarkMode(e.target.checked)}
+                />
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div className='card settings-section'>
+          <h4 className='settings-section-title'>
+            <Globe /> Language
+          </h4>
+          <hr className='divider' />
+          <div className='settings-table-form'>
+            <fieldset className='hstack'>
+              <legend>Preferred Language</legend>
+              <label>
+                <select
+                  className='settings-select'
+                  value={selectedLanguage}
+                  onChange={handleLanguageChange}
+                  disabled={true}
+                >
+                  {languages.map((lang: { api: string; displayName: string }) => (
+                    <option key={lang.api} value={lang.api}>
+                      {lang.displayName}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <span className='badge'>Coming Soon</span>
+            </fieldset>
+          </div>
         </div>
       </div>
     </main>

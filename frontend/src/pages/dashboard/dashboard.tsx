@@ -27,7 +27,7 @@ const Dashboard: React.FC = () => {
           <Settings className='dashboard-header-settings-link-icon' />
         </Link>
       </Header>
-      <section className='main-content'>
+      <section className='page-content'>
         <div className='dashboard-section-header'>
           <h2 className='dashboard-section-header-label'>Library</h2>
           <div className='dashboard-section-header-actions'>View All</div>

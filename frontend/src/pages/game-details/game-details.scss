@@ -5,9 +5,9 @@
 
   &-section {
     display: grid;
-    grid-template-columns: 300px 2fr;
-    gap: var(--space-8);
-    align-items: center; // Vertically center the columns
+    grid-template-columns: minmax(200px, 300px) 1fr;
+    gap: var(--space-2);
+    align-items: center;
   }
 
   &-container {
@@ -18,8 +18,9 @@
     &-inner {
       display: flex;
       position: fixed;
+      top: 120px;
       flex-direction: column;
-      margin-block-start: var(--space-6);
+      width: min(270px, 20vw);
     }
   }
 
@@ -27,9 +28,9 @@
   &-image {
     display: flex;
     padding: 0;
+    width: 100%;
     box-shadow: var(--shadow-medium);
     border-radius: var(--radius-large);
-    aspect-ratio: 9/13;
 
     > img {
       width: 100%;
@@ -50,26 +51,40 @@
     margin-block-start: var(--space-6);
   }
 
-  &-stat-card {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: var(--space-4);
-    gap: var(--space-1);
-  }
+  &-stat {
+    &-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: var(--space-2);
+      gap: var(--space-1);
+      position: relative;
+    }
 
-  &-stat-value {
-    font-size: var(--text-3);
-    font-weight: var(--font-bold);
-    color: var(--foreground);
-  }
+    &-icon {
+      position: absolute;
+      right: 0;
+      translate: 50%;
+      width: 80%;
+      height: 80%;
+      color: var(--warning);
+      opacity: 0.1;
+      transition: var(--transition-fast);
+    }
 
-  &-stat-label {
-    font-size: var(--text-7);
-    color: var(--muted-foreground);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
+    &-value {
+      font-size: clamp(0.7rem, 1.2vw, var(--text-3));
+      font-weight: var(--font-bold);
+      color: var(--foreground);
+    }
+
+    &-label {
+      font-size: clamp(0.5rem, 0.8vw, var(--text-7));
+      color: var(--muted-foreground);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
   }
 
   &-percentage {
@@ -78,7 +93,8 @@
     flex-direction: column;
     gap: var(--space-2);
     align-items: center;
-    &-text{
+
+    &-text {
       font-size: var(--text-2);
       font-weight: var(--font-bold);
     }
@@ -88,6 +104,7 @@
     display: flex;
     flex-direction: column;
     align-items: flex-end;
+
     &-value {
       font-size: var(--text-1);
       font-weight: var(--font-bold);

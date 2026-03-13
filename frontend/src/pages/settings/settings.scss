@@ -2,6 +2,7 @@
   &-header {
     gap: var(--space-3);
   }
+
   &-section {
     margin-block-start: var(--space-12);
 
@@ -13,26 +14,24 @@
     }
   }
 
-  &-table {
-    border: 1px solid var(--border);
-    padding: var(--space-5);
-    border-radius: var(--radius-medium);
-    margin-bottom: var(--space-12);
-    background: var(--primary-foreground);
+  &-grid {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding: var(--space-4);
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
-    }
 
-    &-cell-type {
-      width: 10%;
-      min-width: 80px;
-    }
+    &-item {
+      display: grid;
+      grid-template-columns: 120px 1fr 100px 40px;
+      gap: var(--space-3);
+      align-items: center;
+      border-radius: var(--radius-medium);
 
-    &-cell-path {
-      width: 70%;
-      min-width: 200px;
+      > .badge {
+        width: 80px;
+        justify-content: center;
+      }
 
       code {
         overflow: hidden;
@@ -41,61 +40,41 @@
         max-width: 100%;
         background: none;
       }
-    }
 
-
-    @media (min-width: 1280px) {
-      &-cell-type {
-        width: 10%;
+      &-label {
+        font-weight: var(--font-semibold);
       }
 
-      &-cell-path {
-        width: 70%;
-        line-clamp: 2;
-      }
-
-      &-cell-actions {
-        width: 20%;
-      }
     }
 
     &-actions {
-      text-align: right;
+      display: flex;
+      align-items: center;
+      justify-content: center;
 
-      .label {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-
-      >svg {
-        cursor: pointer
-      }
-
-      .disabled {
-        cursor: not-allowed;
-        opacity: 0.2
+      svg {
+        cursor: pointer;
+        color: var(--danger);
+        transition: (--transition);
       }
     }
+  }
 
-    &-steam-api {
-      &-form {
-        flex-direction: column;
-        max-width: 600px;
+  &-table {
+    &-form {
+      flex-direction: column;
+      max-width: 600px;
 
-        .form-inline {
-          display: flex;
-          align-items: start;
-          justify-content: center;
-          gap: var(--space-2);
+      .form-inline {
+        display: flex;
+        align-items: start;
+        justify-content: center;
+        gap: var(--space-2);
 
-          > :is(button) {
-            margin-block-start: var(--space-1);
-
-          }
+        > :is(button) {
+          margin-block-start: var(--space-1);
         }
       }
-
 
       &-display {
         display: flex;
@@ -111,9 +90,13 @@
         }
       }
     }
-
   }
 }
+
+.settings-select {
+  min-width: 150px;
+}
+
 
 @keyframes fadeIn {
   from {
@@ -126,3 +109,4 @@
     transform: translateY(0);
   }
 }
+
