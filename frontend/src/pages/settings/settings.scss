@@ -1,31 +1,15 @@
 .settings {
   &-header {
-    gap: var(--space-3);
-
-    &-actions {
-      display: flex;
-      align-items: center;
-      gap: var(--space-3);
-    }
-  }
-
-  .icon-btn {
     display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    padding: 0;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-small);
-    background: var(--card);
-    color: var(--foreground);
-    cursor: pointer;
-    transition: var(--transition);
+    justify-content: space-between;
+    &-nav {
+      display: flex;
+      justify-content: center;
+      align-items: center;
 
-    &:hover {
-      background: var(--muted);
-      border-color: var(--muted-foreground);
+      > h2 {
+        margin: 0;
+      }
     }
   }
 
@@ -76,11 +60,11 @@
       align-items: center;
       justify-content: center;
 
-			svg {
-				cursor: pointer;
-				color: var(--danger);
-				transition: var(--transition);
-			}
+      svg {
+        cursor: pointer;
+        color: var(--danger);
+        transition: var(--transition);
+      }
     }
   }
 
@@ -118,5 +102,5 @@
 }
 
 .settings-select {
-	min-width: 150px;
+  min-width: 150px;
 }

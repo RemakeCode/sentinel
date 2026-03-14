@@ -185,16 +185,16 @@ const Settings: FC = () => {
   return (
     <main className='full-layout'>
       <Header className='settings-header'>
-        <Link to='/' viewTransition>
-          <ArrowLeft />
-        </Link>
-        <h2>Settings</h2>
-
-        <div className='icon-btn' onClick={handleAboutDialog} title='About'>
+        <div className='settings-header-nav'>
+          <Link to='/' viewTransition>
+            <ArrowLeft />
+          </Link>
+          <h2>Settings</h2>
+        </div>
+        <div onClick={handleAboutDialog} title='About'>
           <Info size={20} />
         </div>
       </Header>
-
       <div className='page-content'>
         <div className='card settings-section'>
           <div className='flex justify-between items-center'>
