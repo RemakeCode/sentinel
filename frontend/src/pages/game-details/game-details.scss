@@ -86,30 +86,9 @@
     }
   }
 
-  &-percentage {
-    color: var(--foreground);
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-    align-items: center;
 
-    &-text {
-      font-size: var(--text-2);
-      font-weight: var(--font-bold);
-    }
-  }
 
-  &-counts {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
 
-    &-value {
-      font-size: var(--text-1);
-      font-weight: var(--font-bold);
-      color: var(--foreground);
-    }
-  }
 
   &-ach {
     &-header {
@@ -248,23 +227,19 @@
       min-width: 150px;
       text-align: right;
       align-self: center;
-    }
-  }
-}
+		}
+	}
 
-progress {
-  -webkit-appearance: none;
-}
+	progress {
+		-webkit-appearance: none;
+	}
 
-::-webkit-progress-bar {
-  background-color: orange;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+	@keyframes fadeIn {
+		from {
+			opacity: 0;
+		}
+		to {
+			opacity: 1;
+		}
+	}
 }

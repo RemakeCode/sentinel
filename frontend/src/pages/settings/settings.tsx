@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import type { FC } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { ArrowLeft, DatabaseSearchIcon, Eye, FolderOpen, Globe, Info, Trash2, Volume2, VolumeOff } from 'lucide-react';
 
@@ -43,7 +44,7 @@ interface PrefixItem {
   index: number;
 }
 
-const Settings: React.FC = () => {
+const Settings: FC = () => {
   const [appConfig, setAppConfig] = useState<File | null>(null);
   const [darkMode, setDarkMode] = useState(true);
   const [steamAPIKey, setSteamAPIKey] = useState('');
@@ -51,7 +52,6 @@ const Settings: React.FC = () => {
   const [stmSrc, setStmSrc] = useState<SteamSource>();
   const [selectedLanguage, setSelectedLanguage] = useState<string>('');
   const [languages, setLanguages] = useState<{ api: string; displayName: string }[]>([]);
-  const [showAbout, setShowAbout] = useState(false);
   let timeout: ReturnType<typeof setTimeout>;
 
   useEffect(() => {
@@ -249,7 +249,7 @@ const Settings: React.FC = () => {
               <>
                 {allEmulators.map((record) => (
                   <div key={record.index} className='settings-grid-item'>
-                    <span className={`badge success'}`}>Path</span>
+                    <span className='badge success'>Path</span>
 
                     <code>{record.emu.path}</code>
 

@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from 'react';
+import type { CSSProperties, FC } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router';
 import { ArrowDown, ArrowLeft, ArrowUp, Clock, EyeOff, Ghost, Glasses, History, ListCheck, Trophy } from 'lucide-react';
 import { GameBasics } from '@wa/sentinel/backend/steam';
@@ -24,7 +25,7 @@ const SORT_OPTIONS: { value: SortOption; icon: React.ReactNode; active: SortOpti
 
 const STORAGE_KEY = 'game-details-sort';
 
-const GameDetails: React.FC = () => {
+const GameDetails: FC = () => {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
   const game = location.state?.game as GameBasics | undefined;
@@ -112,7 +113,7 @@ const GameDetails: React.FC = () => {
             <div className='game-details-container-inner'>
               <div
                 className='game-details-image card'
-                style={{ viewTransitionName: `game-image-${id}` } as React.CSSProperties}
+                style={{ viewTransitionName: `game-image-${id}` } as CSSProperties}
               >
                 <img src={game?.PortraitImage} alt={game?.Name} />
               </div>

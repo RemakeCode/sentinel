@@ -52,7 +52,7 @@ hr.divider {
 }
 
 progress {
-  --webkit-appearance: none;
+	-webkit-appearance: none;
   border: 1px solid var(--faint-foreground);
   opacity: 1;
   &::-webkit-progress-bar {
