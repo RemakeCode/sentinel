@@ -101,7 +101,7 @@ const GameDetails: FC = () => {
 
   return (
     <main className='full-layout'>
-      <Header className={'game-details-header'}>
+      <Header>
         <Link to='/' viewTransition>
           <ArrowLeft />
         </Link>
