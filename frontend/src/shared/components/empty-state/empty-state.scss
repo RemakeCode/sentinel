@@ -17,14 +17,17 @@
   }
 
   &-icon {
-    width: 64px;
-    height: 64px;
     opacity: 0.5;
+    >svg {
+      width: 80px;
+      height: 80px;
+    }
   }
 
   &-message {
     margin: 0;
     color: var(--muted-foreground);
     font-size: var(--text-6);
+    font-weight: var(--font-semibold);
   }
 }

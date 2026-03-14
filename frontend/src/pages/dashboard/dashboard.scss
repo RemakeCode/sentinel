@@ -47,7 +47,14 @@
       aspect-ratio: 9 / 13;
     }
   }
+
+  &-empty-state {
+    border: 2px solid var(--border);
+    height: 60vh;
+    border-radius: var(--radius-large);
+  }
 }
+
 
 .games {
   &-container {

@@ -1,7 +1,7 @@
 import type { FC } from 'react';
 import './dashboard.scss';
 
-import { Settings } from 'lucide-react';
+import { Gamepad2, Settings } from 'lucide-react';
 import { Link } from 'react-router';
 import EmptyState from '@/shared/components/empty-state';
 import { Header } from '@/shared/components/header/header';
@@ -16,7 +16,7 @@ const Dashboard: FC = () => {
     <main className='full-layout'>
       <Header className={'dashboard-header'}>
         <div className='logo'>
-          <img src={logo} alt='sentinel logo' height={30} />
+          <img src={logo} alt='sentinel logo' width='35px' height='35px' />
         </div>
         {/*<div className='dashboard-header-search-bar'>*/}
         {/*  <fieldset className='group'>*/}
@@ -43,7 +43,9 @@ const Dashboard: FC = () => {
               ))}
           </div>
         ) : games.length === 0 && status === 0 ? (
-          <EmptyState message='No games found.' />
+          <div className='dashboard-empty-state'>
+            <EmptyState message='No games found.' icon={<Gamepad2 />} />
+          </div>
         ) : (
           <div className='games-container'>
             {games.map((game, idx) => {

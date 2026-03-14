@@ -20,11 +20,21 @@
 @import '@knadh/oat/css/tooltip.css';
 @import '@knadh/oat/css/utilities.css';
 
+
+@font-face {
+  font-family: 'Raleway';
+  src: url('src/assets/fonts/Raleway.woff2') format('woff2');
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400 900;
+}
+
 :root {
   --game-card-width: 160px;
   --game-card-height: 210px;
   --blue: #0557c8;
   --blue-foreground: #7ab1f4;
+  --font-sans: "Raleway", sans-serif;
 }
 
 html {
@@ -51,10 +61,22 @@ hr.divider {
   padding-inline: var(--space-10);
 }
 
+.logo {
+  width: 50px;
+  height: 50px;
+  border-radius: var(--radius-medium);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #09090b;
+}
+
+
 progress {
-	-webkit-appearance: none;
+  -webkit-appearance: none;
   border: 1px solid var(--faint-foreground);
   opacity: 1;
+
   &::-webkit-progress-bar {
     background-color: transparent;
   }
