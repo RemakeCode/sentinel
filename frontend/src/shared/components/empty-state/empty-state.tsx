@@ -4,7 +4,7 @@ import './empty-state.scss';
 
 interface EmptyStateProps {
   message?: string;
-  icon: ReactNode;
+  icon?: ReactNode;
 }
 
 const EmptyState: FC<EmptyStateProps> = ({ message = 'No data available', icon }) => {
