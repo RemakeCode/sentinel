@@ -1,4 +1,4 @@
-import React from 'react';
+import type { FC } from 'react';
 import { FileX } from 'lucide-react';
 import './empty-state.scss';
 
@@ -6,7 +6,7 @@ interface EmptyStateProps {
   message?: string;
 }
 
-const EmptyState: React.FC<EmptyStateProps> = ({ message = 'No data available' }) => {
+const EmptyState: FC<EmptyStateProps> = ({ message = 'No data available' }) => {
   return (
     <div className='empty-state'>
       <div className='empty-state-content'>

@@ -1,27 +1,31 @@
+import type { FC } from 'react';
 import './dashboard.scss';
-import React from 'react';
 
-import { Search, Settings } from 'lucide-react';
+import { Settings } from 'lucide-react';
 import { Link } from 'react-router';
 import EmptyState from '@/shared/components/empty-state';
 import { Header } from '@/shared/components/header/header';
 import { computeProgress } from '@/shared/utils';
 import { useGames } from '@/shared/context/games-context';
+import logo from '@/assets/images/sentinel.png';
 
-const Dashboard: React.FC = () => {
+const Dashboard: FC = () => {
   const { games, loading, status } = useGames();
 
   return (
     <main className='full-layout'>
       <Header className={'dashboard-header'}>
-        <div className='dashboard-header-search-bar'>
-          <fieldset className='group'>
-            <input type='text' placeholder='search...' />
-            <button className='outline'>
-              <Search />
-            </button>
-          </fieldset>
+        <div className='logo'>
+          <img src={logo} alt='sentinel logo' height={30} />
         </div>
+        {/*<div className='dashboard-header-search-bar'>*/}
+        {/*  <fieldset className='group'>*/}
+        {/*    <input type='text' placeholder='search...' />*/}
+        {/*    <button className='outline'>*/}
+        {/*      <Search />*/}
+        {/*    </button>*/}
+        {/*  </fieldset>*/}
+        {/*</div>*/}
 
         <Link to='/settings' viewTransition className='dashboard-header-settings-link'>
           <Settings className='dashboard-header-settings-link-icon' />
