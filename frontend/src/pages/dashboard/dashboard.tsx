@@ -7,7 +7,7 @@ import EmptyState from '@/shared/components/empty-state';
 import { Header } from '@/shared/components/header/header';
 import { computeProgress } from '@/shared/utils';
 import { useGames } from '@/shared/context/games-context';
-import logo from '@/assets/images/sentinel.png';
+import logo from '@/assets/images/sentinel.webp';
 
 const Dashboard: FC = () => {
   const { games, loading, status } = useGames();
@@ -16,7 +16,11 @@ const Dashboard: FC = () => {
     <main className='full-layout'>
       <Header className={'dashboard-header'}>
         <div className='logo'>
-          <img src={logo} alt='sentinel logo' width='35px' height='35px' />
+          <img src={logo} alt='sentinel logo' width='50px' height='50px' />
+          <div className='logo-text'>
+            <div className='logo-text-label'>Sentinel</div>
+            <div className='logo-text-meta'>An achievement watcher</div>
+          </div>
         </div>
         {/*<div className='dashboard-header-search-bar'>*/}
         {/*  <fieldset className='group'>*/}
