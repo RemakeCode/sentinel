@@ -11,7 +11,12 @@
         margin: 0;
       }
     }
+    &-about-icon {
+      color: var(--muted-foreground);
+    }
   }
+
+
 
   &-section {
     margin-block-start: var(--space-12);
