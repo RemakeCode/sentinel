@@ -191,7 +191,7 @@ const Settings: FC = () => {
           </Link>
           <h2>Settings</h2>
         </div>
-        <div onClick={handleAboutDialog} title='About'>
+        <div onClick={handleAboutDialog} title='About' className='settings-header-about-icon'>
           <Info size={20} />
         </div>
       </Header>
