@@ -1,4 +1,4 @@
-import type { FC } from 'react';
+import type { CSSProperties, FC } from 'react';
 import './dashboard.scss';
 
 import { Gamepad2, Settings } from 'lucide-react';
@@ -14,7 +14,7 @@ const Dashboard: FC = () => {
 
   return (
     <main className='full-layout'>
-      <Header className={'dashboard-header'}>
+      <Header className='dashboard-header'>
         <div className='logo'>
           <img src={logo} alt='sentinel logo' width='50px' height='50px' />
           <div className='logo-text'>
@@ -57,7 +57,7 @@ const Dashboard: FC = () => {
 
               return (
                 <Link
-                  to={`/game/${idx}`}
+                  to={`/game/${game?.AppID}`}
                   state={{ game }}
                   viewTransition
                   className='games-item'
@@ -65,7 +65,7 @@ const Dashboard: FC = () => {
                 >
                   <div
                     className='games-item-card card'
-                    style={{ viewTransitionName: `game-image-${idx}` } as React.CSSProperties}
+                    style={{ viewTransitionName: `game-image-${idx}` } as CSSProperties}
                   >
                     <div className='games-item-progress'>
                       <progress value={progress} max={100} />

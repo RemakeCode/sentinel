@@ -13,6 +13,9 @@ var UserCacheDir, _ = os.UserCacheDir()
 var ConfigDir = filepath.Join(UserCacheDir, "sentinel")
 var ConfigPath = filepath.Join(ConfigDir, "config.json")
 
+// Media directory paths
+var MediaDir = filepath.Join(ConfigDir, "media")
+
 // Cache directory paths
 var ACHCacheDir = filepath.Join(ConfigDir, "cache")
 var ACHCacheDataDir = filepath.Join(ACHCacheDir, "data")

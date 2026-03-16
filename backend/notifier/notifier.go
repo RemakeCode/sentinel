@@ -75,6 +75,16 @@ func (s *Service) SendNotification(appId string, earnedAchievement map[string]ac
 						}
 					}
 
+					// Add sound file if configured
+					if cfg.NotificationSound != "" {
+						soundPath := filepath.Join(backend.MediaDir, cfg.NotificationSound)
+						if _, err := os.Stat(soundPath); err == nil {
+							args = append(args, "--sound-file", soundPath)
+						} else {
+							slog.Warn("Sound file not found, skipping sound", "sound", cfg.NotificationSound, "path", soundPath)
+						}
+					}
+
 					cmd := exec.Command("notify-send", args...)
 
 					if err := cmd.Run(); err != nil {

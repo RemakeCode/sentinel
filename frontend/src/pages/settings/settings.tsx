@@ -5,10 +5,12 @@ import { ArrowLeft, DatabaseSearchIcon, Eye, FolderOpen, Globe, Info, Trash2, Vo
 
 import {
   AddPrefix,
+  GetAvailableSounds,
   GetConfig,
   GetSteamLanguages,
   RemovePrefix,
   SetLanguage,
+  SetNotificationSound,
   SetSteamAPIKey,
   SetSteamDataSource,
   ToggleEmulatorNotification
@@ -52,11 +54,14 @@ const Settings: FC = () => {
   const [stmSrc, setStmSrc] = useState<SteamSource>();
   const [selectedLanguage, setSelectedLanguage] = useState<string>('');
   const [languages, setLanguages] = useState<{ api: string; displayName: string }[]>([]);
+  const [availableSounds, setAvailableSounds] = useState<{ name: string; value: string }[]>([]);
+  const [selectedSound, setSelectedSound] = useState<string>('');
   let timeout: ReturnType<typeof setTimeout>;
 
   useEffect(() => {
     loadConfig();
     loadLanguages();
+    loadAvailableSounds();
   }, []);
 
   const handleSteamDataSourceChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -100,6 +105,7 @@ const Settings: FC = () => {
       setAppConfig(cfg);
       setStmSrc(cfg?.steamDataSource);
       setSelectedLanguage(cfg?.language?.api || 'english');
+      setSelectedSound(cfg?.notificationSound || '');
     } catch (err) {
       window.ot?.toast('Failed to load settings', 'Error', { variant: 'error' });
     }
@@ -114,6 +120,15 @@ const Settings: FC = () => {
     }
   };
 
+  const loadAvailableSounds = async () => {
+    try {
+      const sounds = await GetAvailableSounds();
+      setAvailableSounds(sounds);
+    } catch (err) {
+      console.error('Failed to load available sounds:', err);
+    }
+  };
+
   const handleLanguageChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     try {
@@ -123,6 +138,20 @@ const Settings: FC = () => {
       await loadConfig();
     } catch (err) {
       window.ot?.toast('Failed to update language', 'Error', { variant: 'error' });
+    }
+  };
+
+  const handleSoundChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
+    try {
+      await SetNotificationSound(value);
+      setSelectedSound(value);
+      const selectedSoundOption = availableSounds.find((s) => s.value === value);
+      const soundLabel = selectedSoundOption ? selectedSoundOption.name : value;
+      window.ot?.toast(`Notification sound set to ${soundLabel}`, 'Success', { variant: 'success' });
+      await loadConfig();
+    } catch (err) {
+      window.ot?.toast('Failed to update notification sound', 'Error', { variant: 'error' });
     }
   };
 
@@ -185,7 +214,7 @@ const Settings: FC = () => {
   return (
     <main className='full-layout'>
       <Header className='settings-header'>
-        <div className='settings-header-nav'>
+        <div className='header-nav'>
           <Link to='/' viewTransition>
             <ArrowLeft />
           </Link>
@@ -378,6 +407,27 @@ const Settings: FC = () => {
                 </select>
               </label>
               <span className='badge'>Coming Soon</span>
+            </fieldset>
+          </div>
+        </div>
+
+        <div className='card settings-section'>
+          <h4 className='settings-section-title'>
+            <Volume2 /> Notification Sound
+          </h4>
+          <hr className='divider' />
+          <div className='settings-table-form'>
+            <fieldset className='hstack'>
+              <legend>Sound Selection</legend>
+              <label>
+                <select className='settings-select' value={selectedSound} onChange={handleSoundChange}>
+                  {availableSounds.map((sound) => (
+                    <option key={sound.value} value={sound.value}>
+                      {sound.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </fieldset>
           </div>
         </div>

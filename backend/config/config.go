@@ -28,7 +28,6 @@ type Prefix struct {
 type Emulator struct {
 	Path         string `json:"path"`
 	ShouldNotify bool   `json:"shouldNotify"`
-	IsDefault    bool   `json:"isDefault"`
 }
 
 type SteamSource string
@@ -39,6 +38,11 @@ const (
 	External SteamSource = "external"
 )
 
+type SoundOption struct {
+	Name  string `json:"name"`
+	Value string `json:"value"`
+}
+
 //wails:internal
 type File struct {
 	app               *application.App
@@ -48,6 +52,7 @@ type File struct {
 	SteamAPIKey       string         `json:"SteamAPIKey"`
 	SteamDataSource   SteamSource    `json:"steamDataSource"`
 	SteamAPIKeyMasked string         `json:"steamApiKeyMasked"`
+	NotificationSound string         `json:"notificationSound"`
 }
 
 var defaultEmulatorPaths = []Emulator{
@@ -106,8 +111,9 @@ func (c *File) ServiceStartup(ctx context.Context, options application.ServiceOp
 	if os.IsNotExist(err) {
 		// File doesn't exist - initialize default config
 		defaultConfig := File{
-			Emulators:       defaultEmulatorPaths,
-			SteamDataSource: "external",
+			Emulators:         defaultEmulatorPaths,
+			SteamDataSource:   "external",
+			NotificationSound: "steam-deck.wav",
 			Language: types.Language{
 				DisplayName: "English", API: "english", WebAPI: "en",
 			},
@@ -363,4 +369,43 @@ func (c *File) SetLanguage(api string) error {
 // GetSteamLanguages returns the list of available Steam languages
 func (c *File) GetSteamLanguages() []types.Language {
 	return types.GetSteamLanguages()
+}
+
+// GetAvailableSounds returns the list of available notification sound files
+func (c *File) GetAvailableSounds() []SoundOption {
+	return []SoundOption{
+		{Name: "Disabled", Value: ""},
+		{Name: "GOG Galaxy", Value: "gog-galaxy.wav"},
+		{Name: "PlayStation", Value: "playstation.wav"},
+		{Name: "PlayStation 5 Platinum", Value: "playstation5-platinum.wav"},
+		{Name: "PlayStation 5", Value: "playstation5.wav"},
+		{Name: "Steam Deck", Value: "steam-deck.wav"},
+		{Name: "Windows 10", Value: "windows-10.wav"},
+		{Name: "Windows 11", Value: "windows-11.wav"},
+		{Name: "Windows 8", Value: "windows-8.wav"},
+		{Name: "Xbox Rare", Value: "xbox-rare.wav"},
+		{Name: "Xbox", Value: "xbox.wav"},
+	}
+}
+
+// SetNotificationSound sets the notification sound preference
+func (c *File) SetNotificationSound(sound string) error {
+	cfg := c.getConfig()
+	availableSounds := cfg.GetAvailableSounds()
+
+	// Validate sound exists or is empty string (no sound)
+	valid := false
+	for _, s := range availableSounds {
+		if s.Value == sound {
+			valid = true
+			break
+		}
+	}
+
+	if !valid {
+		return fmt.Errorf("invalid sound: %s", sound)
+	}
+
+	cfg.NotificationSound = sound
+	return cfg.SaveConfig()
 }
