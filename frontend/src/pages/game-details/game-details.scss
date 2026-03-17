@@ -37,6 +37,9 @@
       aspect-ratio: 9/13;
       object-fit: cover;
       object-position: bottom;
+      will-change: transform;
+      transform: translateZ(0);
+      backface-visibility: hidden;
     }
   }
 

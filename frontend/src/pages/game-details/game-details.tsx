@@ -19,16 +19,15 @@ const SORT_OPTIONS: { value: SortOption; icon: React.ReactNode; active: SortOpti
 
 const STORAGE_KEY = 'game-details-sort';
 
-interface GlobalAchievement {
-  name: string;
-  percent: number;
-}
+let rerender = 0;
 
 const GameDetails: FC = () => {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
   const game = location.state?.game as GameBasics | undefined;
   const idx = location.state?.idx;
+  rerender++;
+  console.log({ rerender });
 
   const [globalPercentages, setGlobalPercentages] = useState<Map<string, number>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
