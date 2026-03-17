@@ -1,4 +1,5 @@
-import type { FC } from 'react';
+import './settings.scss';
+import type { ChangeEvent, FC } from 'react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { ArrowLeft, DatabaseSearchIcon, Eye, FolderOpen, Globe, Info, Trash2, Volume2, VolumeOff } from 'lucide-react';
@@ -17,7 +18,6 @@ import {
 } from '@wa/sentinel/backend/config/file';
 import { GetMediaFileBase64 } from '@wa/sentinel/backend/notifier/service';
 
-import './settings.scss';
 import EmptyState from '@/shared/components/empty-state';
 import { Emulator, File, Prefix, SteamSource } from '@wa/sentinel/backend/config/models';
 
@@ -60,12 +60,10 @@ const Settings: FC = () => {
   let timeout: ReturnType<typeof setTimeout>;
 
   useEffect(() => {
-    loadConfig();
-    loadLanguages();
-    loadAvailableSounds();
+    Promise.all([loadConfig(), loadLanguages(), loadAvailableSounds()]);
   }, []);
 
-  const handleSteamDataSourceChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSteamDataSourceChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value as SteamSource;
     setStmSrc(value);
     if (value === SteamSource.External) {

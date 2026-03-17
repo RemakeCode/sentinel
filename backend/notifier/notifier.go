@@ -97,8 +97,6 @@ func (s *Service) ServiceStartup(ctx context.Context, options application.Servic
 // Accessible via Wails bindings.
 // wails:internal
 func (s *Service) SendNotification(appId string, earnedAchievement map[string]ach.Achievement) error {
-
-	slog.Info("earnedAchievement", earnedAchievement)
 	app := application.Get()
 	app.Event.Emit("sentinel::data-updated")
 
