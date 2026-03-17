@@ -368,6 +368,10 @@ func (s *Service) handleAchievementsWriteEvent(path, appId string) {
 		}
 
 	}
+
+	if err := ach.SaveAch(path); err != nil {
+		slog.Error("Failed to save achievements after sending notification", "error", err)
+	}
 }
 
 // triggerMetadataFetch fetches Steam metadata for the given appIds in a background goroutine
