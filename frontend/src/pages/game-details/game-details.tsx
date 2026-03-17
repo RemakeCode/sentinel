@@ -1,18 +1,12 @@
 import type { CSSProperties, FC } from 'react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router';
 import { ArrowDown, ArrowLeft, ArrowUp, Clock, EyeOff, Ghost, Glasses, History, ListCheck, Trophy } from 'lucide-react';
 import { GameBasics } from '@wa/sentinel/backend/steam';
+import { GetGlobalAchievementPercentages } from '@wa/sentinel/backend/steam/service';
 import './game-details.scss';
 import { Header } from '@/shared/components/header/header';
 import { computeProgress } from '@/shared/utils';
-
-interface AchievementProgress {
-  earned?: boolean;
-  earned_time?: number;
-  max_progress?: number;
-  progress?: number;
-}
 
 type SortOption = 'name-asc' | 'name-desc' | 'time-newest' | 'time-oldest';
 
@@ -25,10 +19,40 @@ const SORT_OPTIONS: { value: SortOption; icon: React.ReactNode; active: SortOpti
 
 const STORAGE_KEY = 'game-details-sort';
 
+interface GlobalAchievement {
+  name: string;
+  percent: number;
+}
+
 const GameDetails: FC = () => {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
   const game = location.state?.game as GameBasics | undefined;
+  const idx = location.state?.idx;
+
+  const [globalPercentages, setGlobalPercentages] = useState<Map<string, number>>(new Map());
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchGlobalPercentages = async () => {
+      if (!id) return;
+
+      try {
+        const achievements = await GetGlobalAchievementPercentages(id);
+        const percentageMap = new Map<string, number>();
+        achievements.forEach((ach) => {
+          percentageMap.set(ach.name, parseFloat(ach.percent));
+        });
+        setGlobalPercentages(percentageMap);
+      } catch (error) {
+        console.error('Error fetching global achievement percentages:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchGlobalPercentages();
+  }, [id]);
 
   const [sortBy, setSortBy] = useState<SortOption>(() => {
     if (typeof window !== 'undefined') {
@@ -96,16 +120,19 @@ const GameDetails: FC = () => {
 
   const formatUnlockTime = (timestamp: number | undefined): string => {
     if (!timestamp) return '';
-    return new Date(timestamp * 1000).toLocaleString();
+    const tsSeconds = timestamp > Math.floor(Date.now() / 1000) ? Math.floor(timestamp / 1000) : timestamp;
+    return new Date(tsSeconds * 1000).toLocaleString();
   };
 
   return (
     <main className='full-layout'>
       <Header>
-        <Link to='/' viewTransition>
-          <ArrowLeft />
-        </Link>
-        <h2>Achievements</h2>
+        <div className='header-nav'>
+          <Link to='/' viewTransition>
+            <ArrowLeft />
+          </Link>
+          <h2>Achievements</h2>
+        </div>
       </Header>
       <section className='page-content'>
         <div className='game-details-section'>
@@ -113,7 +140,7 @@ const GameDetails: FC = () => {
             <div className='game-details-container-inner'>
               <div
                 className='game-details-image card'
-                style={{ viewTransitionName: `game-image-${id}` } as CSSProperties}
+                style={{ viewTransitionName: `game-image-${idx}` } as CSSProperties}
               >
                 <img src={game?.PortraitImage} alt={game?.Name} />
               </div>
@@ -192,8 +219,17 @@ const GameDetails: FC = () => {
                         </div>
                       )}
                     </div>
-                    <div className='game-details-ach-unlocktime'>
-                      {currentAch?.earned_time ? formatUnlockTime(currentAch.earned_time) : 'Not Unlocked'}
+                    <div className='game-details-ach-meta'>
+                      <code className='game-details-ach-unlocktime'>
+                        {currentAch?.earned_time ? formatUnlockTime(currentAch.earned_time) : 'Not Unlocked'}
+                      </code>
+                      {isLoading ? (
+                        <span role='status' className='skeleton line' style={{ width: '140px', height: '1em' }}></span>
+                      ) : globalPercentages.has(ach.Name) ? (
+                        <code className='game-details-ach-global-percent fade-in'>
+                          {globalPercentages.get(ach.Name)}% of players have this
+                        </code>
+                      ) : null}
                     </div>
                   </li>
                 );

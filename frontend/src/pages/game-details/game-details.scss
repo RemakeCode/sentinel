@@ -87,9 +87,6 @@
   }
 
 
-
-
-
   &-ach {
     &-header {
       display: flex;
@@ -190,7 +187,7 @@
       gap: var(--space-2);
 
       > .blur {
-        filter: blur(5px);
+        filter: blur(4px);
         cursor: pointer;
         transition: filter var(--transition);
 
@@ -219,27 +216,48 @@
       }
     }
 
-    &-unlocktime {
-      margin-left: auto;
-      font-size: var(--text-6);
-      color: var(--muted-foreground);
-      white-space: nowrap;
-      min-width: 150px;
-      text-align: right;
-      align-self: center;
-		}
-	}
+  &-meta {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    margin-left: auto;
+    align-self: center;
+    min-width: 150px;
+    text-align: right;
+  }
 
-	progress {
-		-webkit-appearance: none;
-	}
+  &-unlocktime {
+    color: var(--muted-foreground);
+    white-space: nowrap;
+    background: none;
+    font-weight: var(--font-bold);
+    font-size: var(--text-6);
+  }
 
-	@keyframes fadeIn {
-		from {
-			opacity: 0;
-		}
-		to {
-			opacity: 1;
-		}
-	}
+  &-global-percent {
+    white-space: nowrap;
+    color: var(--muted-foreground);
+    opacity: 0.8;
+    background: none;
+    font-size: var(--text-6);
+    font-weight: var(--font-bold);
+
+    &.fade-in {
+      animation: fadeIn 300ms ease-in forwards;
+    }
+  }
+}
+
+  progress {
+    -webkit-appearance: none;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
 }
