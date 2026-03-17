@@ -350,6 +350,8 @@ func (s *Service) handleEvent(event fsnotify.Event) {
 
 // handleAchievementsWriteEvent processes write events on achievements.json files
 func (s *Service) handleAchievementsWriteEvent(path, appId string) {
+	app := application.Get()
+
 	newAch, err := ach.ParseAch(path)
 
 	if err := ach.SaveAch(filepath.Dir(path)); err != nil {
@@ -372,6 +374,8 @@ func (s *Service) handleAchievementsWriteEvent(path, appId string) {
 			return
 		}
 	}
+
+	app.Event.Emit("sentinel::data-updated")
 }
 
 // triggerMetadataFetch fetches Steam metadata for the given appIds in a background goroutine

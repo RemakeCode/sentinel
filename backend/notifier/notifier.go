@@ -97,9 +97,6 @@ func (s *Service) ServiceStartup(ctx context.Context, options application.Servic
 // Accessible via Wails bindings.
 // wails:internal
 func (s *Service) SendNotification(appId string, earnedAchievement map[string]ach.Achievement) error {
-	app := application.Get()
-	app.Event.Emit("sentinel::data-updated")
-
 	if !isAvailable() {
 		err := fmt.Errorf("notify-send not found in PATH")
 		slog.Warn("Failed to send notification", "error", err)
