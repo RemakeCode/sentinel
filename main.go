@@ -5,6 +5,7 @@ import (
 	"log"
 	"sentinel/backend"
 	"sentinel/backend/config"
+	"sentinel/backend/notifier"
 	"sentinel/backend/steam"
 	"sentinel/backend/watcher"
 
@@ -36,6 +37,7 @@ func main() {
 			application.NewService(&config.File{}),
 			application.NewService(&steam.Service{}),
 			application.NewService(&watcher.Service{}),
+			application.NewService(&notifier.Service{}),
 		},
 
 		Assets: application.AssetOptions{

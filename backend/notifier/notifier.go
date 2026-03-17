@@ -2,9 +2,11 @@ package notifier
 
 import (
 	"context"
+	"embed"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"os/exec"
@@ -17,6 +19,55 @@ import (
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
+
+//go:embed media
+var media embed.FS
+
+func init() {
+	err := os.MkdirAll(backend.MediaDir, 0755)
+	if err != nil {
+		slog.Error("Failed to create MediaDir", "error", err)
+		return
+	}
+
+	entries, _ := media.ReadDir("media")
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+
+		destPath := filepath.Join(backend.MediaDir, entry.Name())
+		if _, err := os.Stat(destPath); os.IsNotExist(err) {
+			src, err := media.Open(filepath.Join("media", entry.Name()))
+			if err != nil {
+				continue
+			}
+
+			dest, err := os.Create(destPath)
+			if err != nil {
+				slog.Warn("Failed to create media file", "file", entry.Name(), "error", err)
+				src.Close()
+				continue
+			}
+
+			if _, err := io.Copy(dest, src); err != nil {
+				slog.Warn("Failed to copy media", "file", entry.Name(), "error", err)
+				src.Close()
+				dest.Close()
+				os.Remove(destPath)
+				continue
+			}
+
+			if err := src.Close(); err != nil {
+				slog.Warn("Failed to close source", "file", entry.Name(), "error", err)
+			}
+
+			if err := dest.Close(); err != nil {
+				slog.Warn("Failed to close destination", "file", entry.Name(), "error", err)
+			}
+		}
+	}
+}
 
 var cfg *config.File
 
@@ -71,7 +122,7 @@ func (s *Service) SendNotification(appId string, earnedAchievement map[string]ac
 					// Add icon if provided and exists
 					if imagePath != "" {
 						if _, err := os.Stat(imagePath); err == nil {
-							args = append(args, "--icon", imagePath)
+							args = append(args, "-h", fmt.Sprintf("%s%s", "string:image-path:", imagePath))
 						}
 					}
 
@@ -79,7 +130,7 @@ func (s *Service) SendNotification(appId string, earnedAchievement map[string]ac
 					if cfg.NotificationSound != "" {
 						soundPath := filepath.Join(backend.MediaDir, cfg.NotificationSound)
 						if _, err := os.Stat(soundPath); err == nil {
-							args = append(args, "--sound-file", soundPath)
+							args = append(args, "-h", fmt.Sprintf("%s%s", "string:sound-file:", soundPath))
 						} else {
 							slog.Warn("Sound file not found, skipping sound", "sound", cfg.NotificationSound, "path", soundPath)
 						}
