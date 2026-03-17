@@ -15,6 +15,7 @@ import {
   SetSteamDataSource,
   ToggleEmulatorNotification
 } from '@wa/sentinel/backend/config/file';
+import { GetMediaFileBase64 } from '@wa/sentinel/backend/notifier/service';
 
 import './settings.scss';
 import EmptyState from '@/shared/components/empty-state';
@@ -30,7 +31,7 @@ declare global {
       toast: (
         message: string,
         title?: string,
-        options?: { variant?: 'success' | 'error' | 'info' | 'warning' }
+        options?: { variant?: 'success' | 'danger' | 'info' | 'warning' }
       ) => void;
     };
   }
@@ -73,7 +74,7 @@ const Settings: FC = () => {
         window.ot?.toast('Steam data source updated', 'Success', { variant: 'success' });
       } catch (err) {
         console.error('Failed to save Steam data source:', err);
-        window.ot?.toast('Failed to save Steam data source', 'Error', { variant: 'error' });
+        window.ot?.toast('Failed to save Steam data source', 'Error', { variant: 'danger' });
       }
     }
   };
@@ -95,7 +96,7 @@ const Settings: FC = () => {
 
       setSteamAPIKey('');
     } catch (err) {
-      window.ot?.toast('Failed to save Steam API key', 'Error', { variant: 'error' });
+      window.ot?.toast('Failed to save Steam API key', 'Error', { variant: 'danger' });
     }
   };
 
@@ -107,7 +108,7 @@ const Settings: FC = () => {
       setSelectedLanguage(cfg?.language?.api || 'english');
       setSelectedSound(cfg?.notificationSound || '');
     } catch (err) {
-      window.ot?.toast('Failed to load settings', 'Error', { variant: 'error' });
+      window.ot?.toast('Failed to load settings', 'Error', { variant: 'danger' });
     }
   };
 
@@ -137,7 +138,7 @@ const Settings: FC = () => {
       window.ot?.toast('Language updated', 'Success', { variant: 'success' });
       await loadConfig();
     } catch (err) {
-      window.ot?.toast('Failed to update language', 'Error', { variant: 'error' });
+      window.ot?.toast('Failed to update language', 'Error', { variant: 'danger' });
     }
   };
 
@@ -149,9 +150,27 @@ const Settings: FC = () => {
       const selectedSoundOption = availableSounds.find((s) => s.value === value);
       const soundLabel = selectedSoundOption ? selectedSoundOption.name : value;
       window.ot?.toast(`Notification sound set to ${soundLabel}`, 'Success', { variant: 'success' });
+      if (value) {
+        await handlePlaySound(value);
+      }
       await loadConfig();
     } catch (err) {
-      window.ot?.toast('Failed to update notification sound', 'Error', { variant: 'error' });
+      window.ot?.toast('Failed to update notification sound', 'Error', { variant: 'danger' });
+    }
+  };
+
+  const handlePlaySound = async (soundValue: string) => {
+    try {
+      const base64 = await GetMediaFileBase64(soundValue);
+      const url = `data:audio/wav;base64,${base64}`;
+
+      const audio = new Audio(url);
+      audio.onerror = () => {
+        window.ot?.toast('Failed to play sound', 'Error', { variant: 'danger' });
+      };
+      await audio.play();
+    } catch (err) {
+      console.error('Failed to play sound:', err);
     }
   };
 
@@ -160,7 +179,7 @@ const Settings: FC = () => {
       await ToggleEmulatorNotification(index);
       await loadConfig();
     } catch (err) {
-      window.ot?.toast('Failed to update setting', 'Error', { variant: 'error' });
+      window.ot?.toast('Failed to update setting', 'Error', { variant: 'danger' });
     }
   };
 
@@ -180,7 +199,7 @@ const Settings: FC = () => {
       }
     } catch (err) {
       console.error('Failed to add prefix:', err);
-      window.ot?.toast('Failed to add prefix', 'Error', { variant: 'error' });
+      window.ot?.toast('Failed to add prefix', 'Error', { variant: 'danger' });
     }
   };
 
@@ -190,7 +209,7 @@ const Settings: FC = () => {
       window.ot?.toast('Prefix removed', 'Success', { variant: 'success' });
       await Promise.all([loadConfig()]);
     } catch (err) {
-      window.ot?.toast('Failed to remove prefix', 'Error', { variant: 'error' });
+      window.ot?.toast('Failed to remove prefix', 'Error', { variant: 'danger' });
     }
   };
 
