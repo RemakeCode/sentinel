@@ -100,18 +100,26 @@ func TestParseAch_InvalidJSON(t *testing.T) {
 }
 
 func TestSaveAch(t *testing.T) {
+	tempDir := t.TempDir()
 	appID := "123456"
-	data := &AchievementData{
-		Achievements: map[string]Achievement{
-			"TROPHY_001": {
-				Earned:     true,
-				EarnedTime: 1744671648,
-			},
-		},
+	achievementsDir := filepath.Join(tempDir, appID)
+	if err := os.MkdirAll(achievementsDir, 0755); err != nil {
+		t.Fatalf("Failed to create test directory: %v", err)
 	}
 
-	// Save achievements
-	err := SaveAch(appID, data)
+	testAchievements := map[string]Achievement{
+		"TROPHY_001": {
+			Earned:     true,
+			EarnedTime: 1744671648,
+		},
+	}
+	data, _ := json.MarshalIndent(testAchievements, "", "  ")
+	achievementsPath := filepath.Join(achievementsDir, "achievements.json")
+	if err := os.WriteFile(achievementsPath, data, 0644); err != nil {
+		t.Fatalf("Failed to write test file: %v", err)
+	}
+
+	err := SaveAch(achievementsDir)
 	if err != nil {
 		t.Fatalf("SaveAch returned error: %v", err)
 	}
@@ -122,22 +130,22 @@ func TestSaveAch(t *testing.T) {
 		t.Error("Cache file was not created")
 	}
 
-	// Verify file contents
+	// Verify file contents - matches format used by LoadCachedAch
 	fileData, err := os.ReadFile(cachePath)
 	if err != nil {
 		t.Fatalf("Failed to read cache file: %v", err)
 	}
 
-	var cachedData AchievementData
-	if err := json.Unmarshal(fileData, &cachedData); err != nil {
+	var cachedAchievements map[string]Achievement
+	if err := json.Unmarshal(fileData, &cachedAchievements); err != nil {
 		t.Fatalf("Failed to unmarshal cached data: %v", err)
 	}
 
-	if len(cachedData.Achievements) != 1 {
-		t.Errorf("Expected 1 achievement in cache, got %d", len(cachedData.Achievements))
+	if len(cachedAchievements) != 1 {
+		t.Errorf("Expected 1 achievement in cache, got %d", len(cachedAchievements))
 	}
 
-	ach, ok := cachedData.Achievements["TROPHY_001"]
+	ach, ok := cachedAchievements["TROPHY_001"]
 	if !ok {
 		t.Error("TROPHY_001 not found in cached data")
 	} else {
@@ -151,13 +159,20 @@ func TestSaveAch(t *testing.T) {
 }
 
 func TestSaveAch_CreatesDirectory(t *testing.T) {
+	tempDir := t.TempDir()
 	appID := "123456"
-	data := &AchievementData{
-		Achievements: map[string]Achievement{},
+	achievementsDir := filepath.Join(tempDir, appID)
+	if err := os.MkdirAll(achievementsDir, 0755); err != nil {
+		t.Fatalf("Failed to create test directory: %v", err)
 	}
 
-	// Save achievements should create nested directories
-	err := SaveAch(appID, data)
+	emptyData, _ := json.MarshalIndent(map[string]Achievement{}, "", "  ")
+	achievementsPath := filepath.Join(achievementsDir, "achievements.json")
+	if err := os.WriteFile(achievementsPath, emptyData, 0644); err != nil {
+		t.Fatalf("Failed to write test file: %v", err)
+	}
+
+	err := SaveAch(achievementsDir)
 	if err != nil {
 		t.Fatalf("SaveAch returned error: %v", err)
 	}

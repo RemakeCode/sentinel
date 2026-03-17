@@ -607,3 +607,40 @@ func (s *Service) loadCachedGameImage(appID string, imageType string) (string, e
 
 	return "", errors.New("cached image not found")
 }
+
+// GlobalAchievementPercentage represents a single achievement's global unlock rate
+type GlobalAchievementPercentage struct {
+	Name    string `json:"name"`
+	Percent string `json:"percent"`
+}
+
+// GetGlobalAchievementPercentages fetches global achievement percentages from Steam API
+// This method is exposed to the frontend
+func (s *Service) GetGlobalAchievementPercentages(appID string) ([]GlobalAchievementPercentage, error) {
+	url := fmt.Sprintf(
+		"https://api.steampowered.com/ISteamUserStats/GetGlobalAchievementPercentagesForApp/v0002/?gameid=%s",
+		appID,
+	)
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch global achievement percentages: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("steam api returned status: %d", resp.StatusCode)
+	}
+
+	var data struct {
+		AchievementPercentages struct {
+			Achievements []GlobalAchievementPercentage `json:"achievements"`
+		} `json:"achievementpercentages"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return data.AchievementPercentages.Achievements, nil
+}
