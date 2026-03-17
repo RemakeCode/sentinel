@@ -3,6 +3,7 @@ package notifier
 import (
 	"context"
 	"embed"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -83,7 +84,7 @@ func (s *Service) ServiceStartup(ctx context.Context, options application.Servic
 	}
 	cfg = c
 
-	if IsAvailable() {
+	if isAvailable() {
 		slog.Info("Notification service initialized and available")
 	} else {
 		slog.Warn("Notification service initialized but notify-send not found")
@@ -94,11 +95,14 @@ func (s *Service) ServiceStartup(ctx context.Context, options application.Servic
 // SendNotification sends a system notification using notify-send.
 // It uses fixed urgency "normal" and system default expiration.
 // Accessible via Wails bindings.
+// wails:internal
 func (s *Service) SendNotification(appId string, earnedAchievement map[string]ach.Achievement) error {
+
+	slog.Info("earnedAchievement", earnedAchievement)
 	app := application.Get()
 	app.Event.Emit("sentinel::data-updated")
 
-	if !IsAvailable() {
+	if !isAvailable() {
 		err := fmt.Errorf("notify-send not found in PATH")
 		slog.Warn("Failed to send notification", "error", err)
 		return err
@@ -161,8 +165,8 @@ func (s *Service) SendNotification(appId string, earnedAchievement map[string]ac
 	return nil
 }
 
-// IsAvailable checks if notify-send is available in the PATH
-func IsAvailable() bool {
+// isAvailable checks if notify-send is available in the PATH
+func isAvailable() bool {
 	_, err := exec.LookPath("notify-send")
 	return err == nil
 }
@@ -186,4 +190,12 @@ func (s *Service) getAchDataForNotification(appId string) (*steam.GameBasics, er
 	}
 
 	return &gb, nil
+}
+
+func (s *Service) GetMediaFileBase64(name string) (string, error) {
+	data, err := media.ReadFile(filepath.Join("media", name))
+	if err != nil {
+		return "", err
+	}
+	return base64.StdEncoding.EncodeToString(data), nil
 }
