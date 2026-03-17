@@ -351,6 +351,11 @@ func (s *Service) handleEvent(event fsnotify.Event) {
 // handleAchievementsWriteEvent processes write events on achievements.json files
 func (s *Service) handleAchievementsWriteEvent(path, appId string) {
 	newAch, err := ach.ParseAch(path)
+
+	if err := ach.SaveAch(filepath.Dir(path)); err != nil {
+		slog.Error("Failed to save achievements", "error", err)
+	}
+
 	if err != nil {
 		slog.Error("Failed to parse achievements", "error", err)
 		return
@@ -366,11 +371,6 @@ func (s *Service) handleAchievementsWriteEvent(path, appId string) {
 		if err != nil {
 			return
 		}
-
-	}
-
-	if err := ach.SaveAch(path); err != nil {
-		slog.Error("Failed to save achievements after sending notification", "error", err)
 	}
 }
 
