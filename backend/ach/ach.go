@@ -106,10 +106,6 @@ func SaveAch(path string) error {
 
 	cachePath := filepath.Join(backend.ACHCacheDataDir, appId+".json")
 
-	if _, err := os.Stat(cachePath); err == nil {
-		return nil
-	}
-
 	return os.WriteFile(cachePath, file, 0644)
 }
 
