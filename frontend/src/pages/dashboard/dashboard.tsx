@@ -58,7 +58,7 @@ const Dashboard: FC = () => {
               return (
                 <Link
                   to={`/game/${game?.AppID}`}
-                  state={{ game }}
+                  state={{ game, idx }}
                   viewTransition
                   className='games-item'
                   key={`${game?.Name}#${idx}`}
