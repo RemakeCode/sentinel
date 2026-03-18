@@ -16,7 +16,6 @@ import {
   SetSteamDataSource,
   ToggleEmulatorNotification
 } from '@wa/sentinel/backend/config/file';
-import { GetMediaFileBase64 } from '@wa/sentinel/backend/notifier/service';
 
 import EmptyState from '@/shared/components/empty-state';
 import { Emulator, File, Prefix, SteamSource } from '@wa/sentinel/backend/config/models';
@@ -158,11 +157,9 @@ const Settings: FC = () => {
   };
 
   const handlePlaySound = async (soundValue: string) => {
+    if (!soundValue) return;
     try {
-      const base64 = await GetMediaFileBase64(soundValue);
-      const url = `data:audio/wav;base64,${base64}`;
-
-      const audio = new Audio(url);
+      const audio = new Audio(`/media/${soundValue}`);
       audio.onerror = () => {
         window.ot?.toast('Failed to play sound', 'Error', { variant: 'danger' });
       };
