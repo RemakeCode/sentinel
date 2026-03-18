@@ -363,15 +363,26 @@ func (s *Service) handleAchievementsWriteEvent(path, appId string) {
 		return
 	}
 
-	oldAch, _ := ach.LoadCachedAch(appId)
+	oldAch, err := ach.LoadCachedAch(appId)
+	if err != nil {
+		return
+	}
 
 	diff := newAch.Diff(oldAch)
 
-	if len(diff) > 0 {
+	if len(diff.NewlyEarned) > 0 || len(diff.ProgressUpdated) > 0 {
 		notifierService := notifier.Service{}
-		err := notifierService.SendNotification(appId, diff)
-		if err != nil {
-			return
+		if len(diff.NewlyEarned) > 0 {
+			err := notifierService.SendNotification(appId, diff.NewlyEarned, false)
+			if err != nil {
+				return
+			}
+		}
+		if len(diff.ProgressUpdated) > 0 {
+			err := notifierService.SendNotification(appId, diff.ProgressUpdated, true)
+			if err != nil {
+				return
+			}
 		}
 	}
 
