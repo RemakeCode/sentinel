@@ -176,13 +176,11 @@ func progressBar(progress, max, width int) string {
 }
 
 // isAvailable checks if notify-send is available in the PATH
-// wails:internal
 func isAvailable() bool {
 	_, err := exec.LookPath("notify-send")
 	return err == nil
 }
 
-// wails:internal
 func (s *Service) getAchDataForNotification(appId string) (*steam.GameBasics, error) {
 
 	language := cfg.Language.API

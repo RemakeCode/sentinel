@@ -342,8 +342,8 @@ func (s *Service) handleEvent(event fsnotify.Event) {
 		"operation", event.Op.String(),
 	)
 
-	// Handle WRITE events for achievements.json files
-	if event.Has(fsnotify.Write) && strings.HasSuffix(path, "achievements.json") {
+	// Handle Create/WRITE events for achievements.json files
+	if (event.Has(fsnotify.Write) || event.Has(fsnotify.Create)) && strings.HasSuffix(path, "achievements.json") {
 		s.handleAchievementsWriteEvent(path, appId)
 	}
 }
@@ -353,10 +353,6 @@ func (s *Service) handleAchievementsWriteEvent(path, appId string) {
 	app := application.Get()
 
 	newAch, err := ach.ParseAch(path)
-
-	if err := ach.SaveAch(filepath.Dir(path)); err != nil {
-		slog.Error("Failed to save achievements", "error", err)
-	}
 
 	if err != nil {
 		slog.Error("Failed to parse achievements", "error", err)
@@ -383,6 +379,10 @@ func (s *Service) handleAchievementsWriteEvent(path, appId string) {
 			if err != nil {
 				return
 			}
+		}
+
+		if err := ach.SaveAch(filepath.Dir(path)); err != nil {
+			slog.Error("Failed to save achievements", "error", err)
 		}
 	}
 
