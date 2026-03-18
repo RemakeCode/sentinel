@@ -3,11 +3,14 @@ package main
 import (
 	"embed"
 	"log"
+	"net/http"
+	"path/filepath"
 	"sentinel/backend"
 	"sentinel/backend/config"
 	"sentinel/backend/notifier"
 	"sentinel/backend/steam"
 	"sentinel/backend/watcher"
+	"strings"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
@@ -22,14 +25,7 @@ func init() {
 	application.RegisterEvent[application.Void]("sentinel::data-updated")
 }
 
-// Create a new notification service
-
 func main() {
-	// Create a new Wails application by providing the necessary options.
-	// Variables 'Name' and 'Description' are for application metadata.
-	// 'Assets' configures the asset server with the 'FS' variable pointing to the frontend files.
-	// 'Bind' is a list of Go struct instances. The frontend has access to the methods of these instances.
-	// 'Mac' options tailor the application when running an macOS.
 	app := application.New(application.Options{
 		Name:        "Sentinel",
 		Description: "Achievement Watcher",
@@ -41,7 +37,15 @@ func main() {
 		},
 
 		Assets: application.AssetOptions{
-			Handler: application.AssetFileServerFS(assets),
+			Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if strings.HasPrefix(r.URL.Path, "/media/") {
+					filename := strings.TrimPrefix(r.URL.Path, "/media/")
+					filePath := filepath.Join(backend.MediaDir, filename)
+					http.ServeFile(w, r, filePath)
+					return
+				}
+				application.AssetFileServerFS(assets).ServeHTTP(w, r)
+			}),
 		},
 		Mac: application.MacOptions{
 			ApplicationShouldTerminateAfterLastWindowClosed: true,
@@ -51,7 +55,6 @@ func main() {
 		},
 	})
 
-	// Create the main window
 	window := app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title:                      "Sentinel",
 		MinWidth:                   1280,
@@ -67,7 +70,6 @@ func main() {
 		app.Event.Emit("sentinel::ready")
 	})
 
-	// Run the application
 	if err := app.Run(); err != nil {
 		log.Fatal(err)
 	}

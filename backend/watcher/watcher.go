@@ -371,7 +371,7 @@ func (s *Service) handleAchievementsWriteEvent(path, appId string) {
 	diff := newAch.Diff(oldAch)
 
 	if len(diff.NewlyEarned) > 0 || len(diff.ProgressUpdated) > 0 {
-		notifierService := notifier.Service{}
+		notifierService := notifier.Get()
 		if len(diff.NewlyEarned) > 0 {
 			err := notifierService.SendNotification(appId, diff.NewlyEarned, false)
 			if err != nil {

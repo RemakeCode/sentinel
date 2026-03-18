@@ -3,11 +3,9 @@ package notifier
 import (
 	"context"
 	"embed"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
 	"os"
 	"os/exec"
@@ -17,12 +15,30 @@ import (
 	"sentinel/backend/config"
 	"sentinel/backend/steam"
 	"strings"
+	"sync"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 //go:embed media
 var media embed.FS
+
+type Service struct {
+}
+
+var (
+	instance     *Service
+	instanceOnce sync.Once
+)
+
+func Get() *Service {
+	instanceOnce.Do(func() {
+		instance = &Service{}
+	})
+	return instance
+}
+
+var cfg *config.File
 
 func init() {
 	err := os.MkdirAll(backend.MediaDir, 0755)
@@ -39,41 +55,18 @@ func init() {
 
 		destPath := filepath.Join(backend.MediaDir, entry.Name())
 		if _, err := os.Stat(destPath); os.IsNotExist(err) {
-			src, err := media.Open(filepath.Join("media", entry.Name()))
+			data, err := media.ReadFile(filepath.Join("media", entry.Name()))
 			if err != nil {
+				slog.Warn("Failed to read embedded media file", "file", entry.Name(), "error", err)
 				continue
 			}
 
-			dest, err := os.Create(destPath)
-			if err != nil {
-				slog.Warn("Failed to create media file", "file", entry.Name(), "error", err)
-				src.Close()
+			if err := os.WriteFile(destPath, data, 0644); err != nil {
+				slog.Warn("Failed to write media file", "file", entry.Name(), "error", err)
 				continue
-			}
-
-			if _, err := io.Copy(dest, src); err != nil {
-				slog.Warn("Failed to copy media", "file", entry.Name(), "error", err)
-				src.Close()
-				dest.Close()
-				os.Remove(destPath)
-				continue
-			}
-
-			if err := src.Close(); err != nil {
-				slog.Warn("Failed to close source", "file", entry.Name(), "error", err)
-			}
-
-			if err := dest.Close(); err != nil {
-				slog.Warn("Failed to close destination", "file", entry.Name(), "error", err)
 			}
 		}
 	}
-}
-
-var cfg *config.File
-
-// Service provides notification functionality to the Wails frontend
-type Service struct {
 }
 
 // ServiceStartup is called when the Wails application starts
@@ -209,12 +202,4 @@ func (s *Service) getAchDataForNotification(appId string) (*steam.GameBasics, er
 	}
 
 	return &gb, nil
-}
-
-func (s *Service) GetMediaFileBase64(name string) (string, error) {
-	data, err := media.ReadFile(filepath.Join("media", name))
-	if err != nil {
-		return "", err
-	}
-	return base64.StdEncoding.EncodeToString(data), nil
 }
