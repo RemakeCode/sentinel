@@ -22,6 +22,12 @@ type AchievementData struct {
 	Achievements map[string]Achievement `json:"achievements"`
 }
 
+// AchievementDiff represents the result of comparing two AchievementData snapshots
+type AchievementDiff struct {
+	NewlyEarned     map[string]Achievement
+	ProgressUpdated map[string]Achievement
+}
+
 // ParseAch reads and parses achievements.json from the given path without saving to cache
 
 // wails:internal
@@ -109,31 +115,29 @@ func SaveAch(path string) error {
 	return os.WriteFile(cachePath, file, 0644)
 }
 
-// Diff compares two AchievementData and returns a map of newly earned achievements
-
+// Diff compares two AchievementData and returns newly earned achievements and progress updates
 // wails:internal
-func (a *AchievementData) Diff(old *AchievementData) map[string]Achievement {
-	newlyEarned := make(map[string]Achievement)
-	if old == nil {
-		for id, ach := range a.Achievements {
-			if ach.Earned {
-				newlyEarned[id] = ach
-			}
-		}
-		return newlyEarned
+func (a *AchievementData) Diff(old *AchievementData) *AchievementDiff {
+	result := &AchievementDiff{
+		NewlyEarned:     make(map[string]Achievement),
+		ProgressUpdated: make(map[string]Achievement),
 	}
 
 	for id, ach := range a.Achievements {
 		oldAch, exists := old.Achievements[id]
 		if !exists {
 			if ach.Earned {
-				newlyEarned[id] = ach
+				result.NewlyEarned[id] = ach
 			}
 			continue
 		}
+
 		if ach.Earned && !oldAch.Earned {
-			newlyEarned[id] = ach
+			result.NewlyEarned[id] = ach
+		} else if !ach.Earned && ach.Progress != oldAch.Progress {
+			result.ProgressUpdated[id] = ach
 		}
 	}
-	return newlyEarned
+
+	return result
 }

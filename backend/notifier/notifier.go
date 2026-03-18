@@ -96,76 +96,100 @@ func (s *Service) ServiceStartup(ctx context.Context, options application.Servic
 // It uses fixed urgency "normal" and system default expiration.
 // Accessible via Wails bindings.
 // wails:internal
-func (s *Service) SendNotification(appId string, earnedAchievement map[string]ach.Achievement) error {
+func (s *Service) SendNotification(appId string, achievements map[string]ach.Achievement, isProgress bool) error {
 	if !isAvailable() {
 		err := fmt.Errorf("notify-send not found in PATH")
 		slog.Warn("Failed to send notification", "error", err)
 		return err
 	}
 
-	for id, a := range earnedAchievement {
-		if a.Earned {
-			notificationAch, e := s.getAchDataForNotification(appId)
-			achievements := notificationAch.Achievement.List
-			for _, achievement := range achievements {
-
-				if strings.ToLower(achievement.Name) == strings.ToLower(id) {
-					icon := strings.Split(strings.Replace(achievement.Icon, "https://", "", 1), "/")
-
-					title := achievement.DisplayName
-					message := achievement.Description
-					imagePath := filepath.Join(backend.ACHCacheIconDir, appId, icon[len(icon)-1])
-
-					args := []string{title, message, "--urgency", "normal", "-t", "10000", "-a", title}
-
-					// Add icon if provided and exists
-					if imagePath != "" {
-						if _, err := os.Stat(imagePath); err == nil {
-							args = append(args, "-h", fmt.Sprintf("%s%s", "string:image-path:", imagePath))
-						}
-					}
-
-					// Add sound file if configured
-					if cfg.NotificationSound != "" {
-						soundPath := filepath.Join(backend.MediaDir, cfg.NotificationSound)
-						if _, err := os.Stat(soundPath); err == nil {
-							args = append(args, "-h", fmt.Sprintf("%s%s", "string:sound-file:", soundPath))
-						} else {
-							slog.Warn("Sound file not found, skipping sound", "sound", cfg.NotificationSound, "path", soundPath)
-						}
-					}
-
-					cmd := exec.Command("notify-send", args...)
-
-					if err := cmd.Run(); err != nil {
-						err = fmt.Errorf("failed to execute notify-send: %w", err)
-						slog.Warn("Failed to send notification", "error", err)
-						return err
-					}
-
-					slog.Info("Sending notification", "title", title, "message", message, "imagePath", imagePath)
-
-					break
-				}
-			}
-
-			if e != nil {
-				return nil
-			}
-
+	for id, a := range achievements {
+		notificationAch, e := s.getAchDataForNotification(appId)
+		if e != nil {
+			return nil
 		}
+		achievementsList := notificationAch.Achievement.List
+		for _, achievement := range achievementsList {
 
+			if strings.ToLower(achievement.Name) == strings.ToLower(id) {
+				icon := strings.Split(strings.Replace(achievement.Icon, "https://", "", 1), "/")
+
+				title := achievement.DisplayName
+				message := achievement.Description
+				imagePath := filepath.Join(backend.ACHCacheIconDir, appId, icon[len(icon)-1])
+
+				if isProgress && a.MaxProgress > 0 {
+					message = fmt.Sprintf("%s\n%s", message, progressBar(a.Progress, a.MaxProgress, 20))
+				}
+
+				args := []string{title, message, "--urgency", "normal", "-t", "10000", "-a", title}
+
+				// Add icon if provided and exists
+				if imagePath != "" {
+					if _, err := os.Stat(imagePath); err == nil {
+						args = append(args, "-h", fmt.Sprintf("%s%s", "string:image-path:", imagePath))
+					}
+				}
+
+				// Add sound file if configured
+				if cfg.NotificationSound != "" {
+					soundPath := filepath.Join(backend.MediaDir, cfg.NotificationSound)
+					if _, err := os.Stat(soundPath); err == nil {
+						args = append(args, "-h", fmt.Sprintf("%s%s", "string:sound-file:", soundPath))
+					} else {
+						slog.Warn("Sound file not found, skipping sound", "sound", cfg.NotificationSound, "path", soundPath)
+					}
+				}
+
+				cmd := exec.Command("notify-send", args...)
+
+				if err := cmd.Run(); err != nil {
+					err = fmt.Errorf("failed to execute notify-send: %w", err)
+					slog.Warn("Failed to send notification", "error", err)
+					return err
+				}
+
+				slog.Info("Sending notification", "title", title, "message", message, "imagePath", imagePath)
+
+				break
+			}
+		}
 	}
 
 	return nil
 }
 
+// progressBar generates a visual progress bar with Unicode characters
+// Example: "[████████░░░░░░░░░░░░] 8/100 (8.0%)"
+// wails:internal
+func progressBar(progress, max, width int) string {
+	if max == 0 {
+		return ""
+	}
+
+	filled := int(float64(progress) / float64(max) * float64(width))
+	if filled > width {
+		filled = width
+	}
+	empty := width - filled
+
+	bar := "█"
+	emptyBar := "░"
+
+	barStr := strings.Repeat(bar, filled) + strings.Repeat(emptyBar, empty)
+	percent := float64(progress) / float64(max) * 100.0
+
+	return fmt.Sprintf("[%s] %d/%d (%.1f%%)", barStr, progress, max, percent)
+}
+
 // isAvailable checks if notify-send is available in the PATH
+// wails:internal
 func isAvailable() bool {
 	_, err := exec.LookPath("notify-send")
 	return err == nil
 }
 
+// wails:internal
 func (s *Service) getAchDataForNotification(appId string) (*steam.GameBasics, error) {
 
 	language := cfg.Language.API
