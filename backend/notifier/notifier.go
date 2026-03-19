@@ -112,10 +112,10 @@ func (s *Service) SendNotification(appId string, achievements map[string]ach.Ach
 				imagePath := filepath.Join(backend.ACHCacheIconDir, appId, icon[len(icon)-1])
 
 				if isProgress && a.MaxProgress > 0 {
-					message = fmt.Sprintf("%s\n%s", message, progressBar(a.Progress, a.MaxProgress, 20))
+					message = progressBar(a.Progress, a.MaxProgress, 25)
 				}
 
-				args := []string{title, message, "--urgency", "normal", "-t", "10000", "-a", title}
+				args := []string{title, message, "--urgency", "normal", "-e", "--transient", "-t", "10000", "-a", "Game Name here"}
 
 				// Add icon if provided and exists
 				if imagePath != "" {

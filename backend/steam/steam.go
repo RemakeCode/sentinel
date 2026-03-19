@@ -377,7 +377,7 @@ func (s *Service) fetchAchievements(appID string, language string) ([]achievemen
 		return s.fetchAchievementsFromThirdParty(appID, language)
 	default:
 		// Unknown data source, default to external
-		slog.Warn("Unknown data source '%s', using external source", dataSource)
+		slog.Warn("Unknown data source %s using external source", dataSource)
 		return s.fetchAchievementsFromThirdParty(appID, language)
 	}
 }
