@@ -2,7 +2,7 @@ import './settings.scss';
 import type { ChangeEvent, FC } from 'react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
-import { ArrowLeft, DatabaseSearchIcon, Eye, FolderOpen, Globe, Info, Trash2, Volume2, VolumeOff } from 'lucide-react';
+import { ArrowLeft, DatabaseSearchIcon, FolderOpen, Globe, Info, Trash2, Volume2, VolumeOff } from 'lucide-react';
 
 import {
   AddPrefix,
@@ -48,7 +48,6 @@ interface PrefixItem {
 
 const Settings: FC = () => {
   const [appConfig, setAppConfig] = useState<File | null>(null);
-  const [darkMode, setDarkMode] = useState(true);
   const [steamAPIKey, setSteamAPIKey] = useState('');
   const [steamAPIKeyHasError, setSteamAPIKeyHasError] = useState<boolean>(false);
   const [stmSrc, setStmSrc] = useState<SteamSource>();
@@ -215,10 +214,6 @@ const Settings: FC = () => {
     });
   };
 
-  const handleTogglePrefix = async (index: number) => {
-    console.error('TogglePrefix not implemented yet');
-  };
-
   const emulators = appConfig?.emulators || [];
   const prefixes = appConfig?.prefixes || [];
 
@@ -259,15 +254,6 @@ const Settings: FC = () => {
                     <span className='badge success'>Prefix</span>
                     <code>{record.prefix.path}</code>
 
-                    <label className='switch'>
-                      <input
-                        type='checkbox'
-                        role='switch'
-                        checked={true}
-                        disabled
-                        onChange={() => handleTogglePrefix(record.index)}
-                      />
-                    </label>
                     <div className='settings-grid-actions' title={'Delete Prefix'}>
                       <Trash2 size={20} onClick={() => handleRemovePrefix(record.index)} />
                     </div>
@@ -370,31 +356,6 @@ const Settings: FC = () => {
                 )}
               </>
             )}
-          </div>
-        </div>
-
-        <div className='card settings-section'>
-          <h4 className='settings-section-title'>
-            <Eye /> Appearance
-          </h4>
-          <hr className='divider' />
-          <div className='settings-grid'>
-            <div className='settings-grid-item'>
-              <span className='settings-grid-item-label'>Dark Mode</span>
-
-              <div>
-                <span className='badge'>Coming Soon</span>
-              </div>
-              <label className='switch'>
-                <input
-                  type='checkbox'
-                  role='switch'
-                  checked={darkMode}
-                  disabled={true}
-                  onChange={(e) => setDarkMode(e.target.checked)}
-                />
-              </label>
-            </div>
           </div>
         </div>
 
