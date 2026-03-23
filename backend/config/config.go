@@ -409,3 +409,14 @@ func (c *File) SetNotificationSound(sound string) error {
 	cfg.NotificationSound = sound
 	return cfg.SaveConfig()
 }
+
+// CheckShouldNotify checks if the path matches any emulator path and returns the ShouldNotify setting
+func (c *File) CheckShouldNotify(path string) bool {
+	cfg := c.getConfig()
+	for _, emulator := range cfg.Emulators {
+		if emulator.Path != "" && strings.Contains(path, emulator.Path) {
+			return emulator.ShouldNotify
+		}
+	}
+	return true
+}
