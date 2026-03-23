@@ -1,6 +1,7 @@
 package notifier
 
 import (
+	"bytes"
 	"context"
 	"embed"
 	"encoding/json"
@@ -14,8 +15,10 @@ import (
 	"sentinel/backend/ach"
 	"sentinel/backend/config"
 	"sentinel/backend/steam"
+	"strconv"
 	"strings"
-	"sync"
+	"syscall"
+	"time"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
@@ -23,18 +26,29 @@ import (
 //go:embed media
 var media embed.FS
 
+type NotificationPayload struct {
+	Title       string
+	Message     string
+	IconPath    string
+	SoundPath   string
+	GameName    string
+	Progress    int
+	MaxProgress int
+	IsProgress  bool
+}
+
 type Service struct {
+	notificationQueue chan *NotificationPayload
+	ctx               context.Context
+	cancel            context.CancelFunc
 }
 
 var (
-	instance     *Service
-	instanceOnce sync.Once
+	instance *Service
+	queueCap = 100
 )
 
 func Get() *Service {
-	instanceOnce.Do(func() {
-		instance = &Service{}
-	})
 	return instance
 }
 
@@ -69,27 +83,91 @@ func init() {
 	}
 }
 
-// ServiceStartup is called when the Wails application starts
 func (s *Service) ServiceStartup(ctx context.Context, options application.ServiceOptions) error {
+	instance = s
+
 	c, err := config.Get()
 	if err != nil {
 		return err
 	}
 	cfg = c
 
-	if isAvailable() {
-		slog.Info("Notification service initialized and available")
-	} else {
-		slog.Warn("Notification service initialized but notify-send not found")
-	}
+	s.notificationQueue = make(chan *NotificationPayload, queueCap)
+	s.ctx, s.cancel = context.WithCancel(context.Background())
+
+	go s.notificationWorker()
+
+	slog.Info("Notification service initialized")
 	return nil
 }
 
-// SendNotification sends a system notification using notify-send.
-// It uses fixed urgency "normal" and system default expiration.
-// Accessible via Wails bindings.
-// wails:internal
+func (s *Service) notificationWorker() {
+	slog.Info("Notification worker started")
+	for {
+		select {
+		case <-s.ctx.Done():
+			slog.Info("Notification worker shutting down")
+			return
+		case payload := <-s.notificationQueue:
+			slog.Info("Worker received payload", "title", payload.Title)
+			s.sendNotificationSync(payload)
+			time.Sleep(backend.NotificationDelay)
+		}
+	}
+}
+
+func (s *Service) sendNotificationSync(payload *NotificationPayload) {
+	args := []string{payload.Title, payload.Message, "--urgency", "critical", "--transient", "-p", "-a", payload.GameName}
+
+	if payload.IconPath != "" {
+		if _, err := os.Stat(payload.IconPath); err == nil {
+			args = append(args, "-h", fmt.Sprintf("%s%s", "string:image-path:", payload.IconPath))
+		}
+	}
+
+	if payload.SoundPath != "" {
+		if _, err := os.Stat(payload.SoundPath); err == nil {
+			args = append(args, "-h", fmt.Sprintf("%s%s", "string:sound-file:", payload.SoundPath))
+		}
+	}
+
+	cmd := exec.Command("notify-send", args...)
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		Setsid: true, // Creates a new session, detaching from the terminal
+	}
+	var stdout bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = nil
+	go func() {
+		if err := cmd.Run(); err != nil {
+			slog.Warn("Failed to send notification", "error", err)
+			return
+		}
+
+		idStr := strings.TrimSpace(stdout.String())
+		id, err := strconv.Atoi(idStr)
+		if err != nil {
+			slog.Warn("Failed to parse notification ID", "raw", idStr, "error", err)
+			return
+		}
+
+		time.AfterFunc(backend.NotificationExpireTime, func() {
+			closeCmd := exec.Command("busctl", "--user", "call",
+				"org.freedesktop.Notifications",
+				"/org/freedesktop/Notifications",
+				"org.freedesktop.Notifications",
+				"CloseNotification", "u", strconv.Itoa(id))
+			if err := closeCmd.Run(); err != nil {
+				slog.Warn("Failed to close notification", "id", id, "error", err)
+			}
+		})
+	}()
+
+	slog.Info("Sent notification", "title", payload.Title, "game", payload.GameName)
+}
+
 func (s *Service) SendNotification(appId string, achievements map[string]ach.Achievement, isProgress bool) error {
+	slog.Info("SendNotification called", "appId", appId, "achievementsCount", len(achievements))
 	if !isAvailable() {
 		err := fmt.Errorf("notify-send not found in PATH")
 		slog.Warn("Failed to send notification", "error", err)
@@ -97,53 +175,52 @@ func (s *Service) SendNotification(appId string, achievements map[string]ach.Ach
 	}
 
 	for id, a := range achievements {
-		notificationAch, e := s.getAchDataForNotification(appId)
+		notificationAch, gameName, e := s.getAchDataForNotification(appId)
 		if e != nil {
 			return nil
 		}
 		achievementsList := notificationAch.Achievement.List
 		for _, achievement := range achievementsList {
 
-			if strings.ToLower(achievement.Name) == strings.ToLower(id) {
+			var title string
+			if strings.EqualFold(achievement.Name, id) {
 				icon := strings.Split(strings.Replace(achievement.Icon, "https://", "", 1), "/")
 
-				title := achievement.DisplayName
+				title = achievement.DisplayName
 				message := achievement.Description
 				imagePath := filepath.Join(backend.ACHCacheIconDir, appId, icon[len(icon)-1])
 
 				if isProgress && a.MaxProgress > 0 {
+					title = achievement.Description
 					message = progressBar(a.Progress, a.MaxProgress, 25)
 				}
 
-				args := []string{title, message, "--urgency", "normal", "-e", "--transient", "-t", "10000", "-a", "Game Name here"}
-
-				// Add icon if provided and exists
-				if imagePath != "" {
-					if _, err := os.Stat(imagePath); err == nil {
-						args = append(args, "-h", fmt.Sprintf("%s%s", "string:image-path:", imagePath))
-					}
-				}
-
-				// Add sound file if configured
+				var soundPath string
 				if cfg.NotificationSound != "" {
-					soundPath := filepath.Join(backend.MediaDir, cfg.NotificationSound)
-					if _, err := os.Stat(soundPath); err == nil {
-						args = append(args, "-h", fmt.Sprintf("%s%s", "string:sound-file:", soundPath))
-					} else {
+					soundPath = filepath.Join(backend.MediaDir, cfg.NotificationSound)
+					if _, err := os.Stat(soundPath); err != nil {
 						slog.Warn("Sound file not found, skipping sound", "sound", cfg.NotificationSound, "path", soundPath)
+						soundPath = ""
 					}
 				}
 
-				cmd := exec.Command("notify-send", args...)
-
-				if err := cmd.Run(); err != nil {
-					err = fmt.Errorf("failed to execute notify-send: %w", err)
-					slog.Warn("Failed to send notification", "error", err)
-					return err
+				payload := &NotificationPayload{
+					Title:       title,
+					Message:     message,
+					IconPath:    imagePath,
+					SoundPath:   soundPath,
+					GameName:    gameName,
+					Progress:    a.Progress,
+					MaxProgress: a.MaxProgress,
+					IsProgress:  isProgress,
 				}
 
-				slog.Info("Sending notification", "title", title, "message", message, "imagePath", imagePath)
-
+				select {
+				case s.notificationQueue <- payload:
+					slog.Info("Queued notification", "title", title, "game", gameName)
+				default:
+					slog.Warn("Notification queue full, dropping notification", "title", title)
+				}
 				break
 			}
 		}
@@ -152,9 +229,6 @@ func (s *Service) SendNotification(appId string, achievements map[string]ach.Ach
 	return nil
 }
 
-// progressBar generates a visual progress bar with Unicode characters
-// Example: "[████████░░░░░░░░░░░░] 8/100 (8.0%)"
-// wails:internal
 func progressBar(progress, max, width int) string {
 	if max == 0 {
 		return ""
@@ -175,29 +249,34 @@ func progressBar(progress, max, width int) string {
 	return fmt.Sprintf("[%s] %d/%d (%.1f%%)", barStr, progress, max, percent)
 }
 
-// isAvailable checks if notify-send is available in the PATH
 func isAvailable() bool {
 	_, err := exec.LookPath("notify-send")
 	return err == nil
 }
 
-func (s *Service) getAchDataForNotification(appId string) (*steam.GameBasics, error) {
-
+func (s *Service) getAchDataForNotification(appId string) (*steam.GameBasics, string, error) {
 	language := cfg.Language.API
 
 	schemaPath := filepath.Join(backend.GameCacheDir, language, fmt.Sprintf("%s.json", appId))
 
 	schemaByte, err := os.ReadFile(schemaPath)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	gb := steam.GameBasics{}
 	err = json.Unmarshal(schemaByte, &gb)
 
 	if err != nil {
-		return nil, errors.New("failed to unmarshal steam game")
+		return nil, "", errors.New("failed to unmarshal steam game")
 	}
 
-	return &gb, nil
+	return &gb, gb.Name, nil
+}
+
+func (s *Service) ServiceShutdown() error {
+	if s.cancel != nil {
+		s.cancel()
+	}
+	return nil
 }
