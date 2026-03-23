@@ -1,5 +1,3 @@
-import '@wailsio/runtime';
-
 import { Outlet, ScrollRestoration } from 'react-router';
 import { GamesProvider } from '@/shared/context/games-context';
 
