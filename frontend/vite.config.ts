@@ -1,9 +1,32 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import tsconfigPaths from 'vite-tsconfig-paths';
 import wails from '@wailsio/runtime/plugins/vite';
 
-// https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react(), tsconfigPaths(), wails('./bindings')]
+  plugins: [react(), wails('./bindings')],
+  resolve: {
+    tsconfigPaths: true
+  },
+  build: {
+    rolldownOptions: {
+      output: {
+        codeSplitting: {
+          groups: [
+            {
+              test: /node_modules\/react/,
+              name: 'react'
+            },
+            {
+              test: /node_modules\/react-dom/,
+              name: 'react-dom'
+            },
+            {
+              test: /node_modules\/@wailsio\/runtime/,
+              name: 'wails-runtime'
+            }
+          ]
+        }
+      }
+    }
+  }
 });

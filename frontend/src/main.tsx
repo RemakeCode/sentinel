@@ -1,4 +1,3 @@
-import '@wailsio/runtime';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createHashRouter, RouterProvider } from 'react-router';
@@ -13,24 +12,24 @@ const container = document.getElementById('root');
 const root = createRoot(container!);
 
 const router = createHashRouter([
-  {
-    path: '/',
-    element: <App />,
-    children: [
-      {
-        index: true,
-        element: <Dashboard />
-      },
-      {
-        path: '/game/:id',
-        element: <GameDetails />
-      },
-      {
-        path: '/settings',
-        element: <Settings />
-      }
-    ]
-  }
+{
+	path: '/',
+	element: <App />,
+	children: [
+	{
+		index: true,
+		element: <Dashboard />
+	},
+	{
+		path: '/game/:id',
+		element: <GameDetails />
+	},
+	{
+		path: '/settings',
+		element: <Settings />
+	}
+	]
+},
 ]);
 
 root.render(

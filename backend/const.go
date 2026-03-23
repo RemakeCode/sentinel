@@ -23,3 +23,7 @@ var ACHCacheIconDir = filepath.Join(ACHCacheDir, "icon")
 var GameCacheDir = filepath.Join(ACHCacheDir, "games")
 
 var WalkerInterval = 5 * time.Second
+
+// Notification timing
+var NotificationExpireTime = 10 * time.Second
+var NotificationDelay = NotificationExpireTime + 1*time.Second
