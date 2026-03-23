@@ -19,6 +19,9 @@ import (
 //go:embed all:frontend/dist
 var assets embed.FS
 
+//go:embed build/appicon.png
+var trayIcon []byte
+
 func init() {
 	application.RegisterEvent[application.Void]("sentinel::ready")
 	application.RegisterEvent[backend.FetchStatusEvt]("sentinel::fetch-status")
@@ -28,7 +31,7 @@ func init() {
 func main() {
 	app := application.New(application.Options{
 		Name:        "Sentinel",
-		Description: "Achievement Watcher",
+		Description: "An Achievement Watcher",
 		Services: []application.Service{
 			application.NewService(&config.File{}),
 			application.NewService(&steam.Service{}),
@@ -48,7 +51,8 @@ func main() {
 			}),
 		},
 		Mac: application.MacOptions{
-			ApplicationShouldTerminateAfterLastWindowClosed: true,
+			ActivationPolicy: application.ActivationPolicyAccessory,
+			ApplicationShouldTerminateAfterLastWindowClosed: false,
 		},
 		Linux: application.LinuxOptions{
 			ProgramName: "Sentinel",
@@ -65,8 +69,17 @@ func main() {
 		DefaultContextMenuDisabled: false,
 	})
 
+	window.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
+		window.Hide()
+		e.Cancel()
+	})
+
+	startFn, endFn := setupSystray(app, window, trayIcon)
+	defer endFn()
+
 	window.OnWindowEvent(events.Common.WindowRuntimeReady, func(e *application.WindowEvent) {
 		app.Logger.Info("Sentinel ready!")
+		startFn()
 		app.Event.Emit("sentinel::ready")
 	})
 
