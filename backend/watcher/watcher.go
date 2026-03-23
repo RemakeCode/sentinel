@@ -368,14 +368,15 @@ func (s *Service) handleAchievementsWriteEvent(path, appId string) {
 
 	if len(diff.NewlyEarned) > 0 || len(diff.ProgressUpdated) > 0 {
 		notifierService := notifier.Get()
+		shouldNotify := cfg.CheckShouldNotify(path)
 		if len(diff.NewlyEarned) > 0 {
-			err := notifierService.SendNotification(appId, diff.NewlyEarned, false)
+			err := notifierService.SendNotification(appId, diff.NewlyEarned, false, shouldNotify)
 			if err != nil {
 				return
 			}
 		}
 		if len(diff.ProgressUpdated) > 0 {
-			err := notifierService.SendNotification(appId, diff.ProgressUpdated, true)
+			err := notifierService.SendNotification(appId, diff.ProgressUpdated, true, shouldNotify)
 			if err != nil {
 				return
 			}

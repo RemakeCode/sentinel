@@ -166,7 +166,7 @@ func (s *Service) sendNotificationSync(payload *NotificationPayload) {
 	slog.Info("Sent notification", "title", payload.Title, "game", payload.GameName)
 }
 
-func (s *Service) SendNotification(appId string, achievements map[string]ach.Achievement, isProgress bool) error {
+func (s *Service) SendNotification(appId string, achievements map[string]ach.Achievement, isProgress bool, shouldNotify bool) error {
 	slog.Info("SendNotification called", "appId", appId, "achievementsCount", len(achievements))
 	if !isAvailable() {
 		err := fmt.Errorf("notify-send not found in PATH")
@@ -196,7 +196,7 @@ func (s *Service) SendNotification(appId string, achievements map[string]ach.Ach
 				}
 
 				var soundPath string
-				if cfg.NotificationSound != "" {
+				if shouldNotify && cfg.NotificationSound != "" {
 					soundPath = filepath.Join(backend.MediaDir, cfg.NotificationSound)
 					if _, err := os.Stat(soundPath); err != nil {
 						slog.Warn("Sound file not found, skipping sound", "sound", cfg.NotificationSound, "path", soundPath)
