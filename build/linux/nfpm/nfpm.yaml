@@ -3,26 +3,26 @@
 #
 # The lines below are called `modelines`. See `:help modeline`
 
-name: ""
+name: "sentinel"
 arch: ${GOARCH}
 platform: "linux"
-version: "0.1.0"
+version: "0.0.1-beta"
 section: "default"
 priority: "extra"
 maintainer: ${GIT_COMMITTER_NAME} <${GIT_COMMITTER_EMAIL}>
-description: "My Product Description"
-vendor: "My Company"
-homepage: "https://wails.io"
+description: "An Achievement Watcher for Linux"
+vendor: "Remake Code"
+homepage: "https://github.com/RemakeCode/sentinel"
 license: "MIT"
 release: "1"
 
 contents:
-  - src: "./bin/"
-    dst: "/usr/local/bin/"
+  - src: "./bin/sentinel"
+    dst: "/usr/local/bin/sentinel"
   - src: "./build/appicon.png"
-    dst: "/usr/share/icons/hicolor/128x128/apps/.png"
-  - src: "./build/linux/.desktop"
-    dst: "/usr/share/applications/.desktop"
+    dst: "/usr/share/icons/hicolor/128x128/apps/sentinel.png"
+  - src: "./build/linux/sentinel.desktop"
+    dst: "/usr/share/applications/sentinel.desktop"
 
 # Default dependencies for Debian 12/Ubuntu 22.04+ with WebKit 4.1
 depends:
@@ -36,8 +36,8 @@ overrides:
     depends:
       - gtk3
       - webkit2gtk4.1
-  
-  # Arch Linux packages (WebKit 4.1)  
+
+  # Arch Linux packages (WebKit 4.1)
   archlinux:
     depends:
       - gtk3
