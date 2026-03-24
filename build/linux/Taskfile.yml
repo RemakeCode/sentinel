@@ -110,6 +110,7 @@ tasks:
       - task: create:deb
       - task: create:rpm
       - task: create:aur
+      - task: cleanup:artifacts
 
   create:appimage:
     summary: Creates an AppImage
@@ -172,13 +173,17 @@ tasks:
     dir: build
     cmds:
       - mkdir -p {{.ROOT_DIR}}/build/linux/appimage
-      - wails3 generate .desktop -name "{{.APP_NAME}}" -exec "{{.EXEC}}" -icon "{{.ICON}}" -outputfile "{{.ROOT_DIR}}/build/linux/{{.APP_NAME}}.desktop" -categories "{{.CATEGORIES}}"
+      - wails3 generate .desktop -name "{{.NAME | title}}" -exec "{{.EXEC}}" -icon "{{.ICON}}" -outputfile "{{.OUTPUTFILE}}" -categories "{{.CATEGORIES}}" -comment "{{.COMMENT}}" -genericname "{{.GENERICNAME}}" -keywords "{{.KEYWORDS}}" -version "{{.VERSION}}"
     vars:
-      APP_NAME: '{{.APP_NAME}}'
+      NAME: '{{.APP_NAME}}'
+      GENERICNAME: '{{.APP_NAME}}'
       EXEC: '{{.APP_NAME}}'
       ICON: '{{.APP_NAME}}'
-      CATEGORIES: 'Development;'
+      CATEGORIES: 'Game;'
       OUTPUTFILE: '{{.ROOT_DIR}}/build/linux/{{.APP_NAME}}.desktop'
+      COMMENT: 'An Achievement Watcher for Linux'
+      KEYWORDS: 'steam, achievements, watcher, trophy'
+      VERSION: '0.0.1'
 
   run:
     cmds:
@@ -224,3 +229,15 @@ tasks:
     preconditions:
       - sh: '[ -n "{{.PGP_KEY}}" ]'
         msg: "PGP_KEY is required. Set it in the vars section at the top of build/linux/Taskfile.yml"
+
+  cleanup:artifacts:
+    summary: Cleans up temporary build artifacts
+    dir: build/linux/appimage
+    cmds:
+      # Remove downloaded linuxdeploy AppImage files
+      - rm -f linuxdeploy-*-AppImage
+      # Remove copied binary and icon files
+      - rm -f "{{.APP_NAME}}"
+      - rm -f "{{.APP_NAME}}.png"
+    vars:
+      APP_NAME: '{{.APP_NAME}}'
