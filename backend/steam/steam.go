@@ -92,11 +92,11 @@ func (s *Service) FetchAppDetailsBulk(appIDs []string, language types.Language) 
 	total := len(appIDs)
 
 	// Emit 0% immediately to signal fetch is starting (even if no appIDs)
-	app.Event.Emit("sentinel::fetch-status", backend.FetchStatusEvt{Current: 0, Total: total})
+	app.Event.Emit(backend.EventFetchStatus, backend.FetchStatusEvt{Current: 0, Total: total})
 
 	if len(appIDs) == 0 {
 		// Emit 100% for "no games" case so frontend knows to load from cache
-		app.Event.Emit("sentinel::fetch-status", backend.FetchStatusEvt{Current: 100, Total: 100})
+		app.Event.Emit(backend.EventFetchStatus, backend.FetchStatusEvt{Current: 100, Total: 100})
 		return []*GameBasics{}, nil
 	}
 
@@ -106,7 +106,7 @@ func (s *Service) FetchAppDetailsBulk(appIDs []string, language types.Language) 
 
 	var completed int
 
-	app.Event.Emit("sentinel::fetch-status", backend.FetchStatusEvt{Current: 0, Total: total})
+	app.Event.Emit(backend.EventFetchStatus, backend.FetchStatusEvt{Current: 0, Total: total})
 
 	sem := make(chan struct{}, 5)
 
@@ -125,7 +125,7 @@ func (s *Service) FetchAppDetailsBulk(appIDs []string, language types.Language) 
 				results = append(results, cached)
 				completed++
 				mu.Unlock()
-				app.Event.Emit("sentinel::fetch-status", backend.FetchStatusEvt{Current: completed, Total: total})
+				app.Event.Emit(backend.EventFetchStatus, backend.FetchStatusEvt{Current: completed, Total: total})
 				return
 			}
 
@@ -134,7 +134,7 @@ func (s *Service) FetchAppDetailsBulk(appIDs []string, language types.Language) 
 				mu.Lock()
 				completed++
 				mu.Unlock()
-				app.Event.Emit("sentinel::fetch-status", backend.FetchStatusEvt{Current: completed, Total: total})
+				app.Event.Emit(backend.EventFetchStatus, backend.FetchStatusEvt{Current: completed, Total: total})
 				return
 			}
 
@@ -151,7 +151,7 @@ func (s *Service) FetchAppDetailsBulk(appIDs []string, language types.Language) 
 			completed++
 			mu.Unlock()
 
-			app.Event.Emit("sentinel::fetch-status", backend.FetchStatusEvt{Current: completed, Total: total})
+			app.Event.Emit(backend.EventFetchStatus, backend.FetchStatusEvt{Current: completed, Total: total})
 		}(id)
 	}
 

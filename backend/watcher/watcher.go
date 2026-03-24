@@ -387,7 +387,7 @@ func (s *Service) handleAchievementsWriteEvent(path, appId string) {
 		}
 	}
 
-	app.Event.Emit("sentinel::data-updated")
+	app.Event.Emit(backend.EventDataUpdated)
 }
 
 // triggerMetadataFetch fetches Steam metadata for the given appIds in a background goroutine
