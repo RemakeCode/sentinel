@@ -11,10 +11,10 @@
     !define INFO_COMPANYNAME "Remake Code"
 !endif
 !ifndef INFO_PRODUCTNAME
-    !define INFO_PRODUCTNAME "Sentinel"
+    !define INFO_PRODUCTNAME "sentinel"
 !endif
 !ifndef INFO_PRODUCTVERSION
-    !define INFO_PRODUCTVERSION "0.0.1"
+    !define INFO_PRODUCTVERSION "0.0.1-beta"
 !endif
 !ifndef INFO_COPYRIGHT
     !define INFO_COPYRIGHT "(c) 2026"

@@ -5,13 +5,13 @@ version: '3'
 
 # This information is used to generate the build assets.
 info:
-  companyName: "Remake Code" # The name of the company
-  productName: "Sentinel" # The name of the application
-  productIdentifier: "dev.sentinel" # The unique product identifier
-  description: "An Achievement Watcher for Linux" # The application description
-  copyright: "(c) 2026" # Copyright text
-  comments: "https://github.com/RemakeCode/Sentinel" # Comments
-  version: "0.0.1" # The application version
+  companyName: "Remake Code"
+  productName: "sentinel"
+  productIdentifier: "ach.sentinel"
+  description: "An Achievement Watcher for Linux"
+  copyright: "(c) 2026"
+  comments: "https://github.com/RemakeCode/sentinel"
+  version: "0.0.1-beta"
 
 
 # Dev mode configuration
@@ -43,7 +43,6 @@ dev_mode:
       type: primary
 
 # File Associations
-# More information at: https://v3.wails.io/noit/done/yet
 fileAssociations:
 #  - ext: wails
 #    name: Wails
