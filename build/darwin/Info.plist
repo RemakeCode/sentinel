@@ -5,21 +5,21 @@
 		<key>CFBundleExecutable</key>
 		<string>sentinel</string>
 		<key>CFBundleGetInfoString</key>
-		<string>https://github.com/RemakeCode/Sentinel</string>
+		<string>https://github.com/RemakeCode/sentinel</string>
 		<key>CFBundleIconFile</key>
 		<string>icons</string>
 		<key>CFBundleIconName</key>
 		<string>appicon</string>
 		<key>CFBundleIdentifier</key>
-		<string>dev.sentinel</string>
+		<string>ach.sentinel</string>
 		<key>CFBundleName</key>
-		<string>Sentinel</string>
+		<string>sentinel</string>
 		<key>CFBundlePackageType</key>
 		<string>APPL</string>
 		<key>CFBundleShortVersionString</key>
-		<string>0.0.1</string>
+		<string>0.0.1-beta</string>
 		<key>CFBundleVersion</key>
-		<string>0.0.1</string>
+		<string>0.0.1-beta</string>
 		<key>LSMinimumSystemVersion</key>
 		<string>10.15.0</string>
 		<key>NSHighResolutionCapable</key>
