@@ -9,6 +9,7 @@ import {
   GetAvailableSounds,
   GetConfig,
   GetSteamLanguages,
+  PlaySound,
   RemovePrefix,
   SetLanguage,
   SetNotificationSound,
@@ -143,28 +144,19 @@ const Settings: FC = () => {
     try {
       await SetNotificationSound(value);
       setSelectedSound(value);
-      const selectedSoundOption = availableSounds.find((s) => s.value === value);
-      const soundLabel = selectedSoundOption ? selectedSoundOption.name : value;
-      window.ot?.toast(`Notification sound set to ${soundLabel}`, 'Success', { variant: 'success' });
       if (value) {
         await handlePlaySound(value);
       }
       await loadConfig();
-    } catch (err) {
-      window.ot?.toast('Failed to update notification sound', 'Error', { variant: 'danger' });
-    }
+    } catch (err) {}
   };
 
   const handlePlaySound = async (soundValue: string) => {
     if (!soundValue) return;
     try {
-      const audio = new Audio(`/media/${soundValue}`);
-      audio.onerror = () => {
-        window.ot?.toast('Failed to play sound', 'Error', { variant: 'danger' });
-      };
-      await audio.play();
+      await PlaySound(soundValue);
     } catch (err) {
-      console.error('Failed to play sound:', err);
+      console.warn('Failed to play sound:', err);
     }
   };
 

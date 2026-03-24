@@ -13,6 +13,7 @@ import (
 	"log"
 	"log/slog"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sentinel/backend"
 	"sentinel/backend/steam/types"
@@ -419,4 +420,34 @@ func (c *File) CheckShouldNotify(path string) bool {
 		}
 	}
 	return true
+}
+
+// PlaySound plays a sound file asynchronously using paplay or aplay
+func (c *File) PlaySound(filename string) error {
+	if filename == "" {
+		return nil
+	}
+
+	soundPath := filepath.Join(backend.MediaDir, filename)
+	if _, err := os.Stat(soundPath); err != nil {
+		return nil
+	}
+
+	go func() {
+		var cmd *exec.Cmd
+		if _, err := exec.LookPath("paplay"); err == nil {
+			cmd = exec.Command("paplay", soundPath)
+		} else if _, err := exec.LookPath("aplay"); err == nil {
+			cmd = exec.Command("aplay", soundPath)
+		} else {
+			slog.Warn("No audio playback utility available (paplay/aplay)")
+			return
+		}
+
+		if err := cmd.Run(); err != nil {
+			slog.Warn("Failed to play sound", "filename", filename, "error", err)
+		}
+	}()
+
+	return nil
 }
