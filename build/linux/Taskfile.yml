@@ -173,17 +173,16 @@ tasks:
     dir: build
     cmds:
       - mkdir -p {{.ROOT_DIR}}/build/linux/appimage
-      - wails3 generate .desktop -name "{{.NAME | title}}" -exec "{{.EXEC}}" -icon "{{.ICON}}" -outputfile "{{.OUTPUTFILE}}" -categories "{{.CATEGORIES}}" -comment "{{.COMMENT}}" -genericname "{{.GENERICNAME}}" -keywords "{{.KEYWORDS}}" -version "{{.VERSION}}"
+      - wails3 generate .desktop -name "{{.NAME | title}}" -exec "{{.EXEC}}" -icon "{{.ICON}}" -outputfile "{{.OUTPUTFILE}}" -categories "{{.CATEGORIES}}" -comment "{{.COMMENT}}" -keywords "{{.KEYWORDS}}"
+      - sed -i 's/^Name=.*/Name={{.NAME | title}}/' "{{.OUTPUTFILE}}"
     vars:
       NAME: '{{.APP_NAME}}'
-      GENERICNAME: '{{.APP_NAME}}'
       EXEC: '{{.APP_NAME}}'
       ICON: '{{.APP_NAME}}'
       CATEGORIES: 'Game;'
       OUTPUTFILE: '{{.ROOT_DIR}}/build/linux/{{.APP_NAME}}.desktop'
       COMMENT: 'An Achievement Watcher for Linux'
       KEYWORDS: 'steam, achievements, watcher, trophy'
-      VERSION: '0.0.1'
 
   run:
     cmds:
