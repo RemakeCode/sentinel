@@ -3,14 +3,11 @@ package main
 import (
 	"embed"
 	"log"
-	"net/http"
-	"path/filepath"
 	"sentinel/backend"
 	"sentinel/backend/config"
 	"sentinel/backend/notifier"
 	"sentinel/backend/steam"
 	"sentinel/backend/watcher"
-	"strings"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
@@ -40,15 +37,7 @@ func main() {
 		},
 
 		Assets: application.AssetOptions{
-			Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if strings.HasPrefix(r.URL.Path, "/media/") {
-					filename := strings.TrimPrefix(r.URL.Path, "/media/")
-					filePath := filepath.Join(backend.MediaDir, filename)
-					http.ServeFile(w, r, filePath)
-					return
-				}
-				application.AssetFileServerFS(assets).ServeHTTP(w, r)
-			}),
+			Handler: application.AssetFileServerFS(assets),
 		},
 		Mac: application.MacOptions{
 			ActivationPolicy: application.ActivationPolicyAccessory,
