@@ -6,11 +6,19 @@ import (
 	"time"
 )
 
+const AppName = "sentinel"
+
+const (
+	EventPrefix      = AppName
+	EventFetchStatus = EventPrefix + "::fetch-status"
+	EventDataUpdated = EventPrefix + "::data-updated"
+)
+
 var EmuDir = filepath.Join("AppData", "Roaming", "GSE Saves")
 
 var UserCacheDir, _ = os.UserCacheDir()
 
-var ConfigDir = filepath.Join(UserCacheDir, "sentinel")
+var ConfigDir = filepath.Join(UserCacheDir, AppName)
 var ConfigPath = filepath.Join(ConfigDir, "config.json")
 
 // Media directory paths
