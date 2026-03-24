@@ -26,8 +26,10 @@ func init() {
 }
 
 func main() {
+	var window *application.WebviewWindow
+
 	app := application.New(application.Options{
-		Name:        "Sentinel",
+		Name:        "sentinel",
 		Description: "An Achievement Watcher",
 		Services: []application.Service{
 			application.NewService(&config.File{}),
@@ -40,15 +42,24 @@ func main() {
 			Handler: application.AssetFileServerFS(assets),
 		},
 		Mac: application.MacOptions{
-			ActivationPolicy: application.ActivationPolicyAccessory,
 			ApplicationShouldTerminateAfterLastWindowClosed: false,
 		},
 		Linux: application.LinuxOptions{
-			ProgramName: "Sentinel",
+			ProgramName: "sentinel",
+		},
+		SingleInstance: &application.SingleInstanceOptions{
+			UniqueID: "dev.sentinel",
+			OnSecondInstanceLaunch: func(data application.SecondInstanceData) {
+				// Bring the existing instance to front when second instance is launched
+				if window != nil {
+					window.Show()
+					window.Focus()
+				}
+			},
 		},
 	})
 
-	window := app.Window.NewWithOptions(application.WebviewWindowOptions{
+	window = app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title:                      "Sentinel",
 		MinWidth:                   1280,
 		MinHeight:                  720,
@@ -67,7 +78,6 @@ func main() {
 	defer endFn()
 
 	window.OnWindowEvent(events.Common.WindowRuntimeReady, func(e *application.WindowEvent) {
-		app.Logger.Info("Sentinel ready!")
 		startFn()
 		app.Event.Emit("sentinel::ready")
 	})
