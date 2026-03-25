@@ -3,6 +3,7 @@ package main
 import (
 	"embed"
 	"log"
+	"log/slog"
 	"sentinel/backend"
 	"sentinel/backend/config"
 	"sentinel/backend/notifier"
@@ -66,8 +67,11 @@ func main() {
 		Width:                      1920,
 		Height:                     1080,
 		URL:                        "/",
+		UseApplicationMenu:         false,
 		DefaultContextMenuDisabled: false,
 	})
+
+	app.Dialog.Info()
 
 	window.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
 		window.Hide()
@@ -80,6 +84,7 @@ func main() {
 	window.OnWindowEvent(events.Common.WindowRuntimeReady, func(e *application.WindowEvent) {
 		startFn()
 		app.Event.Emit("sentinel::ready")
+		slog.Info("%s %s is running", backend.AppName, backend.Version)
 	})
 
 	if err := app.Run(); err != nil {

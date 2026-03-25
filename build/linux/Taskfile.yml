@@ -11,7 +11,9 @@ vars:
   # Password is stored securely in system keychain. Run: wails3 setup signing
 
   # Docker image for cross-compilation (used when building on non-Linux or no CC available)
+
   CROSS_IMAGE: wails-cross
+  MODULE: { sh: "go list -m" }
 
 tasks:
   build:
@@ -52,13 +54,14 @@ tasks:
     cmds:
       - go build {{.BUILD_FLAGS}} -o {{.OUTPUT}}
     vars:
-      BUILD_FLAGS: '{{if eq .DEV "true"}}{{if .EXTRA_TAGS}}-tags {{.EXTRA_TAGS}} {{end}}-buildvcs=false -gcflags=all="-l"{{else}}-tags production{{if .EXTRA_TAGS}},{{.EXTRA_TAGS}}{{end}} -trimpath -buildvcs=false -ldflags="-w -s"{{end}}'
+      BUILD_FLAGS: '{{if eq .DEV "true"}}{{if .EXTRA_TAGS}}-tags {{.EXTRA_TAGS}} {{end}}-buildvcs=false -gcflags=all="-l"{{else}}-tags production{{if .EXTRA_TAGS}},{{.EXTRA_TAGS}}{{end}} -trimpath -buildvcs=false -ldflags="-w -s {{.MODULE}}/backend.Version={{.APP_VERSION}}"{{end}}'
       DEFAULT_OUTPUT: '{{.BIN_DIR}}/{{.APP_NAME}}'
       OUTPUT: '{{ .OUTPUT | default .DEFAULT_OUTPUT }}'
     env:
       GOOS: linux
       CGO_ENABLED: 1
       GOARCH: '{{.ARCH | default ARCH}}'
+      VERSION: ".{{APP_VERSION}}"
 
   build:docker:
     summary: Builds for Linux using Docker (for non-Linux hosts or when no C compiler available)
@@ -118,6 +121,8 @@ tasks:
     deps:
       - task: build
       - task: generate:dotdesktop
+        vars:
+          APP_NAME: '{{.APP_NAME}}'
     cmds:
       - cp "{{.APP_BINARY}}" "{{.APP_NAME}}"
       - cp ../../appicon.png "{{.APP_NAME}}.png"
@@ -134,7 +139,7 @@ tasks:
     deps:
       - task: build
     cmds:
-      - task: generate:dotdesktop
+      - task: generate:dotdesktop:title
       - task: generate:deb
 
   create:rpm:
@@ -142,7 +147,7 @@ tasks:
     deps:
       - task: build
     cmds:
-      - task: generate:dotdesktop
+      - task: generate:dotdesktop:title
       - task: generate:rpm
 
   create:aur:
@@ -150,7 +155,7 @@ tasks:
     deps:
       - task: build
     cmds:
-      - task: generate:dotdesktop
+      - task: generate:dotdesktop:title
       - task: generate:aur
 
   generate:deb:
@@ -173,8 +178,23 @@ tasks:
     dir: build
     cmds:
       - mkdir -p {{.ROOT_DIR}}/build/linux/appimage
+      - wails3 generate .desktop -name "{{.NAME}}" -exec "{{.EXEC}}" -icon "{{.ICON}}" -outputfile "{{.OUTPUTFILE}}" -categories "{{.CATEGORIES}}" -comment "{{.COMMENT}}" -keywords "{{.KEYWORDS}}"
+    vars:
+      NAME: '{{.APP_NAME}}'
+      EXEC: '{{.APP_NAME}}'
+      ICON: '{{.APP_NAME}}'
+      CATEGORIES: 'Game;'
+      OUTPUTFILE: '{{.ROOT_DIR}}/build/linux/{{.APP_NAME}}.desktop'
+      COMMENT: 'An Achievement Watcher for Linux'
+      KEYWORDS: 'steam, achievements, watcher, trophy'
+
+  generate:dotdesktop:title:
+    summary: Generates a `.desktop` file
+    dir: build
+    cmds:
+      - mkdir -p {{.ROOT_DIR}}/build/linux/appimage
       - wails3 generate .desktop -name "{{.NAME | title}}" -exec "{{.EXEC}}" -icon "{{.ICON}}" -outputfile "{{.OUTPUTFILE}}" -categories "{{.CATEGORIES}}" -comment "{{.COMMENT}}" -keywords "{{.KEYWORDS}}"
-      - sed -i 's/^Name=.*/Name={{.NAME | title}}/' "{{.OUTPUTFILE}}"
+      - sed -i 's/^Name=sentinel/Name=Sentinel/' "{{.OUTPUTFILE}}"
     vars:
       NAME: '{{.APP_NAME}}'
       EXEC: '{{.APP_NAME}}'

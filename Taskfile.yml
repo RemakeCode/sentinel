@@ -9,6 +9,7 @@ vars:
   APP_NAME: "sentinel"
   BIN_DIR: "bin"
   VITE_PORT: '{{.WAILS_VITE_PORT | default 9245}}'
+  APP_VERSION: '{{.APP_VERSION | default "0.0.0-dev"}}'
 
 tasks:
   build:

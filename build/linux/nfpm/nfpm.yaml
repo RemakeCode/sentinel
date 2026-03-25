@@ -6,15 +6,17 @@
 name: "sentinel"
 arch: ${GOARCH}
 platform: "linux"
-version: "0.0.1-beta"
+version: ${VERSION}
 section: "default"
 priority: "extra"
-maintainer: ${GIT_COMMITTER_NAME} <${GIT_COMMITTER_EMAIL}>
+maintainer: "afk-rightNow"
 description: "An Achievement Watcher for Linux"
 vendor: "Remake Code"
 homepage: "https://github.com/RemakeCode/sentinel"
 license: "MIT"
 release: "1"
+version_schema: semver
+
 
 contents:
   - src: "./bin/sentinel"

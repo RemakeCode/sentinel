@@ -8,6 +8,8 @@ import (
 
 const AppName = "sentinel"
 
+var Version = "0.0.0"
+
 const (
 	EventPrefix      = AppName
 	EventFetchStatus = EventPrefix + "::fetch-status"
