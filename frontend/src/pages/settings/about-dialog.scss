@@ -1,0 +1,52 @@
+.about-dialog {
+  color: var(--muted-foreground);
+
+  &-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: var(--space-2);
+
+    h2 {
+      margin: var(--space-2) 0 0;
+    }
+
+    hr {
+      width: 100%;
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: var(--space-4) 0;
+    }
+
+  }
+
+  footer {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  &-link {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    margin-top: var(--space-3);
+    text-decoration: none;
+    transition: opacity var(--transition);
+    outline: none;
+    font-size: 85%;
+    color: var(--muted-foreground);
+    cursor: pointer;
+
+    > svg {
+      fill: var(--muted-foreground);
+      width: 20px;
+    }
+
+    &:hover {
+      opacity: 0.9;
+    }
+  }
+}
