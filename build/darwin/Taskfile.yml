@@ -11,6 +11,7 @@ vars:
 
   # Docker image for cross-compilation (used when building on non-macOS)
   CROSS_IMAGE: wails-cross
+  MODULE: { sh: "go list -m" }
 
 tasks:
   build:
@@ -41,7 +42,7 @@ tasks:
     cmds:
       - go build {{.BUILD_FLAGS}} -o {{.OUTPUT}}
     vars:
-      BUILD_FLAGS: '{{if eq .DEV "true"}}{{if .EXTRA_TAGS}}-tags {{.EXTRA_TAGS}} {{end}}-buildvcs=false -gcflags=all="-l"{{else}}-tags production{{if .EXTRA_TAGS}},{{.EXTRA_TAGS}}{{end}} -trimpath -buildvcs=false -ldflags="-w -s"{{end}}'
+      BUILD_FLAGS: '{{if eq .DEV "true"}}{{if .EXTRA_TAGS}}-tags {{.EXTRA_TAGS}} {{end}}-buildvcs=false -gcflags=all="-l"{{else}}-tags production{{if .EXTRA_TAGS}},{{.EXTRA_TAGS}}{{end}} -trimpath -buildvcs=false -ldflags="-w -s -X {{.MODULE}}/backend.Version={{.APP_VERSION}}"{{end}}'
       DEFAULT_OUTPUT: '{{.BIN_DIR}}/{{.APP_NAME}}'
       OUTPUT: '{{ .OUTPUT | default .DEFAULT_OUTPUT }}'
     env:
@@ -51,6 +52,7 @@ tasks:
       CGO_CFLAGS: "-mmacosx-version-min=10.15"
       CGO_LDFLAGS: "-mmacosx-version-min=10.15"
       MACOSX_DEPLOYMENT_TARGET: "10.15"
+      VERSION: "{{.APP_VERSION}}"
 
   build:docker:
     summary: Cross-compiles for macOS using Docker (for Linux/Windows hosts)
