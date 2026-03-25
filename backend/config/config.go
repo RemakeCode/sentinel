@@ -10,7 +10,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"log/slog"
 	"os"
 	"os/exec"
@@ -65,6 +64,7 @@ type File struct {
 	SteamDataSource   SteamSource    `json:"steamDataSource"`
 	SteamAPIKeyMasked string         `json:"steamApiKeyMasked"`
 	NotificationSound string         `json:"notificationSound"`
+	DisableLogging    bool           `json:"disableLogging"`
 }
 
 var defaultEmulatorPaths = []Emulator{
@@ -95,16 +95,16 @@ func Get() (*File, error) {
 }
 
 func (c *File) ServiceStartup(ctx context.Context, options application.ServiceOptions) error {
-	slog.Info("Starting Config Initialization")
+	slog.Info("Starting config initialization")
 
 	// Ensure config directory exists
 	if err := os.MkdirAll(backend.ConfigDir, 0755); err != nil {
-		log.Fatalf("Failed to create config directory: %v", err)
+		slog.Error("Failed to create config directory", "error", err)
 	}
 
 	// Ensure cache directory exists (subdirectories are created automatically)
 	if err := os.MkdirAll(backend.ACHCacheDir, 0755); err != nil {
-		log.Fatalf("Failed to create cache directory: %v", err)
+		slog.Error("Failed to create cache directory", "error", err)
 	}
 
 	// Create language folders in game cache directory based on steam languages
@@ -129,32 +129,33 @@ func (c *File) ServiceStartup(ctx context.Context, options application.ServiceOp
 			Language: types.Language{
 				DisplayName: "English", API: "english", WebAPI: "en",
 			},
+			DisableLogging: false,
 		}
 		config, marshalErr := json.MarshalIndent(defaultConfig, "", "  ")
 		if marshalErr != nil {
-			log.Fatalf("Failed to marshal default config: %v", marshalErr)
+			slog.Error("Failed to marshal default config", "error", marshalErr)
 		}
 
 		err := os.WriteFile(backend.ConfigPath, config, 0644)
 		if err != nil {
-			log.Fatalf("Failed to write default config: %v", err)
+			slog.Error("Failed to write default config", "error", err)
 		}
 	} else if err != nil {
 		// Handle other errors (e.g., permission issues)
-		log.Fatalf("Unexpected error checking config: %v", err)
+		slog.Error("Unexpected error checking config", "error", err)
 	}
 
-	slog.Info("Config Initialization Complete")
+	slog.Info("Config initialization complete")
 
 	cfg, err := Get()
 	if err != nil {
-		log.Fatalf("Failed to get config: %v", err)
+		slog.Error("Failed to get config", "error", err)
 	}
 
 	_, err = cfg.LoadConfig()
 
 	if err != nil {
-		log.Fatalf("Failed to load config file: %v", err)
+		slog.Error("Failed to load config file", "error", err)
 	}
 
 	return nil

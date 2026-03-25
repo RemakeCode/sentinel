@@ -55,7 +55,7 @@ func (s *Service) ServiceStartup(ctx context.Context, options application.Servic
 	}
 
 	if len(prefixPaths) == 0 {
-		slog.Info("Prefix is not set yet. Watcher will not working")
+		slog.Info("Watcher disabled: no prefix paths configured")
 		return nil
 	}
 
@@ -100,11 +100,8 @@ func (s *Service) scan(paths []string) scanResult {
 func (s *Service) Start() error {
 	prefixPaths, err := cfg.GetPrefixPaths()
 	if err != nil {
-		slog.Error(err.Error())
-	}
-
-	if err != nil {
-		slog.Error(err.Error())
+		slog.Error("Failed to get prefix paths", "error", err)
+		return err
 	}
 
 	s.prefixPaths = prefixPaths
@@ -200,7 +197,7 @@ func (s *Service) Stop() {
 
 // PathWalker periodically walks prefix directories to find new games
 func (s *Service) PathWalker() {
-	slog.Info("Path walker started. It would periodically search for new games in prefix and update watcher")
+	slog.Info("Path walker started", "interval", backend.WalkerInterval)
 	ticker := time.NewTicker(backend.WalkerInterval)
 	defer ticker.Stop()
 
