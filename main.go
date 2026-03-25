@@ -31,18 +31,18 @@ func main() {
 	var window *application.WebviewWindow
 
 	appLogger := logger.New()
-	slog.SetDefault(appLogger)
-
+	// Load config early to check logging preferences
 	cfg, err := config.Get()
-	if err == nil && cfg.DisableLogging {
-		logger.SetLevel(slog.Level(100))
+	if err == nil {
+		logger.SetLevel(logger.ParseLevel(cfg.LogLevel))
 	}
+	slog.SetDefault(appLogger)
 
 	options := application.Options{
 		Name:        "sentinel",
 		Description: "An Achievement Watcher",
 		Logger:      appLogger,
-		LogLevel:    slog.LevelInfo,
+		LogLevel:    logger.ParseLevel(cfg.LogLevel),
 		Services: []application.Service{
 			application.NewService(&config.File{}),
 			application.NewService(&steam.Service{}),

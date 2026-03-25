@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Sentinel
+Exec=sentinel
+Icon=sentinel
+Categories=Game;
+Comment=An Achievement Watcher for Linux
+Terminal=false
+Keywords=steam, achievements, watcher, trophy
+Version=1.0
+StartupNotify=false

@@ -15,6 +15,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sentinel/backend"
+	"sentinel/backend/logger"
 	"sentinel/backend/steam/types"
 	"strings"
 	"sync"
@@ -45,6 +46,11 @@ type SoundOption struct {
 	Value string `json:"value"`
 }
 
+type LogLevelOption struct {
+	Name  string `json:"name"`
+	Value string `json:"value"`
+}
+
 type AppInfo struct {
 	Name        string `json:"name"`
 	Version     string `json:"version"`
@@ -64,7 +70,7 @@ type File struct {
 	SteamDataSource   SteamSource    `json:"steamDataSource"`
 	SteamAPIKeyMasked string         `json:"steamApiKeyMasked"`
 	NotificationSound string         `json:"notificationSound"`
-	DisableLogging    bool           `json:"disableLogging"`
+	LogLevel          string         `json:"logLevel"`
 }
 
 var defaultEmulatorPaths = []Emulator{
@@ -129,7 +135,7 @@ func (c *File) ServiceStartup(ctx context.Context, options application.ServiceOp
 			Language: types.Language{
 				DisplayName: "English", API: "english", WebAPI: "en",
 			},
-			DisableLogging: false,
+			LogLevel: "off",
 		}
 		config, marshalErr := json.MarshalIndent(defaultConfig, "", "  ")
 		if marshalErr != nil {
@@ -421,6 +427,49 @@ func (c *File) SetNotificationSound(sound string) error {
 
 	cfg.NotificationSound = sound
 	return cfg.SaveConfig()
+}
+
+// GetAvailableLogLevels returns the list of available logging levels
+func (c *File) GetAvailableLogLevels() []LogLevelOption {
+	return []LogLevelOption{
+		{Name: "Info", Value: "info"},
+		{Name: "Debug", Value: "debug"},
+		{Name: "Disabled", Value: "off"},
+	}
+}
+
+// SetLogLevel sets the logging level preference and updates the logger
+func (c *File) SetLogLevel(level string) error {
+	cfg := c.getConfig()
+
+	// Validate level
+	valid := false
+	for _, l := range cfg.GetAvailableLogLevels() {
+		if l.Value == level {
+			valid = true
+			break
+		}
+	}
+
+	if !valid {
+		return fmt.Errorf("invalid log level: %s", level)
+	}
+
+	cfg.LogLevel = level
+
+	// Apply level to logger immediately
+	logger.SetLevel(logger.ParseLevel(level))
+
+	return cfg.SaveConfig()
+}
+
+// SetLoggingEnabled toggles logging between 'info' and 'off'
+func (c *File) SetLoggingEnabled(enabled bool) error {
+	level := "info"
+	if !enabled {
+		level = "off"
+	}
+	return c.SetLogLevel(level)
 }
 
 // CheckShouldNotify checks if the path matches any emulator path and returns the ShouldNotify setting

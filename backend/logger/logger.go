@@ -18,6 +18,20 @@ func SetLevel(level slog.Level) {
 	levelVar.Set(level)
 }
 
+// ParseLevel converts a string level to slog.Level
+func ParseLevel(level string) slog.Level {
+	switch level {
+	case "debug":
+		return slog.LevelDebug
+	case "info":
+		return slog.LevelInfo
+	case "off":
+		return slog.Level(100)
+	default:
+		return slog.LevelInfo
+	}
+}
+
 // New returns a new slog.Logger instance with sanitization and formatting
 func New() *slog.Logger {
 	// Prepare sanitization prefixes
