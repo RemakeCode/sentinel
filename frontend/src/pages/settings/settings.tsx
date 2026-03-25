@@ -6,6 +6,7 @@ import { ArrowLeft, DatabaseSearchIcon, FolderOpen, Globe, Info, Trash2, Volume2
 
 import {
   AddPrefix,
+  GetAppInfo,
   GetAvailableSounds,
   GetConfig,
   GetSteamLanguages,
@@ -18,12 +19,15 @@ import {
   ToggleEmulatorNotification
 } from '@wa/sentinel/backend/config/file';
 
-import EmptyState from '@/shared/components/empty-state';
+import type { AppInfo } from '@wa/sentinel/backend/config/models';
 import { Emulator, File, Prefix, SteamSource } from '@wa/sentinel/backend/config/models';
+
+import EmptyState from '@/shared/components/empty-state';
 
 import { Dialogs } from '@wailsio/runtime';
 import { Header } from '@/shared/components/header/header';
 import { Start, Stop } from '@wa/sentinel/backend/watcher/service';
+import AboutDialog from './about-dialog';
 
 declare global {
   interface Window {
@@ -56,6 +60,8 @@ const Settings: FC = () => {
   const [languages, setLanguages] = useState<{ api: string; displayName: string }[]>([]);
   const [availableSounds, setAvailableSounds] = useState<{ name: string; value: string }[]>([]);
   const [selectedSound, setSelectedSound] = useState<string>('');
+  const [aboutDialogOpen, setAboutDialogOpen] = useState(false);
+  const [appInfo, setAppInfo] = useState<AppInfo | null>(null);
   let timeout: ReturnType<typeof setTimeout>;
 
   useEffect(() => {
@@ -200,10 +206,13 @@ const Settings: FC = () => {
   };
 
   const handleAboutDialog = async () => {
-    await Dialogs.Info({
-      Title: 'About Sentinel',
-      Message: 'Program version 1.1.0 \n\n' + '© 2025, My Company\n\n'
-    });
+    try {
+      const info = await GetAppInfo();
+      setAppInfo(info);
+      setAboutDialogOpen(true);
+    } catch (err) {
+      console.error('Failed to load app info:', err);
+    }
   };
 
   const emulators = appConfig?.emulators || [];
@@ -399,6 +408,7 @@ const Settings: FC = () => {
           </div>
         </div>
       </div>
+      <AboutDialog isOpen={aboutDialogOpen} appInfo={appInfo} onClose={() => setAboutDialogOpen(false)} />
     </main>
   );
 };

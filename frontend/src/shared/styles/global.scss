@@ -39,7 +39,12 @@
 
 html {
   scroll-behavior: smooth;
+
+  &:has(dialog[open]) {
+    overflow: hidden;
+  }
 }
+
 
 body {
   margin: 0;

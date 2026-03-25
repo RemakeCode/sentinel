@@ -21,6 +21,8 @@ import (
 	"sync"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 type Prefix struct {
@@ -42,6 +44,15 @@ const (
 type SoundOption struct {
 	Name  string `json:"name"`
 	Value string `json:"value"`
+}
+
+type AppInfo struct {
+	Name        string `json:"name"`
+	Version     string `json:"version"`
+	Company     string `json:"company"`
+	Year        string `json:"year"`
+	Description string `json:"description"`
+	GitHub      string `json:"github"`
 }
 
 //wails:internal
@@ -450,4 +461,15 @@ func (c *File) PlaySound(filename string) error {
 	}()
 
 	return nil
+}
+
+func (c *File) GetAppInfo() AppInfo {
+	return AppInfo{
+		Name:        cases.Title(language.Und).String(backend.AppName),
+		Version:     backend.Version,
+		Company:     "Remake Code",
+		Year:        "2026",
+		Description: "An Achievement Watcher for Linux",
+		GitHub:      "https://github.com/RemakeCode/sentinel",
+	}
 }
