@@ -2,7 +2,17 @@ import './settings.scss';
 import type { ChangeEvent, FC } from 'react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
-import { ArrowLeft, DatabaseSearchIcon, FolderOpen, Globe, Info, Trash2, Volume2, VolumeOff } from 'lucide-react';
+import {
+  ArrowLeft,
+  DatabaseSearchIcon,
+  FolderOpen,
+  Globe,
+  Info,
+  Terminal,
+  Trash2,
+  Volume2,
+  VolumeOff
+} from 'lucide-react';
 
 import {
   AddPrefix,
@@ -13,6 +23,7 @@ import {
   PlaySound,
   RemovePrefix,
   SetLanguage,
+  SetLoggingEnabled,
   SetNotificationSound,
   SetSteamAPIKey,
   SetSteamDataSource,
@@ -20,7 +31,7 @@ import {
 } from '@wa/sentinel/backend/config/file';
 
 import type { AppInfo } from '@wa/sentinel/backend/config/models';
-import { Emulator, File, Prefix, SteamSource } from '@wa/sentinel/backend/config/models';
+import { Emulator, File, LogLevelOption, Prefix, SteamSource } from '@wa/sentinel/backend/config/models';
 
 import EmptyState from '@/shared/components/empty-state';
 
@@ -60,6 +71,8 @@ const Settings: FC = () => {
   const [languages, setLanguages] = useState<{ api: string; displayName: string }[]>([]);
   const [availableSounds, setAvailableSounds] = useState<{ name: string; value: string }[]>([]);
   const [selectedSound, setSelectedSound] = useState<string>('');
+  const [availableLogLevels, setAvailableLogLevels] = useState<LogLevelOption[]>([]);
+  const [selectedLogLevel, setSelectedLogLevel] = useState<string>('');
   const [aboutDialogOpen, setAboutDialogOpen] = useState(false);
   const [appInfo, setAppInfo] = useState<AppInfo | null>(null);
   let timeout: ReturnType<typeof setTimeout>;
@@ -110,6 +123,7 @@ const Settings: FC = () => {
       setStmSrc(cfg?.steamDataSource);
       setSelectedLanguage(cfg?.language?.api || 'english');
       setSelectedSound(cfg?.notificationSound || '');
+      setSelectedLogLevel(cfg?.logLevel || 'info');
     } catch (err) {
       window.ot?.toast('Failed to load settings', 'Error', { variant: 'danger' });
     }
@@ -133,7 +147,19 @@ const Settings: FC = () => {
     }
   };
 
-  const handleLanguageChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleLoggingToggle = async () => {
+    const newValue = selectedLogLevel !== 'info';
+    try {
+      await SetLoggingEnabled(newValue);
+      setSelectedLogLevel(newValue ? 'info' : 'off');
+      window.ot?.toast(`Logging ${newValue ? 'enabled' : 'disabled'}`, 'Success', { variant: 'success' });
+      await loadConfig();
+    } catch (err) {
+      window.ot?.toast('Failed to update logging setting', 'Error', { variant: 'danger' });
+    }
+  };
+
+  const handleLanguageChange = async (e: ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     try {
       await SetLanguage(value);
@@ -145,7 +171,7 @@ const Settings: FC = () => {
     }
   };
 
-  const handleSoundChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleSoundChange = async (e: ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     try {
       await SetNotificationSound(value);
@@ -156,7 +182,6 @@ const Settings: FC = () => {
       await loadConfig();
     } catch (err) {}
   };
-
   const handlePlaySound = async (soundValue: string) => {
     if (!soundValue) return;
     try {
@@ -405,6 +430,28 @@ const Settings: FC = () => {
                 </select>
               </label>
             </fieldset>
+          </div>
+        </div>
+
+        <div className='card settings-section'>
+          <h4 className='settings-section-title'>
+            <Terminal /> Logging
+          </h4>
+          <hr className='divider' />
+          <div className='settings-grid'>
+            <div className='settings-grid-item'>
+              <span className='badge success'>Console</span>
+              <span>Enable logging</span>
+              <label className='switch' title='Toggle backend logging'>
+                <input
+                  type='checkbox'
+                  role='switch'
+                  checked={selectedLogLevel === 'info'}
+                  onChange={handleLoggingToggle}
+                />
+              </label>
+              <div />
+            </div>
           </div>
         </div>
       </div>
