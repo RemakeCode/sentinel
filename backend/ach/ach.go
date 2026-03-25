@@ -57,7 +57,7 @@ func LoadCachedAch(appId string) (*AchievementData, error) {
 
 	var achievements map[string]Achievement
 	if err := json.Unmarshal(data, &achievements); err != nil {
-		slog.Error(err.Error())
+		slog.Error("Failed to unmarshal cached achievements", "error", err)
 		return nil, err
 	}
 
@@ -84,7 +84,7 @@ func LoadAllCachedAch() (map[string]*AchievementData, error) {
 		achData, err := LoadCachedAch(appId)
 
 		if err != nil {
-			slog.Error("failed to load cached ach for %s: %v", appId, err)
+			slog.Error("Failed to load cached achievements", "appId", appId, "error", err)
 			continue
 		}
 
@@ -98,7 +98,7 @@ func LoadAllCachedAch() (map[string]*AchievementData, error) {
 // wails:internal
 func SaveAch(path string) error {
 	if err := os.MkdirAll(backend.ACHCacheDataDir, 0755); err != nil {
-		slog.Error(err.Error())
+		slog.Error("Failed to create achievement cache directory", "error", err)
 		return err
 	}
 

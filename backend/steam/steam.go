@@ -81,7 +81,7 @@ func (s *Service) ServiceStartup(ctx context.Context, options application.Servic
 		return err
 	}
 	cfg = c
-	slog.Info("steam: service startup complete")
+	slog.Info("Steam service startup complete")
 	return nil
 }
 
@@ -174,7 +174,7 @@ func (s *Service) LoadAllCachedGameData() ([]*GameBasics, error) {
 	}
 
 	if len(dirs) == 0 {
-		slog.Info(fmt.Sprintf("Game cache directory is empty for %s", language))
+		slog.Info("Game cache directory is empty", "language", language)
 		return nil, err
 	}
 
@@ -377,7 +377,7 @@ func (s *Service) fetchAchievements(appID string, language string) ([]achievemen
 		return s.fetchAchievementsFromThirdParty(appID, language)
 	default:
 		// Unknown data source, default to external
-		slog.Warn("Unknown data source %s using external source", dataSource)
+		slog.Warn("Unknown data source, defaulting to external", "dataSource", dataSource)
 		return s.fetchAchievementsFromThirdParty(appID, language)
 	}
 }

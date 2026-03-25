@@ -2,10 +2,11 @@ package main
 
 import (
 	"embed"
-	"log"
+	"fmt"
 	"log/slog"
 	"sentinel/backend"
 	"sentinel/backend/config"
+	"sentinel/backend/logger"
 	"sentinel/backend/notifier"
 	"sentinel/backend/steam"
 	"sentinel/backend/watcher"
@@ -29,9 +30,19 @@ func init() {
 func main() {
 	var window *application.WebviewWindow
 
-	app := application.New(application.Options{
+	appLogger := logger.New()
+	slog.SetDefault(appLogger)
+
+	cfg, err := config.Get()
+	if err == nil && cfg.DisableLogging {
+		logger.SetLevel(slog.Level(100))
+	}
+
+	options := application.Options{
 		Name:        "sentinel",
 		Description: "An Achievement Watcher",
+		Logger:      appLogger,
+		LogLevel:    slog.LevelInfo,
 		Services: []application.Service{
 			application.NewService(&config.File{}),
 			application.NewService(&steam.Service{}),
@@ -58,7 +69,12 @@ func main() {
 				}
 			},
 		},
-	})
+	}
+
+	// Sync slog level with Wails LogLevel option
+	logger.SetLevel(options.LogLevel)
+
+	app := application.New(options)
 
 	window = app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title:                      "Sentinel",
@@ -71,8 +87,6 @@ func main() {
 		DefaultContextMenuDisabled: false,
 	})
 
-	app.Dialog.Info()
-
 	window.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
 		window.Hide()
 		e.Cancel()
@@ -84,11 +98,11 @@ func main() {
 	window.OnWindowEvent(events.Common.WindowRuntimeReady, func(e *application.WindowEvent) {
 		startFn()
 		app.Event.Emit("sentinel::ready")
-		slog.Info("%s %s is running", backend.AppName, backend.Version)
+
+		slog.Info(fmt.Sprintf("%s %s is running", backend.AppName, backend.Version))
 	})
 
 	if err := app.Run(); err != nil {
-		log.Fatal(err)
+		slog.Error("Application failed", "error", err)
 	}
-
 }

@@ -61,6 +61,7 @@ func init() {
 		return
 	}
 
+	slog.Info("Copying embedded media files to config directory")
 	entries, _ := media.ReadDir("media")
 	for _, entry := range entries {
 		if entry.IsDir() {
@@ -109,7 +110,7 @@ func (s *Service) notificationWorker() {
 			slog.Info("Notification worker shutting down")
 			return
 		case payload := <-s.notificationQueue:
-			slog.Info("Worker received payload", "title", payload.Title)
+			slog.Info("Worker received payload", "title", payload.Title, "game", payload.GameName, "isProgress", payload.IsProgress)
 			s.sendNotificationSync(payload)
 			time.Sleep(backend.NotificationDelay)
 		}
