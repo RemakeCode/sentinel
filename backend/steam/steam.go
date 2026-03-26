@@ -48,10 +48,22 @@ type gameBasicsResponse struct {
 		Name          string `json:"name"`
 		HeaderImage   string `json:"header_image"`
 		PortraitImage string
-	}
+	} `json:"data"`
+}
+
+type communityData struct {
+	Icon   string
+	Hidden int
+}
+
+type Config interface {
+	GetSteamAPIKey() (string, error)
+	GetSteamDataSource() config.SteamSource
+	GetLanguage() types.Language
 }
 
 type Service struct {
+	cfg Config
 }
 
 // Response struct for ISteamUserStats/GetSchemaForGame
@@ -72,15 +84,15 @@ type schemaResponse struct {
 	} `json:"game"`
 }
 
-var cfg *config.File
-
 // ServiceStartup implements the Wails service lifecycle hook.
 func (s *Service) ServiceStartup(ctx context.Context, options application.ServiceOptions) error {
-	c, err := config.Get()
-	if err != nil {
-		return err
+	if s.cfg == nil {
+		c, err := config.Get()
+		if err != nil {
+			return err
+		}
+		s.cfg = c
 	}
-	cfg = c
 	slog.Info("Steam service startup complete")
 	return nil
 }
@@ -92,11 +104,15 @@ func (s *Service) FetchAppDetailsBulk(appIDs []string, language types.Language) 
 	total := len(appIDs)
 
 	// Emit 0% immediately to signal fetch is starting (even if no appIDs)
-	app.Event.Emit(backend.EventFetchStatus, backend.FetchStatusEvt{Current: 0, Total: total})
+	if app != nil {
+		app.Event.Emit(backend.EventFetchStatus, backend.FetchStatusEvt{Current: 0, Total: total})
+	}
 
 	if len(appIDs) == 0 {
 		// Emit 100% for "no games" case so frontend knows to load from cache
-		app.Event.Emit(backend.EventFetchStatus, backend.FetchStatusEvt{Current: 100, Total: 100})
+		if app != nil {
+			app.Event.Emit(backend.EventFetchStatus, backend.FetchStatusEvt{Current: 100, Total: 100})
+		}
 		return []*GameBasics{}, nil
 	}
 
@@ -106,7 +122,9 @@ func (s *Service) FetchAppDetailsBulk(appIDs []string, language types.Language) 
 
 	var completed int
 
-	app.Event.Emit(backend.EventFetchStatus, backend.FetchStatusEvt{Current: 0, Total: total})
+	if app != nil {
+		app.Event.Emit(backend.EventFetchStatus, backend.FetchStatusEvt{Current: 0, Total: total})
+	}
 
 	sem := make(chan struct{}, 5)
 
@@ -125,7 +143,9 @@ func (s *Service) FetchAppDetailsBulk(appIDs []string, language types.Language) 
 				results = append(results, cached)
 				completed++
 				mu.Unlock()
-				app.Event.Emit(backend.EventFetchStatus, backend.FetchStatusEvt{Current: completed, Total: total})
+				if app != nil {
+					app.Event.Emit(backend.EventFetchStatus, backend.FetchStatusEvt{Current: completed, Total: total})
+				}
 				return
 			}
 
@@ -134,7 +154,9 @@ func (s *Service) FetchAppDetailsBulk(appIDs []string, language types.Language) 
 				mu.Lock()
 				completed++
 				mu.Unlock()
-				app.Event.Emit(backend.EventFetchStatus, backend.FetchStatusEvt{Current: completed, Total: total})
+				if app != nil {
+					app.Event.Emit(backend.EventFetchStatus, backend.FetchStatusEvt{Current: completed, Total: total})
+				}
 				return
 			}
 
@@ -151,7 +173,9 @@ func (s *Service) FetchAppDetailsBulk(appIDs []string, language types.Language) 
 			completed++
 			mu.Unlock()
 
-			app.Event.Emit(backend.EventFetchStatus, backend.FetchStatusEvt{Current: completed, Total: total})
+			if app != nil {
+				app.Event.Emit(backend.EventFetchStatus, backend.FetchStatusEvt{Current: completed, Total: total})
+			}
 		}(id)
 	}
 
@@ -163,7 +187,7 @@ func (s *Service) FetchAppDetailsBulk(appIDs []string, language types.Language) 
 // Used in FE
 func (s *Service) LoadAllCachedGameData() ([]*GameBasics, error) {
 	var cached []*GameBasics
-	language := cfg.Language.API
+	language := s.cfg.GetLanguage().API
 
 	schemaPath := filepath.Join(backend.GameCacheDir, language)
 	dirs, err := os.ReadDir(schemaPath)
@@ -219,7 +243,7 @@ func (s *Service) LoadAllCachedGameData() ([]*GameBasics, error) {
 }
 
 func (s *Service) fetchAchievementsWithKey(appID string, language string) ([]achievement, error) {
-	apiKey, _ := cfg.GetSteamAPIKey()
+	apiKey, _ := s.cfg.GetSteamAPIKey()
 
 	url := fmt.Sprintf(
 		"https://api.steampowered.com/ISteamUserStats/GetSchemaForGame/v2/?key=%s&appid=%s&l=%s",
@@ -314,10 +338,6 @@ func (s *Service) fetchAchievementsFromThirdParty(appID string, language string)
 		return nil, err
 	}
 
-	type communityData struct {
-		Icon   string
-		Hidden int
-	}
 	communityMap := make(map[string]communityData)
 
 	doc.Find(".achieveRow").Each(func(i int, s *goquery.Selection) {
@@ -339,6 +359,14 @@ func (s *Service) fetchAchievementsFromThirdParty(appID string, language string)
 	})
 
 	// 3. Merge data
+	return s.mergeAchievements(shItems, communityMap, appID), nil
+}
+
+func (s *Service) mergeAchievements(shItems []struct {
+	ApiName     string `json:"apiName"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+}, communityMap map[string]communityData, appID string) []achievement {
 	var achievements []achievement
 	for _, item := range shItems {
 		a := achievement{
@@ -353,19 +381,18 @@ func (s *Service) fetchAchievementsFromThirdParty(appID string, language string)
 
 			// Cache the achievement icon
 			_ = s.cacheAchievementIcon(appID, data.Icon)
-
 		}
 
 		achievements = append(achievements, a)
 	}
 
-	return achievements, nil
+	return achievements
 }
 
 // fetchAchievements fetches achievements using the configured data source
 // It reads the configuration to determine whether to use Steam Key or External Source
 func (s *Service) fetchAchievements(appID string, language string) ([]achievement, error) {
-	dataSource := cfg.GetSteamDataSource()
+	dataSource := s.cfg.GetSteamDataSource()
 
 	switch dataSource {
 	case "key":
