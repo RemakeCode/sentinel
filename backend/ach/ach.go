@@ -1,13 +1,22 @@
 package ach
 
 import (
+	"context"
 	"encoding/json"
 	"log/slog"
 	"os"
 	"path/filepath"
 	"sentinel/backend"
 	"strings"
+
+	"github.com/wailsapp/wails/v3/pkg/application"
 )
+
+type Service struct{}
+
+func (s *Service) ServiceStartup(ctx context.Context, options application.ServiceOptions) error {
+	return nil
+}
 
 // Achievement represents a single achievement's progress
 type Achievement struct {
@@ -29,9 +38,7 @@ type AchievementDiff struct {
 }
 
 // ParseAch reads and parses achievements.json from the given path without saving to cache
-
-// wails:internal
-func ParseAch(path string) (*AchievementData, error) {
+func (s *Service) ParseAch(path string) (*AchievementData, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
@@ -46,8 +53,7 @@ func ParseAch(path string) (*AchievementData, error) {
 }
 
 // LoadCachedAch loads the cached achievement data for a given appId
-// wails:internal
-func LoadCachedAch(appId string) (*AchievementData, error) {
+func (s *Service) LoadCachedAch(appId string) (*AchievementData, error) {
 	cachePath := filepath.Join(backend.ACHCacheDataDir, appId+".json")
 	data, err := os.ReadFile(cachePath)
 
@@ -65,8 +71,7 @@ func LoadCachedAch(appId string) (*AchievementData, error) {
 }
 
 // LoadAllCachedAch loads all cached achievement data from the cache directory
-// wails: internal
-func LoadAllCachedAch() (map[string]*AchievementData, error) {
+func (s *Service) LoadAllCachedAch() (map[string]*AchievementData, error) {
 	files, err := os.ReadDir(backend.ACHCacheDataDir)
 	if err != nil {
 		return nil, err
@@ -81,7 +86,7 @@ func LoadAllCachedAch() (map[string]*AchievementData, error) {
 
 		appId := strings.TrimSuffix(file.Name(), ".json")
 
-		achData, err := LoadCachedAch(appId)
+		achData, err := s.LoadCachedAch(appId)
 
 		if err != nil {
 			slog.Error("Failed to load cached achievements", "appId", appId, "error", err)
@@ -95,8 +100,7 @@ func LoadAllCachedAch() (map[string]*AchievementData, error) {
 }
 
 // SaveAch saves the given achievements to the cache
-// wails:internal
-func SaveAch(path string) error {
+func (s *Service) SaveAch(path string) error {
 	if err := os.MkdirAll(backend.ACHCacheDataDir, 0755); err != nil {
 		slog.Error("Failed to create achievement cache directory", "error", err)
 		return err
@@ -121,6 +125,16 @@ func (a *AchievementData) Diff(old *AchievementData) *AchievementDiff {
 	result := &AchievementDiff{
 		NewlyEarned:     make(map[string]Achievement),
 		ProgressUpdated: make(map[string]Achievement),
+	}
+
+	// Handle nil old - all achievements are new
+	if old == nil {
+		for id, ach := range a.Achievements {
+			if ach.Earned {
+				result.NewlyEarned[id] = ach
+			}
+		}
+		return result
 	}
 
 	for id, ach := range a.Achievements {

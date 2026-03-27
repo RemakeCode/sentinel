@@ -380,3 +380,172 @@ func TestDefaultEmulatorPaths(t *testing.T) {
 		assert.NotEmpty(t, emu.Path)
 	}
 }
+
+func TestCheckShouldNotify_MatchingPath(t *testing.T) {
+	_, tempDir := setupTestConfig(t)
+	_ = tempDir
+
+	cfg := &File{
+		Emulators: []Emulator{
+			{Path: "/path/to/emulator", ShouldNotify: true},
+			{Path: "/other/path", ShouldNotify: false},
+		},
+	}
+
+	assert.True(t, cfg.CheckShouldNotify("/path/to/emulator/achievements.json"))
+	assert.False(t, cfg.CheckShouldNotify("/other/path/game.json"))
+}
+
+func TestCheckShouldNotify_NoMatch(t *testing.T) {
+	_, tempDir := setupTestConfig(t)
+	_ = tempDir
+
+	cfg := &File{
+		Emulators: []Emulator{
+			{Path: "/path/to/emulator", ShouldNotify: false},
+		},
+	}
+
+	// Default is true when no match
+	assert.True(t, cfg.CheckShouldNotify("/completely/different/path.json"))
+}
+
+func TestSetLanguage_Valid(t *testing.T) {
+	_, tempDir := setupTestConfig(t)
+	_ = tempDir
+
+	cfg := &File{}
+
+	err := cfg.SetLanguage("english")
+	require.NoError(t, err)
+	assert.Equal(t, "english", cfg.Language.API)
+	assert.Equal(t, "English", cfg.Language.DisplayName)
+}
+
+func TestSetLanguage_Invalid(t *testing.T) {
+	_, tempDir := setupTestConfig(t)
+	_ = tempDir
+
+	cfg := &File{}
+
+	err := cfg.SetLanguage("invalid-language")
+	assert.Error(t, err)
+}
+
+func TestGetLanguage(t *testing.T) {
+	_, tempDir := setupTestConfig(t)
+	_ = tempDir
+
+	cfg := &File{
+		Language: types.Language{
+			DisplayName: "German",
+			API:         "german",
+			WebAPI:      "de",
+		},
+	}
+
+	lang := cfg.GetLanguage()
+	assert.Equal(t, "german", lang.API)
+	assert.Equal(t, "German", lang.DisplayName)
+}
+
+func TestGetSteamLanguages(t *testing.T) {
+	_, tempDir := setupTestConfig(t)
+	_ = tempDir
+
+	cfg := &File{}
+
+	languages := cfg.GetSteamLanguages()
+	assert.NotEmpty(t, languages)
+	// Should contain English
+	hasEnglish := false
+	for _, lang := range languages {
+		if lang.API == "english" {
+			hasEnglish = true
+			break
+		}
+	}
+	assert.True(t, hasEnglish)
+}
+
+func TestSetNotificationSound_Valid(t *testing.T) {
+	_, tempDir := setupTestConfig(t)
+	_ = tempDir
+
+	cfg := &File{}
+
+	err := cfg.SetNotificationSound("steam-deck.wav")
+	require.NoError(t, err)
+	assert.Equal(t, "steam-deck.wav", cfg.NotificationSound)
+}
+
+func TestSetNotificationSound_Disabled(t *testing.T) {
+	_, tempDir := setupTestConfig(t)
+	_ = tempDir
+
+	cfg := &File{}
+
+	err := cfg.SetNotificationSound("")
+	require.NoError(t, err)
+	assert.Equal(t, "", cfg.NotificationSound)
+}
+
+func TestSetNotificationSound_Invalid(t *testing.T) {
+	_, tempDir := setupTestConfig(t)
+	_ = tempDir
+
+	cfg := &File{}
+
+	err := cfg.SetNotificationSound("nonexistent-sound.wav")
+	assert.Error(t, err)
+}
+
+func TestGetAvailableSounds(t *testing.T) {
+	_, tempDir := setupTestConfig(t)
+	_ = tempDir
+
+	cfg := &File{}
+
+	sounds := cfg.GetAvailableSounds()
+	assert.NotEmpty(t, sounds)
+	// Should have "Disabled" option
+	hasDisabled := false
+	for _, sound := range sounds {
+		if sound.Value == "" && sound.Name == "Disabled" {
+			hasDisabled = true
+			break
+		}
+	}
+	assert.True(t, hasDisabled)
+}
+
+func TestSetLogLevel_Valid(t *testing.T) {
+	_, tempDir := setupTestConfig(t)
+	_ = tempDir
+
+	cfg := &File{}
+
+	err := cfg.SetLogLevel("debug")
+	require.NoError(t, err)
+	assert.Equal(t, "debug", cfg.LogLevel)
+}
+
+func TestSetLogLevel_Invalid(t *testing.T) {
+	_, tempDir := setupTestConfig(t)
+	_ = tempDir
+
+	cfg := &File{}
+
+	err := cfg.SetLogLevel("invalid-level")
+	assert.Error(t, err)
+}
+
+func TestGetAvailableLogLevels(t *testing.T) {
+	_, tempDir := setupTestConfig(t)
+	_ = tempDir
+
+	cfg := &File{}
+
+	levels := cfg.GetAvailableLogLevels()
+	assert.Len(t, levels, 3) // info, debug, off
+}

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"log/slog"
 	"net/http"
 	"os"
@@ -63,7 +64,8 @@ type Config interface {
 }
 
 type Service struct {
-	cfg Config
+	Config Config
+	Ach    *ach.Service
 }
 
 // Response struct for ISteamUserStats/GetSchemaForGame
@@ -86,12 +88,12 @@ type schemaResponse struct {
 
 // ServiceStartup implements the Wails service lifecycle hook.
 func (s *Service) ServiceStartup(ctx context.Context, options application.ServiceOptions) error {
-	if s.cfg == nil {
+	if s.Config == nil {
 		c, err := config.Get()
 		if err != nil {
 			return err
 		}
-		s.cfg = c
+		s.Config = c
 	}
 	slog.Info("Steam service startup complete")
 	return nil
@@ -187,8 +189,9 @@ func (s *Service) FetchAppDetailsBulk(appIDs []string, language types.Language) 
 // Used in FE
 func (s *Service) LoadAllCachedGameData() ([]*GameBasics, error) {
 	var cached []*GameBasics
-	language := s.cfg.GetLanguage().API
+	language := s.Config.GetLanguage().API
 
+	log.Printf("language %s", language)
 	schemaPath := filepath.Join(backend.GameCacheDir, language)
 	dirs, err := os.ReadDir(schemaPath)
 
@@ -203,7 +206,7 @@ func (s *Service) LoadAllCachedGameData() ([]*GameBasics, error) {
 	}
 
 	// Load all cached current Achievements
-	allAch, err := ach.LoadAllCachedAch()
+	allAch, err := s.Ach.LoadAllCachedAch()
 
 	if err != nil {
 		slog.Warn("Couldn't load all cached current ach")
@@ -243,7 +246,7 @@ func (s *Service) LoadAllCachedGameData() ([]*GameBasics, error) {
 }
 
 func (s *Service) fetchAchievementsWithKey(appID string, language string) ([]achievement, error) {
-	apiKey, _ := s.cfg.GetSteamAPIKey()
+	apiKey, _ := s.Config.GetSteamAPIKey()
 
 	url := fmt.Sprintf(
 		"https://api.steampowered.com/ISteamUserStats/GetSchemaForGame/v2/?key=%s&appid=%s&l=%s",
@@ -392,7 +395,7 @@ func (s *Service) mergeAchievements(shItems []struct {
 // fetchAchievements fetches achievements using the configured data source
 // It reads the configuration to determine whether to use Steam Key or External Source
 func (s *Service) fetchAchievements(appID string, language string) ([]achievement, error) {
-	dataSource := s.cfg.GetSteamDataSource()
+	dataSource := s.Config.GetSteamDataSource()
 
 	switch dataSource {
 	case "key":

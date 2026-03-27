@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"sentinel/backend"
+	"sentinel/backend/ach"
 	"sentinel/backend/config"
 	"sentinel/backend/logger"
 	"sentinel/backend/notifier"
@@ -33,21 +34,41 @@ func main() {
 	appLogger := logger.New()
 	// Load config early to check logging preferences
 	cfg, err := config.Get()
-	if err == nil {
-		logger.SetLevel(logger.ParseLevel(cfg.LogLevel))
+	logLevel := "info" // default
+	if err == nil && cfg != nil {
+		logLevel = cfg.LogLevel
+		logger.SetLevel(logger.ParseLevel(logLevel))
 	}
 	slog.SetDefault(appLogger)
+
+	// Initialize services manually to handle dependencies
+	configService := &config.File{}
+	steamService := &steam.Service{
+		Config: configService,
+		Ach:    &ach.Service{},
+	}
+	achService := steamService.Ach // Share the same instance
+	notifierService := &notifier.Service{
+		Config: configService,
+	}
+	watcherService := &watcher.Service{
+		Steam:    steamService,
+		Ach:      achService,
+		Config:   configService,
+		Notifier: notifierService,
+	}
 
 	options := application.Options{
 		Name:        "sentinel",
 		Description: "An Achievement Watcher",
 		Logger:      appLogger,
-		LogLevel:    logger.ParseLevel(cfg.LogLevel),
+		LogLevel:    logger.ParseLevel(logLevel),
 		Services: []application.Service{
-			application.NewService(&config.File{}),
-			application.NewService(&steam.Service{}),
-			application.NewService(&watcher.Service{}),
-			application.NewService(&notifier.Service{}),
+			application.NewService(configService),
+			application.NewService(steamService),
+			application.NewService(achService),
+			application.NewService(watcherService),
+			application.NewService(notifierService),
 		},
 
 		Assets: application.AssetOptions{
