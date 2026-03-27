@@ -9,6 +9,7 @@ dist/
 .roo/
 .kilocode/
 openspec/
+.opencode/
 
 /build/frontend/
 /build/.task/
