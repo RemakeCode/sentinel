@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"sentinel/backend/ach"
+	"sentinel/backend/config"
 	"sentinel/backend/steam"
 	steamtypes "sentinel/backend/steam/types"
 
@@ -23,6 +24,7 @@ type mockConfig struct {
 
 func (m *mockConfig) GetEmulatorPaths() ([]string, error) { return m.paths, nil }
 func (m *mockConfig) GetLanguage() steamtypes.Language    { return steamtypes.Language{API: "english"} }
+func (m *mockConfig) CheckShouldNotify(path string) bool  { return true }
 
 type mockSteam struct {
 	calledWithAppIDs []string
@@ -34,13 +36,17 @@ func (m *mockSteam) FetchAppDetailsBulk(appIDs []string, language steamtypes.Lan
 }
 
 type mockNotifier struct {
-	calls  int
-	lastID string
+	calls        int
+	lastID       string
+	isProgress   bool
+	shouldNotify bool
 }
 
-func (m *mockNotifier) SendNotification(appId string, diff map[string]ach.Achievement) error {
+func (m *mockNotifier) SendNotification(appId string, achievements map[string]ach.Achievement, isProgress bool, shouldNotify bool) error {
 	m.calls++
 	m.lastID = appId
+	m.isProgress = isProgress
+	m.shouldNotify = shouldNotify
 	return nil
 }
 
@@ -58,6 +64,7 @@ func (m *mockAchManager) ParseAch(path string) (*ach.AchievementData, error) {
 	return &ach.AchievementData{Achievements: map[string]ach.Achievement{}}, nil
 }
 func (m *mockAchManager) LoadCachedAch(appId string) (*ach.AchievementData, error) {
+	// Return the cacheResult as-is (nil means no cached data exists)
 	return m.cacheResult, nil
 }
 
@@ -191,28 +198,36 @@ func TestStop_WithActiveWatcher(t *testing.T) {
 
 func TestStart_NoEmulatorPaths(t *testing.T) {
 	service := &Service{
-		config: &mockConfig{paths: []string{}},
-		steam:  &mockSteam{},
-		ach:    &mockAchManager{},
+		Config: &config.File{Prefixes: []config.Prefix{}},
+		Steam:  &mockSteam{},
+		Ach:    &mockAchManager{},
 	}
 
 	err := service.Start()
 
 	assert.NoError(t, err)
-	assert.Nil(t, service.watcher)
+	// Watcher is created but with no paths to watch
+	assert.NotNil(t, service.watcher)
+
+	// Clean up
+	service.Stop()
 }
 
 func TestStart_WithEmulatorPaths(t *testing.T) {
 	tempDir := t.TempDir()
-	appIDDir := filepath.Join(tempDir, "99999")
+	// Create Wine-style prefix structure: prefix/drive_c/users/steamuser/<appID>
+	// When no emulator paths are configured, scan looks directly in steamuser/
+	appIDDir := filepath.Join(tempDir, "drive_c", "users", "steamuser", "99999")
 	require.NoError(t, os.MkdirAll(appIDDir, 0755))
 	require.NoError(t, os.WriteFile(filepath.Join(appIDDir, "achievements.json"), []byte(`{}`), 0644))
 
 	steamMock := &mockSteam{}
 	service := &Service{
-		config: &mockConfig{paths: []string{tempDir}},
-		steam:  steamMock,
-		ach:    &mockAchManager{},
+		Config: &config.File{
+			Prefixes: []config.Prefix{{Path: tempDir}},
+		},
+		Steam: steamMock,
+		Ach:   &mockAchManager{},
 	}
 
 	err := service.Start()
@@ -236,12 +251,15 @@ func TestHandleEvent_AchievementsWrite_CallsNotifier(t *testing.T) {
 				"ach_1": {Earned: true},
 			},
 		},
-		cacheResult: nil, // no cached data → diff includes ach_1
+		cacheResult: &ach.AchievementData{
+			Achievements: map[string]ach.Achievement{}, // empty cache → ach_1 is newly earned
+		},
 	}
 
 	service := &Service{
-		notifier: notifMock,
-		ach:      achMock,
+		Notifier: notifMock,
+		Ach:      achMock,
+		Config:   &config.File{},
 	}
 
 	event := fsnotify.Event{
@@ -268,8 +286,9 @@ func TestHandleEvent_NoDiff_DoesNotCallNotifier(t *testing.T) {
 	}
 
 	service := &Service{
-		notifier: notifMock,
-		ach:      achMock,
+		Notifier: notifMock,
+		Ach:      achMock,
+		Config:   &config.File{},
 	}
 
 	event := fsnotify.Event{
@@ -285,8 +304,9 @@ func TestHandleEvent_NonAchievementsFile(t *testing.T) {
 	notifMock := &mockNotifier{}
 
 	service := &Service{
-		notifier: notifMock,
-		ach:      &mockAchManager{},
+		Notifier: notifMock,
+		Ach:      &mockAchManager{},
+		Config:   &config.File{},
 	}
 
 	event := fsnotify.Event{
@@ -332,8 +352,8 @@ func TestRetryTimer_Creation(t *testing.T) {
 func TestTriggerMetadataFetch_CallsSteam(t *testing.T) {
 	steamMock := &mockSteam{}
 	service := &Service{
-		config: &mockConfig{},
-		steam:  steamMock,
+		Config: &config.File{},
+		Steam:  steamMock,
 	}
 
 	service.triggerMetadataFetch([]string{"111", "222"})
@@ -348,11 +368,63 @@ func TestTriggerMetadataFetch_CallsSteam(t *testing.T) {
 func TestTriggerMetadataFetch_Empty_DoesNotCallSteam(t *testing.T) {
 	steamMock := &mockSteam{}
 	service := &Service{
-		config: &mockConfig{},
-		steam:  steamMock,
+		Config: &config.File{},
+		Steam:  steamMock,
 	}
 
 	service.triggerMetadataFetch([]string{})
 
 	assert.Empty(t, steamMock.calledWithAppIDs)
+}
+
+func TestComputeFullPath_WithDriveC(t *testing.T) {
+	tempDir := t.TempDir()
+
+	// Create Wine-style prefix structure
+	driveC := filepath.Join(tempDir, "drive_c", "users", "steamuser")
+	require.NoError(t, os.MkdirAll(driveC, 0755))
+
+	service := &Service{
+		Config: &config.File{},
+	}
+
+	paths, err := service.computeFullPath(tempDir)
+	require.NoError(t, err)
+	assert.Len(t, paths, 1)
+	assert.Equal(t, driveC, paths[0])
+}
+
+func TestComputeFullPath_NoDriveC(t *testing.T) {
+	tempDir := t.TempDir()
+
+	service := &Service{
+		Config: &config.File{},
+	}
+
+	_, err := service.computeFullPath(tempDir)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "could not find drive_c")
+}
+
+func TestComputeFullPath_WithEmulatorPaths(t *testing.T) {
+	tempDir := t.TempDir()
+
+	// Create Wine-style prefix structure
+	driveC := filepath.Join(tempDir, "drive_c", "users", "steamuser")
+	require.NoError(t, os.MkdirAll(driveC, 0755))
+
+	service := &Service{
+		Config: &config.File{
+			Emulators: []config.Emulator{
+				{Path: "AppData/Roaming/GSE Saves"},
+				{Path: "Documents/My Games"},
+			},
+		},
+	}
+
+	paths, err := service.computeFullPath(tempDir)
+	require.NoError(t, err)
+	assert.Len(t, paths, 2)
+	assert.Contains(t, paths, filepath.Join(driveC, "AppData/Roaming/GSE Saves"))
+	assert.Contains(t, paths, filepath.Join(driveC, "Documents/My Games"))
 }

@@ -41,18 +41,10 @@ type Service struct {
 	notificationQueue chan *NotificationPayload
 	ctx               context.Context
 	cancel            context.CancelFunc
+	Config            *config.File
 }
 
-var (
-	instance *Service
-	queueCap = 100
-)
-
-func Get() *Service {
-	return instance
-}
-
-var cfg *config.File
+var queueCap = 100
 
 func init() {
 	err := os.MkdirAll(backend.MediaDir, 0755)
@@ -85,13 +77,11 @@ func init() {
 }
 
 func (s *Service) ServiceStartup(ctx context.Context, options application.ServiceOptions) error {
-	instance = s
-
-	c, err := config.Get()
-	if err != nil {
-		return err
+	// Config must be injected before startup
+	if s.Config == nil {
+		slog.Error("Config not injected into notifier service")
+		return fmt.Errorf("config not injected into notifier service")
 	}
-	cfg = c
 
 	s.notificationQueue = make(chan *NotificationPayload, queueCap)
 	s.ctx, s.cancel = context.WithCancel(context.Background())
@@ -197,10 +187,10 @@ func (s *Service) SendNotification(appId string, achievements map[string]ach.Ach
 				}
 
 				var soundPath string
-				if shouldNotify && cfg.NotificationSound != "" {
-					soundPath = filepath.Join(backend.MediaDir, cfg.NotificationSound)
+				if shouldNotify && s.Config.NotificationSound != "" {
+					soundPath = filepath.Join(backend.MediaDir, s.Config.NotificationSound)
 					if _, err := os.Stat(soundPath); err != nil {
-						slog.Warn("Sound file not found, skipping sound", "sound", cfg.NotificationSound, "path", soundPath)
+						slog.Warn("Sound file not found, skipping sound", "sound", s.Config.NotificationSound, "path", soundPath)
 						soundPath = ""
 					}
 				}
@@ -256,7 +246,7 @@ func isAvailable() bool {
 }
 
 func (s *Service) getAchDataForNotification(appId string) (*steam.GameBasics, string, error) {
-	language := cfg.Language.API
+	language := s.Config.Language.API
 
 	schemaPath := filepath.Join(backend.GameCacheDir, language, fmt.Sprintf("%s.json", appId))
 

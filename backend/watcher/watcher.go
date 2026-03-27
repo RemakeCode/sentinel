@@ -8,25 +8,42 @@ import (
 	"path/filepath"
 	"regexp"
 	"sentinel/backend"
+	"sentinel/backend/steam/types"
 	"slices"
 	"strings"
 	"time"
 
 	"sentinel/backend/ach"
 	"sentinel/backend/config"
-	"sentinel/backend/notifier"
 	"sentinel/backend/steam"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
+type SteamService interface {
+	FetchAppDetailsBulk(appIDs []string, language types.Language) ([]*steam.GameBasics, error)
+}
+
+type AchService interface {
+	SaveAch(path string) error
+	ParseAch(path string) (*ach.AchievementData, error)
+	LoadCachedAch(appId string) (*ach.AchievementData, error)
+}
+
+type Notifier interface {
+	SendNotification(appId string, achievements map[string]ach.Achievement, isProgress bool, shouldNotify bool) error
+}
+
 type Service struct {
 	watcher     *fsnotify.Watcher
 	done        chan struct{}
 	failedPaths []string // Tracks paths that failed to watch
 	retryTimer  *time.Timer
-	steam       *steam.Service
+	Steam       SteamService
+	Ach         AchService
+	Config      *config.File
+	Notifier    Notifier // Injected dependency for notifications
 	prefixPaths []string // Top-level prefix paths from config to watch for new games
 	appIDPaths  []string // All appId paths being watched
 }
@@ -39,16 +56,16 @@ type scanResult struct {
 	AppIDPaths []string // Array of full paths to app ID folders
 }
 
-var cfg *config.File
-
 func (s *Service) ServiceStartup(ctx context.Context, options application.ServiceOptions) error {
-	c, err := config.Get()
-	if err != nil {
-		return err
+	if s.Config == nil {
+		c, err := config.Get()
+		if err != nil {
+			return err
+		}
+		s.Config = c
 	}
-	cfg = c
 
-	prefixPaths, err := cfg.GetPrefixPaths()
+	prefixPaths, err := s.Config.GetPrefixPaths()
 
 	if err != nil {
 		return err
@@ -98,7 +115,7 @@ func (s *Service) scan(paths []string) scanResult {
 
 // Start initializes the file system watcher and begins monitoring paths
 func (s *Service) Start() error {
-	prefixPaths, err := cfg.GetPrefixPaths()
+	prefixPaths, err := s.Config.GetPrefixPaths()
 	if err != nil {
 		slog.Error("Failed to get prefix paths", "error", err)
 		return err
@@ -147,7 +164,7 @@ func (s *Service) Start() error {
 
 	// Add all appId paths to the watcher
 	for _, path := range scanResult.AppIDPaths {
-		if err := ach.SaveAch(path); err != nil {
+		if err := s.Ach.SaveAch(path); err != nil {
 			slog.Warn("Could not cache ach from path", "path", path, "error", err)
 		}
 
@@ -227,7 +244,7 @@ func (s *Service) scanAndWatchPrefix(prefix string) {
 				return err
 			}
 
-			if err := ach.SaveAch(path); err != nil {
+			if err := s.Ach.SaveAch(path); err != nil {
 				return err
 			}
 
@@ -349,14 +366,14 @@ func (s *Service) handleEvent(event fsnotify.Event) {
 func (s *Service) handleAchievementsWriteEvent(path, appId string) {
 	app := application.Get()
 
-	newAch, err := ach.ParseAch(path)
+	newAch, err := s.Ach.ParseAch(path)
 
 	if err != nil {
 		slog.Error("Failed to parse achievements", "error", err)
 		return
 	}
 
-	oldAch, err := ach.LoadCachedAch(appId)
+	oldAch, err := s.Ach.LoadCachedAch(appId)
 	if err != nil {
 		return
 	}
@@ -364,8 +381,8 @@ func (s *Service) handleAchievementsWriteEvent(path, appId string) {
 	diff := newAch.Diff(oldAch)
 
 	if len(diff.NewlyEarned) > 0 || len(diff.ProgressUpdated) > 0 {
-		notifierService := notifier.Get()
-		shouldNotify := cfg.CheckShouldNotify(path)
+		notifierService := s.Notifier
+		shouldNotify := s.Config.CheckShouldNotify(path)
 		if len(diff.NewlyEarned) > 0 {
 			err := notifierService.SendNotification(appId, diff.NewlyEarned, false, shouldNotify)
 			if err != nil {
@@ -379,12 +396,15 @@ func (s *Service) handleAchievementsWriteEvent(path, appId string) {
 			}
 		}
 
-		if err := ach.SaveAch(filepath.Dir(path)); err != nil {
+		if err := s.Ach.SaveAch(filepath.Dir(path)); err != nil {
 			slog.Error("Failed to save achievements", "error", err)
 		}
 	}
 
-	app.Event.Emit(backend.EventDataUpdated)
+	// Only emit event if application is running (not in tests)
+	if app != nil {
+		app.Event.Emit(backend.EventDataUpdated)
+	}
 }
 
 // triggerMetadataFetch fetches Steam metadata for the given appIds in a background goroutine
@@ -397,7 +417,7 @@ func (s *Service) triggerMetadataFetch(appIDs []string) {
 	go func() {
 		slog.Info("Fetching metadata", "appIDs", appIDs)
 
-		_, err := s.steam.FetchAppDetailsBulk(appIDs, cfg.Language)
+		_, err := s.Steam.FetchAppDetailsBulk(appIDs, s.Config.Language)
 
 		if err != nil {
 			slog.Error("Failed to fetch metadata", "error", err)
@@ -409,7 +429,7 @@ func (s *Service) triggerMetadataFetch(appIDs []string) {
 }
 
 func (s *Service) computeFullPath(prefixPath string) ([]string, error) {
-	emuPaths, err := cfg.GetEmulatorPaths()
+	emuPaths, err := s.Config.GetEmulatorPaths()
 	if err != nil {
 		return nil, err
 	}

@@ -124,7 +124,7 @@ func TestFetchAppDetailsBulk_Cached(t *testing.T) {
 	backend.GameCacheDir = filepath.Join(tmpDir, "games")
 
 	mc := new(mockConfig)
-	svc := &Service{cfg: mc}
+	svc := &Service{Config: mc}
 
 	appID := "12345"
 	lang := types.Language{API: "english"}

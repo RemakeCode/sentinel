@@ -36,7 +36,6 @@ type Emulator struct {
 type SteamSource string
 
 const (
-	Unknown  SteamSource = ""
 	Key      SteamSource = "key"
 	External SteamSource = "external"
 )
@@ -97,7 +96,25 @@ func Get() (*File, error) {
 		}
 		instance = f
 	})
+
+	// If initial load failed, retry (in case config file was created later)
+	if instance == nil && instanceErr != nil {
+		f := &File{}
+		if _, err := f.LoadConfig(); err == nil {
+			instance = f
+			instanceErr = nil
+			return instance, nil
+		}
+	}
+
 	return instance, instanceErr
+}
+
+// ResetSingleton resets the singleton state (for testing or after config file is created)
+func ResetSingleton() {
+	instanceOnce = sync.Once{}
+	instance = nil
+	instanceErr = nil
 }
 
 func (c *File) ServiceStartup(ctx context.Context, options application.ServiceOptions) error {
@@ -145,31 +162,25 @@ func (c *File) ServiceStartup(ctx context.Context, options application.ServiceOp
 		err := os.WriteFile(backend.ConfigPath, config, 0644)
 		if err != nil {
 			slog.Error("Failed to write default config", "error", err)
+			return fmt.Errorf("failed to write default config: %w", err)
 		}
+		slog.Info("Created default config file", "path", backend.ConfigPath)
+
+		// Reset singleton so next Get() call will load the new config
+		ResetSingleton()
 	} else if err != nil {
 		// Handle other errors (e.g., permission issues)
 		slog.Error("Unexpected error checking config", "error", err)
+		return fmt.Errorf("error checking config: %w", err)
+	}
+
+	// Load config into this instance so injected services have the values
+	if _, err := c.LoadConfig(); err != nil {
+		slog.Error("Failed to load config into service", "error", err)
 	}
 
 	slog.Info("Config initialization complete")
-
-	cfg, err := Get()
-	if err != nil {
-		slog.Error("Failed to get config", "error", err)
-	}
-
-	_, err = cfg.LoadConfig()
-
-	if err != nil {
-		slog.Error("Failed to load config file", "error", err)
-	}
-
 	return nil
-}
-
-func (c *File) getConfig() *File {
-	cfg, _ := Get()
-	return cfg
 }
 
 //wails:internal
@@ -423,8 +434,7 @@ func (c *File) GetAvailableSounds() []SoundOption {
 
 // SetNotificationSound sets the notification sound preference
 func (c *File) SetNotificationSound(sound string) error {
-	cfg := c.getConfig()
-	availableSounds := cfg.GetAvailableSounds()
+	availableSounds := c.GetAvailableSounds()
 
 	// Validate sound exists or is empty string (no sound)
 	valid := false
@@ -439,8 +449,8 @@ func (c *File) SetNotificationSound(sound string) error {
 		return fmt.Errorf("invalid sound: %s", sound)
 	}
 
-	cfg.NotificationSound = sound
-	return cfg.SaveConfig()
+	c.NotificationSound = sound
+	return c.SaveConfig()
 }
 
 // GetAvailableLogLevels returns the list of available logging levels
@@ -454,11 +464,9 @@ func (c *File) GetAvailableLogLevels() []LogLevelOption {
 
 // SetLogLevel sets the logging level preference and updates the logger
 func (c *File) SetLogLevel(level string) error {
-	cfg := c.getConfig()
-
 	// Validate level
 	valid := false
-	for _, l := range cfg.GetAvailableLogLevels() {
+	for _, l := range c.GetAvailableLogLevels() {
 		if l.Value == level {
 			valid = true
 			break
@@ -469,12 +477,12 @@ func (c *File) SetLogLevel(level string) error {
 		return fmt.Errorf("invalid log level: %s", level)
 	}
 
-	cfg.LogLevel = level
+	c.LogLevel = level
 
 	// Apply level to logger immediately
 	logger.SetLevel(logger.ParseLevel(level))
 
-	return cfg.SaveConfig()
+	return c.SaveConfig()
 }
 
 // SetLoggingEnabled toggles logging between 'info' and 'off'
@@ -488,8 +496,7 @@ func (c *File) SetLoggingEnabled(enabled bool) error {
 
 // CheckShouldNotify checks if the path matches any emulator path and returns the ShouldNotify setting
 func (c *File) CheckShouldNotify(path string) bool {
-	cfg := c.getConfig()
-	for _, emulator := range cfg.Emulators {
+	for _, emulator := range c.Emulators {
 		if emulator.Path != "" && strings.Contains(path, emulator.Path) {
 			return emulator.ShouldNotify
 		}
