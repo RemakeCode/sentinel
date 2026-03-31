@@ -153,7 +153,6 @@ const Settings: FC = () => {
       await SetLoggingEnabled(newValue);
       setSelectedLogLevel(newValue ? 'info' : 'off');
       window.ot?.toast(`Logging ${newValue ? 'enabled' : 'disabled'}`, 'Success', { variant: 'success' });
-      await loadConfig();
     } catch (err) {
       window.ot?.toast('Failed to update logging setting', 'Error', { variant: 'danger' });
     }
@@ -165,7 +164,6 @@ const Settings: FC = () => {
       await SetLanguage(value);
       setSelectedLanguage(value);
       window.ot?.toast('Language updated', 'Success', { variant: 'success' });
-      await loadConfig();
     } catch (err) {
       window.ot?.toast('Failed to update language', 'Error', { variant: 'danger' });
     }
