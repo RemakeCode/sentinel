@@ -174,12 +174,12 @@ const Settings: FC = () => {
   const handleSoundChange = async (e: ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     try {
-      await SetNotificationSound(value);
       setSelectedSound(value);
+      await SetNotificationSound(value);
+
       if (value) {
         await handlePlaySound(value);
       }
-      await loadConfig();
     } catch (err) {}
   };
   const handlePlaySound = async (soundValue: string) => {
