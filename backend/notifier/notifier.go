@@ -183,7 +183,7 @@ func (s *Service) SendNotification(appId string, achievements map[string]ach.Ach
 
 				if isProgress && a.MaxProgress > 0 {
 					title = achievement.Description
-					message = progressBar(a.Progress, a.MaxProgress, 25)
+					message = progressBar(a.Progress, a.MaxProgress, 22)
 				}
 
 				var soundPath string

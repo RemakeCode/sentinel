@@ -57,6 +57,7 @@ tasks:
       BUILD_FLAGS: '{{if eq .DEV "true"}}{{if .EXTRA_TAGS}}-tags {{.EXTRA_TAGS}} {{end}}-buildvcs=false -gcflags=all="-l"{{else}}-tags production{{if .EXTRA_TAGS}},{{.EXTRA_TAGS}}{{end}} -trimpath -buildvcs=false -ldflags="-w -s -X {{.MODULE}}/backend.Version={{.APP_VERSION}}"{{end}}'
       DEFAULT_OUTPUT: '{{.BIN_DIR}}/{{.APP_NAME}}'
       OUTPUT: '{{ .OUTPUT | default .DEFAULT_OUTPUT }}'
+      EXTRA_TAGS: '{{.EXTRA_TAGS}}'
     env:
       GOOS: linux
       CGO_ENABLED: 1
@@ -109,30 +110,29 @@ tasks:
     deps:
       - task: build
     cmds:
-      - task: create:appimage
       - task: create:deb
       - task: create:rpm
       - task: create:aur
       - task: cleanup:artifacts
 
-  create:appimage:
-    summary: Creates an AppImage
-    dir: build/linux/appimage
-    deps:
-      - task: build
-      - task: generate:dotdesktop
-        vars:
-          APP_NAME: '{{.APP_NAME}}'
-    cmds:
-      - cp "{{.APP_BINARY}}" "{{.APP_NAME}}"
-      - cp ../../appicon.png "{{.APP_NAME}}.png"
-      - wails3 generate appimage -binary "{{.APP_NAME}}" -icon {{.ICON}} -desktopfile {{.DESKTOP_FILE}} -outputdir {{.OUTPUT_DIR}} -builddir {{.ROOT_DIR}}/build/linux/appimage/build
-    vars:
-      APP_NAME: '{{.APP_NAME}}'
-      APP_BINARY: '../../../bin/{{.APP_NAME}}'
-      ICON: '{{.APP_NAME}}.png'
-      DESKTOP_FILE: '../{{.APP_NAME}}.desktop'
-      OUTPUT_DIR: '../../../bin'
+#  create:appimage:
+#    summary: Creates an AppImage
+#    dir: build/linux/appimage
+#    deps:
+#      - task: build
+#      - task: generate:dotdesktop
+#        vars:
+#          APP_NAME: '{{.APP_NAME}}'
+#    cmds:
+#      - cp "{{.APP_BINARY}}" "{{.APP_NAME}}"
+#      - cp ../../appicon.png "{{.APP_NAME}}.png"
+#      - wails3 generate appimage -binary "{{.APP_NAME}}" -icon {{.ICON}} -desktopfile {{.DESKTOP_FILE}} -outputdir {{.OUTPUT_DIR}} -builddir {{.ROOT_DIR}}/build/linux/appimage/build
+#    vars:
+#      APP_NAME: '{{.APP_NAME}}'
+#      APP_BINARY: '../../../bin/{{.APP_NAME}}'
+#      ICON: '{{.APP_NAME}}.png'
+#      DESKTOP_FILE: '../{{.APP_NAME}}.desktop'
+#      OUTPUT_DIR: '../../../bin'
 
   create:deb:
     summary: Creates a deb package

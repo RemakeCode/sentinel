@@ -156,7 +156,7 @@ tasks:
     vars:
       TAG: "{{.TAG}}"
     preconditions:
-      - sh: docker info > /dev/null 2>&1
+      - sh: docker info > /dev/null 2>&1EXTRA_TAGS
         msg: "Docker is required. Please install Docker first."
       - sh: test -f build/docker/Dockerfile.server
         msg: "Dockerfile.server not found. Run 'wails3 update build-assets' to generate it."
