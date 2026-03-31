@@ -1,5 +1,5 @@
-import type { CSSProperties, FC } from 'react';
-import { useEffect, useMemo, useState } from 'react';
+import type { CSSProperties, FC, ReactNode } from 'react';
+import { useEffect, useMemo, useState, useTransition } from 'react';
 import { Link, useLocation, useParams } from 'react-router';
 import { ArrowDown, ArrowLeft, ArrowUp, Clock, EyeOff, Ghost, Glasses, History, ListCheck, Trophy } from 'lucide-react';
 import { GameBasics } from '@wa/sentinel/backend/steam';
@@ -10,7 +10,7 @@ import { computeProgress } from '@/shared/utils';
 
 type SortOption = 'name-asc' | 'name-desc' | 'time-newest' | 'time-oldest';
 
-const SORT_OPTIONS: { value: SortOption; icon: React.ReactNode; active: SortOption }[] = [
+const SORT_OPTIONS: { value: SortOption; icon: ReactNode; active: SortOption }[] = [
   { value: 'name-asc', icon: <ArrowUp size={20} />, active: 'name-asc' },
   { value: 'name-desc', icon: <ArrowDown size={20} />, active: 'name-desc' },
   { value: 'time-newest', icon: <Clock size={20} />, active: 'time-newest' },
@@ -27,6 +27,17 @@ const GameDetails: FC = () => {
 
   const [globalPercentages, setGlobalPercentages] = useState<Map<string, number>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
+  const [, startTransition] = useTransition();
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => {
+      startTransition(() => {
+        setIsVisible(true);
+      });
+    });
+    return () => cancelAnimationFrame(raf);
+  }, []);
 
   useEffect(() => {
     const fetchGlobalPercentages = async () => {
@@ -93,9 +104,9 @@ const GameDetails: FC = () => {
     };
   }, [game?.Achievement.List]);
 
-  const sortedAchievements = useMemo(() => {
+  const { sortedUnlocked, sortedLocked } = useMemo(() => {
     const list = [...(game?.Achievement.List || [])];
-    return list.sort((a, b) => {
+    const sorted = list.sort((a, b) => {
       const aTime = (a as any).CurrentAch?.earned_time || 0;
       const bTime = (b as any).CurrentAch?.earned_time || 0;
       switch (sortBy) {
@@ -111,6 +122,9 @@ const GameDetails: FC = () => {
           return 0;
       }
     });
+    const unlocked = sorted.filter((a) => (a as any).CurrentAch?.earned);
+    const locked = sorted.filter((a) => !(a as any).CurrentAch?.earned);
+    return { sortedUnlocked: unlocked, sortedLocked: locked };
   }, [game?.Achievement.List, sortBy]);
 
   const formatUnlockTime = (timestamp: number | undefined): string => {
@@ -141,26 +155,54 @@ const GameDetails: FC = () => {
               </div>
               <progress value={stats.percentage} max={100} className='mt-6'></progress>
               <div className='game-details-stats'>
-                <div className='game-details-stat-card card'>
+                <div
+                  className='game-details-stat-card card'
+                  style={{
+                    transitionDelay: '0.1s',
+                    opacity: isVisible ? 1 : 0,
+                    transform: isVisible ? 'translateY(0)' : 'translateY(20px)'
+                  }}
+                >
                   <Trophy className='game-details-stat-icon' />
                   <span className='game-details-stat-value'>{stats.percentage}%</span>
                   <span className='game-details-stat-label'>Complete</span>
                 </div>
-                <div className='game-details-stat-card card'>
+                <div
+                  className='game-details-stat-card card'
+                  style={{
+                    transitionDelay: '0.15s',
+                    opacity: isVisible ? 1 : 0,
+                    transform: isVisible ? 'translateY(0)' : 'translateY(20px)'
+                  }}
+                >
                   <ListCheck className='game-details-stat-icon' />
                   <span className='game-details-stat-value'>
                     {stats.achievedCount} / {stats.totalCount}
                   </span>
                   <span className='game-details-stat-label'>Total</span>
                 </div>
-                <div className='game-details-stat-card card'>
+                <div
+                  className='game-details-stat-card card'
+                  style={{
+                    transitionDelay: '0.2s',
+                    opacity: isVisible ? 1 : 0,
+                    transform: isVisible ? 'translateY(0)' : 'translateY(20px)'
+                  }}
+                >
                   <Ghost className='game-details-stat-icon' />
                   <span className='game-details-stat-value'>
                     {stats.hiddenEarned} / {stats.hiddenTotal}
                   </span>
                   <span className='game-details-stat-label'>Hidden</span>
                 </div>
-                <div className='game-details-stat-card card'>
+                <div
+                  className='game-details-stat-card card'
+                  style={{
+                    transitionDelay: '0.25s',
+                    opacity: isVisible ? 1 : 0,
+                    transform: isVisible ? 'translateY(0)' : 'translateY(20px)'
+                  }}
+                >
                   <Glasses className='game-details-stat-icon' />
                   <span className='game-details-stat-value'>
                     {stats.visibleEarned} / {stats.visibleTotal}
@@ -187,49 +229,126 @@ const GameDetails: FC = () => {
                 ))}
               </div>
             </div>
-            <ul className='game-details-ach-list'>
-              {sortedAchievements.map((ach, i) => {
-                const currentAch = (ach as any).CurrentAch;
-                const hasProgress = (currentAch?.max_progress || 0) > 1;
-                const progress = currentAch?.progress || 0;
-                const maxProgress = currentAch?.max_progress || 1;
+            {sortedUnlocked.length > 0 && (
+              <>
+                <h3 className='game-details-ach-subheader'>Unlocked</h3>
+                <ul className='game-details-ach-list'>
+                  {sortedUnlocked.map((ach, i) => {
+                    const currentAch = (ach as any).CurrentAch;
+                    const hasProgress = (currentAch?.max_progress || 0) > 1;
+                    const progress = currentAch?.progress || 0;
+                    const maxProgress = currentAch?.max_progress || 1;
 
-                return (
-                  <li key={i} className='game-details-ach-item'>
-                    <div className='game-details-ach-icon'>
-                      <img src={ach.Icon} alt={ach.DisplayName} width={64} height={64} />
-                    </div>
-                    <div className='game-details-ach-info'>
-                      <span className='game-details-ach-title'>{ach.DisplayName}</span>
-                      <span className='game-details-ach-desc'>
-                        <span className={`${ach.Hidden === 1 ? 'blur' : ''}`}>{ach.Description || ''}</span>
-                        {ach.Hidden === 1 && <EyeOff width={18} height={18} />}
-                      </span>
-                      {hasProgress && (
-                        <div className='game-details-ach-progress'>
-                          <progress value={progress} max={maxProgress} />
-                          <span className='game-details-ach-progress-text'>
-                            {progress} / {maxProgress}
-                          </span>
+                    return (
+                      <li
+                        key={i}
+                        className='game-details-ach-item'
+                        style={{
+                          transitionDelay: `${0.3 + Math.min(i * 0.05, 0.5)}s`,
+                          opacity: isVisible ? 1 : 0,
+                          transform: isVisible ? 'translateY(0)' : 'translateY(20px)'
+                        }}
+                      >
+                        <div className='game-details-ach-icon'>
+                          <img src={ach.Icon} alt={ach.DisplayName} width={64} height={64} />
                         </div>
-                      )}
-                    </div>
-                    <div className='game-details-ach-meta'>
-                      <code className='game-details-ach-unlocktime'>
-                        {currentAch?.earned_time ? formatUnlockTime(currentAch.earned_time) : 'Not Unlocked'}
-                      </code>
-                      {isLoading ? (
-                        <span role='status' className='skeleton line' style={{ width: '140px', height: '1em' }}></span>
-                      ) : globalPercentages.has(ach.Name) ? (
-                        <code className='game-details-ach-global-percent fade-in'>
-                          {globalPercentages.get(ach.Name)}% of players have this
-                        </code>
-                      ) : null}
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
+                        <div className='game-details-ach-info'>
+                          <span className='game-details-ach-title'>{ach.DisplayName}</span>
+                          <span className='game-details-ach-desc'>
+                            <span className={`${ach.Hidden === 1 ? 'blur' : ''}`}>{ach.Description || ''}</span>
+                            {ach.Hidden === 1 && <EyeOff width={18} height={18} />}
+                          </span>
+                          {hasProgress && (
+                            <div className='game-details-ach-progress'>
+                              <progress value={progress} max={maxProgress} />
+                              <span className='game-details-ach-progress-text'>
+                                {progress} / {maxProgress}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        <div className='game-details-ach-meta'>
+                          <code className='game-details-ach-unlocktime'>
+                            {currentAch?.earned_time ? formatUnlockTime(currentAch.earned_time) : 'Not Unlocked'}
+                          </code>
+                          {isLoading ? (
+                            <span
+                              role='status'
+                              className='skeleton line'
+                              style={{ width: '140px', height: '1em' }}
+                            ></span>
+                          ) : globalPercentages.has(ach.Name) ? (
+                            <code className='game-details-ach-global-percent fade-in'>
+                              {globalPercentages.get(ach.Name)}% of players have this
+                            </code>
+                          ) : null}
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </>
+            )}
+            {sortedLocked.length > 0 && (
+              <>
+                <h3 className='game-details-ach-subheader'>Locked</h3>
+                <ul className='game-details-ach-list'>
+                  {sortedLocked.map((ach, i) => {
+                    const currentAch = (ach as any).CurrentAch;
+                    const hasProgress = (currentAch?.max_progress || 0) > 1;
+                    const progress = currentAch?.progress || 0;
+                    const maxProgress = currentAch?.max_progress || 1;
+
+                    return (
+                      <li
+                        key={i}
+                        className='game-details-ach-item'
+                        style={{
+                          transitionDelay: `${0.3 + Math.min(i * 0.05, 0.5)}s`,
+                          opacity: isVisible ? 1 : 0,
+                          transform: isVisible ? 'translateY(0)' : 'translateY(20px)'
+                        }}
+                      >
+                        <div className='game-details-ach-icon'>
+                          <img src={ach.Icon} alt={ach.DisplayName} width={64} height={64} />
+                        </div>
+                        <div className='game-details-ach-info'>
+                          <span className='game-details-ach-title'>{ach.DisplayName}</span>
+                          <span className='game-details-ach-desc'>
+                            <span className={`${ach.Hidden === 1 ? 'blur' : ''}`}>{ach.Description || ''}</span>
+                            {ach.Hidden === 1 && <EyeOff width={18} height={18} />}
+                          </span>
+                          {hasProgress && (
+                            <div className='game-details-ach-progress'>
+                              <progress value={progress} max={maxProgress} />
+                              <span className='game-details-ach-progress-text'>
+                                {progress} / {maxProgress}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        <div className='game-details-ach-meta'>
+                          <code className='game-details-ach-unlocktime'>
+                            {currentAch?.earned_time ? formatUnlockTime(currentAch.earned_time) : 'Not Unlocked'}
+                          </code>
+                          {isLoading ? (
+                            <span
+                              role='status'
+                              className='skeleton line'
+                              style={{ width: '140px', height: '1em' }}
+                            ></span>
+                          ) : globalPercentages.has(ach.Name) ? (
+                            <code className='game-details-ach-global-percent fade-in'>
+                              {globalPercentages.get(ach.Name)}% of players have this
+                            </code>
+                          ) : null}
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </>
+            )}
           </div>
         </div>
       </section>
