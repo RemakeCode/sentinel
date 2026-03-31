@@ -198,7 +198,7 @@ func (c *File) LoadConfig() (*File, error) {
 }
 
 func (c *File) GetConfig() (*File, error) {
-	return Get()
+	return c.LoadConfig()
 }
 
 func (c *File) SaveConfig() error {
