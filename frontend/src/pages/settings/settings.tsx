@@ -222,7 +222,7 @@ const Settings: FC = () => {
     try {
       await RemovePrefix(index);
       window.ot?.toast('Prefix removed', 'Success', { variant: 'success' });
-      await Promise.all([loadConfig()]);
+      await loadConfig();
     } catch (err) {
       window.ot?.toast('Failed to remove prefix', 'Error', { variant: 'danger' });
     }
