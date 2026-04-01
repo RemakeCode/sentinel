@@ -507,8 +507,6 @@ func (c *File) CheckShouldNotify(path string) bool {
 }
 
 // PlaySound plays a sound file asynchronously using paplay or aplay
-//
-//wails:internal
 func (c *File) PlaySound(filename string) error {
 	if filename == "" {
 		return nil

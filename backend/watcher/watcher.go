@@ -114,8 +114,6 @@ func (s *Service) scan(paths []string) scanResult {
 //TODO Create a new method that watches the Emupaths.
 
 // Start initializes the file system watcher and begins monitoring paths
-//
-//wails:internal
 func (s *Service) Start() error {
 	prefixPaths, err := s.Config.GetPrefixPaths()
 	if err != nil {
@@ -192,8 +190,6 @@ func (s *Service) Start() error {
 }
 
 // Stop gracefully shuts down the watcher
-//
-//wails:internal
 func (s *Service) Stop() {
 	slog.Info("Stopping watcher")
 
