@@ -1,5 +1,5 @@
 import './header.scss';
-import { FC, HTMLAttributes } from 'react';
+import type { FC, HTMLAttributes } from 'react';
 
 export const Header: FC<HTMLAttributes<HTMLElement>> = ({ children, className, ...props }) => {
   return (
