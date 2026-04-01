@@ -183,7 +183,7 @@ func (c *File) ServiceStartup(ctx context.Context, options application.ServiceOp
 	return nil
 }
 
-//wails:internal
+// wails:internal
 func (c *File) LoadConfig() (*File, error) {
 	data, err := os.ReadFile(backend.ConfigPath)
 	if err != nil {
@@ -495,6 +495,8 @@ func (c *File) SetLoggingEnabled(enabled bool) error {
 }
 
 // CheckShouldNotify checks if the path matches any emulator path and returns the ShouldNotify setting
+//
+//wails:internal
 func (c *File) CheckShouldNotify(path string) bool {
 	for _, emulator := range c.Emulators {
 		if emulator.Path != "" && strings.Contains(path, emulator.Path) {
@@ -505,6 +507,8 @@ func (c *File) CheckShouldNotify(path string) bool {
 }
 
 // PlaySound plays a sound file asynchronously using paplay or aplay
+//
+//wails:internal
 func (c *File) PlaySound(filename string) error {
 	if filename == "" {
 		return nil

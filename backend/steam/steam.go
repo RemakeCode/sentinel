@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"log/slog"
 	"net/http"
 	"os"
@@ -55,6 +54,12 @@ type gameBasicsResponse struct {
 type communityData struct {
 	Icon   string
 	Hidden int
+}
+
+// GlobalAchievementPercentage represents a single achievement's global unlock rate
+type GlobalAchievementPercentage struct {
+	Name    string `json:"name"`
+	Percent string `json:"percent"`
 }
 
 type Config interface {
@@ -191,7 +196,7 @@ func (s *Service) LoadAllCachedGameData() ([]*GameBasics, error) {
 	var cached []*GameBasics
 	language := s.Config.GetLanguage().API
 
-	log.Printf("language %s", language)
+	slog.Info("Loading cached game data for FE", "language", language)
 	schemaPath := filepath.Join(backend.GameCacheDir, language)
 	dirs, err := os.ReadDir(schemaPath)
 
@@ -636,12 +641,6 @@ func (s *Service) loadCachedGameImage(appID string, imageType string) (string, e
 	}
 
 	return "", errors.New("cached image not found")
-}
-
-// GlobalAchievementPercentage represents a single achievement's global unlock rate
-type GlobalAchievementPercentage struct {
-	Name    string `json:"name"`
-	Percent string `json:"percent"`
 }
 
 // GetGlobalAchievementPercentages fetches global achievement percentages from Steam API

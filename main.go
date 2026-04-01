@@ -24,8 +24,8 @@ var trayIcon []byte
 
 func init() {
 	application.RegisterEvent[application.Void]("sentinel::ready")
-	application.RegisterEvent[backend.FetchStatusEvt]("sentinel::fetch-status")
-	application.RegisterEvent[application.Void]("sentinel::data-updated")
+	application.RegisterEvent[backend.FetchStatusEvt](backend.EventFetchStatus)
+	application.RegisterEvent[application.Void](backend.EventDataUpdated)
 }
 
 func main() {

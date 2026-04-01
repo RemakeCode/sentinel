@@ -265,6 +265,7 @@ func (s *Service) getAchDataForNotification(appId string) (*steam.GameBasics, st
 	return &gb, gb.Name, nil
 }
 
+//wails:internal
 func (s *Service) ServiceShutdown() error {
 	if s.cancel != nil {
 		s.cancel()
