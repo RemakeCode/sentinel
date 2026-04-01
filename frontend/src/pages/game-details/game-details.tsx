@@ -1,10 +1,10 @@
+import './game-details.scss';
 import type { CSSProperties, FC, ReactNode } from 'react';
 import { useEffect, useMemo, useState, useTransition } from 'react';
 import { Link, useLocation, useParams } from 'react-router';
 import { ArrowDown, ArrowLeft, ArrowUp, Clock, EyeOff, Ghost, Glasses, History, ListCheck, Trophy } from 'lucide-react';
 import { GameBasics } from '@wa/sentinel/backend/steam';
 import { GetGlobalAchievementPercentages } from '@wa/sentinel/backend/steam/service';
-import './game-details.scss';
 import { Header } from '@/shared/components/header/header';
 import { computeProgress } from '@/shared/utils';
 
