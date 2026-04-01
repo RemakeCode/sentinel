@@ -1,6 +1,10 @@
 .about-dialog {
   color: var(--muted-foreground);
 
+  &-logo {
+    border-radius: 8px;
+  }
+
   &-content {
     display: flex;
     flex-direction: column;
