@@ -28,6 +28,7 @@ export const GamesProvider: FC<GamesProviderProps> = ({ children }) => {
   const [games, setGames] = useState<(GameBasics | null)[]>([]);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<number>(0);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   const refresh = async () => {
     setLoading(true);
@@ -37,7 +38,9 @@ export const GamesProvider: FC<GamesProviderProps> = ({ children }) => {
   };
 
   useEffect(() => {
-    const unsubscribe = Events.On('sentinel::fetch-status', async (event) => {
+    const unsubscribers: (() => void)[] = [];
+
+    const handleFetchStatus = async (event: { data: { Current: number; Total: number } }) => {
       const current = event.data.Current;
       const total = event.data.Total;
       const percentage = Math.floor((current / total) * 100);
@@ -47,19 +50,23 @@ export const GamesProvider: FC<GamesProviderProps> = ({ children }) => {
       if (current === total) {
         await refresh();
         setLoading(false);
+        setIsInitialized(true);
       }
-    });
+    };
 
-    return () => unsubscribe();
-  }, []);
+    const handleDataUpdated = async () => {
+      if (isInitialized) {
+        await refresh();
+      }
+    };
 
-  useEffect(() => {
-    const unsubscribe = Events.On('sentinel::data-updated', async () => {
-      await refresh();
-    });
+    unsubscribers.push(Events.On('sentinel::fetch-status', handleFetchStatus));
+    unsubscribers.push(Events.On('sentinel::data-updated', handleDataUpdated));
 
-    return () => unsubscribe();
-  }, []);
+    return () => {
+      unsubscribers.forEach((unsub) => unsub());
+    };
+  }, [isInitialized]);
 
   useEffect(() => {
     const handleInitialLoad = async () => {
@@ -67,9 +74,11 @@ export const GamesProvider: FC<GamesProviderProps> = ({ children }) => {
         const data = await LoadAllCachedGameData();
         setGames(data);
         setLoading(false);
+        setIsInitialized(true);
       } catch (e) {
         console.error(e);
         setLoading(false);
+        setIsInitialized(true);
       }
     };
     handleInitialLoad();
