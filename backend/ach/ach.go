@@ -120,7 +120,8 @@ func (s *Service) SaveAch(path string) error {
 }
 
 // Diff compares two AchievementData and returns newly earned achievements and progress updates
-// wails:internal
+//
+//wails:internal
 func (a *AchievementData) Diff(old *AchievementData) *AchievementDiff {
 	result := &AchievementDiff{
 		NewlyEarned:     make(map[string]Achievement),
