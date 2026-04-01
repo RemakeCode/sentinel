@@ -41,7 +41,7 @@ const AboutDialog: FC<AboutDialogProps> = ({ isOpen, appInfo, onClose }) => {
       {appInfo && (
         <>
           <div className='about-dialog-content'>
-            <img src={logo} alt={appInfo.name} width={64} height={64} style={{ borderRadius: '8px' }} />
+            <img src={logo} alt={appInfo.name} width={64} height={64} className='about-dialog-logo' />
             <h2>{appInfo.name}</h2>
             <div>Version {appInfo.version}</div>
             <div>{appInfo.description}</div>
