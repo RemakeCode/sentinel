@@ -60,6 +60,19 @@ const GameDetails: FC = () => {
     fetchGlobalPercentages();
   }, [id]);
 
+  useEffect(() => {
+    const handleScroll = () => {
+      const headers = document.querySelectorAll('.game-details-ach-subheader');
+      headers.forEach((header) => {
+        const rect = header.getBoundingClientRect();
+        header.classList.toggle('is-sticky', rect.top <= 150);
+      });
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   const [sortBy, setSortBy] = useState<SortOption>(() => {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem(STORAGE_KEY);
@@ -269,14 +282,10 @@ const GameDetails: FC = () => {
                         </div>
                         <div className='game-details-ach-meta'>
                           <code className='game-details-ach-unlocktime'>
-                            {currentAch?.earned_time ? formatUnlockTime(currentAch.earned_time) : 'Not Unlocked'}
+                            {currentAch?.earned_time ? formatUnlockTime(currentAch.earned_time) : 'Locked'}
                           </code>
                           {isLoading ? (
-                            <span
-                              role='status'
-                              className='skeleton line'
-                              style={{ width: '140px', height: '1em' }}
-                            ></span>
+                            <span role='status' className='skeleton line game-details-skeleton'></span>
                           ) : globalPercentages.has(ach.Name) ? (
                             <code className='game-details-ach-global-percent fade-in'>
                               {globalPercentages.get(ach.Name)}% of players have this
@@ -329,14 +338,10 @@ const GameDetails: FC = () => {
                         </div>
                         <div className='game-details-ach-meta'>
                           <code className='game-details-ach-unlocktime'>
-                            {currentAch?.earned_time ? formatUnlockTime(currentAch.earned_time) : 'Not Unlocked'}
+                            {currentAch?.earned_time ? formatUnlockTime(currentAch.earned_time) : 'Locked'}
                           </code>
                           {isLoading ? (
-                            <span
-                              role='status'
-                              className='skeleton line'
-                              style={{ width: '140px', height: '1em' }}
-                            ></span>
+                            <span role='status' className='skeleton line game-details-skeleton'></span>
                           ) : globalPercentages.has(ach.Name) ? (
                             <code className='game-details-ach-global-percent fade-in'>
                               {globalPercentages.get(ach.Name)}% of players have this

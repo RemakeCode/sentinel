@@ -147,6 +147,11 @@
       padding: var(--space-1) 0;
       margin: 0;
       background: var(--background);
+      transition: font-size var(--transition);
+
+      &.is-sticky {
+        font-size: 98%
+      }
     }
 
     &-list {
@@ -265,6 +270,11 @@
 
   progress {
     -webkit-appearance: none;
+  }
+
+  &-skeleton {
+    width: 140px;
+    height: 1em;
   }
 
   @keyframes fadeIn {
