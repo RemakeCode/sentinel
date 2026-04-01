@@ -1,6 +1,6 @@
+import './empty-state.scss';
 import type { FC, ReactNode } from 'react';
 import { FileX } from 'lucide-react';
-import './empty-state.scss';
 
 interface EmptyStateProps {
   message?: string;

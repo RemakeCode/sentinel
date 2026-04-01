@@ -1,5 +1,5 @@
-import type { CSSProperties, FC } from 'react';
 import './dashboard.scss';
+import type { CSSProperties, FC } from 'react';
 
 import { Gamepad2, Settings } from 'lucide-react';
 import { Link } from 'react-router';

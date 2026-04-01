@@ -1,4 +1,5 @@
-import { createContext, FC, ReactNode, useContext, useEffect, useState } from 'react';
+import type { FC, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 import { GameBasics } from '@wa/sentinel/backend/steam';
 import { Events } from '@wailsio/runtime';
 import { LoadAllCachedGameData } from '@wa/sentinel/backend/steam/service';
