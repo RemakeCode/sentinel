@@ -1,6 +1,6 @@
 import './settings.scss';
 import type { ChangeEvent, FC } from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import {
   ArrowLeft,
@@ -28,7 +28,12 @@ import {
   SetSteamDataSource,
   ToggleEmulatorNotification
 } from '@wa/sentinel/backend/config/file';
-import { PlaySound, TestNotification, TestNotificationProgress } from '@wa/sentinel/backend/notifier/service';
+import {
+  GetNotificationExpireTime,
+  PlaySound,
+  TestNotification,
+  TestNotificationProgress
+} from '@wa/sentinel/backend/notifier/service';
 
 import type { AppInfo } from '@wa/sentinel/backend/config/models';
 import { Emulator, File, Prefix, SteamSource } from '@wa/sentinel/backend/config/models';
@@ -74,7 +79,8 @@ const Settings: FC = () => {
   const [selectedLogLevel, setSelectedLogLevel] = useState<string>('');
   const [aboutDialogOpen, setAboutDialogOpen] = useState(false);
   const [appInfo, setAppInfo] = useState<AppInfo | null>(null);
-  let timeout: ReturnType<typeof setTimeout>;
+  const [testNotificationDisabled, setTestNotificationDisabled] = useState(false);
+  const testNotificationTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     Promise.all([loadConfig(), loadLanguages(), loadAvailableSounds()]);
@@ -190,7 +196,13 @@ const Settings: FC = () => {
 
   const handleTestNotification = async () => {
     try {
+      const expireTime = await GetNotificationExpireTime();
+      setTestNotificationDisabled(true);
+      if (testNotificationTimeout.current) {
+        clearTimeout(testNotificationTimeout.current);
+      }
       await TestNotification();
+      testNotificationTimeout.current = setTimeout(() => setTestNotificationDisabled(false), expireTime);
     } catch (err) {
       console.error('Failed to send test notification:', err);
     }
@@ -198,7 +210,13 @@ const Settings: FC = () => {
 
   const handleTestNotificationProgress = async () => {
     try {
+      const expireTime = await GetNotificationExpireTime();
+      setTestNotificationDisabled(true);
+      if (testNotificationTimeout.current) {
+        clearTimeout(testNotificationTimeout.current);
+      }
       await TestNotificationProgress();
+      testNotificationTimeout.current = setTimeout(() => setTestNotificationDisabled(false), expireTime);
     } catch (err) {
       console.error('Failed to send test progress notification:', err);
     }
@@ -446,10 +464,10 @@ const Settings: FC = () => {
             <fieldset className='hstack'>
               <legend>Test Notification</legend>
               <div className='hstack'>
-                <button className='outline' onClick={handleTestNotification}>
+                <button className='outline' onClick={handleTestNotification} disabled={testNotificationDisabled}>
                   Normal
                 </button>
-                <button className='outline' onClick={handleTestNotificationProgress}>
+                <button className='outline' onClick={handleTestNotificationProgress} disabled={testNotificationDisabled}>
                   Progress
                 </button>
               </div>

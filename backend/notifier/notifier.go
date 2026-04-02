@@ -342,6 +342,10 @@ func (s *Service) PlaySound(filename string) error {
 	return nil
 }
 
+func (s *Service) GetNotificationExpireTime() int {
+	return int(backend.NotificationExpireTime / time.Millisecond)
+}
+
 //wails:internal
 func (s *Service) ServiceShutdown() error {
 	if s.cancel != nil {
