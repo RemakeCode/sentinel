@@ -29,6 +29,7 @@ import {
   SetSteamDataSource,
   ToggleEmulatorNotification
 } from '@wa/sentinel/backend/config/file';
+import { TestNotification, TestNotificationProgress } from '@wa/sentinel/backend/notifier/service';
 
 import type { AppInfo } from '@wa/sentinel/backend/config/models';
 import { Emulator, File, LogLevelOption, Prefix, SteamSource } from '@wa/sentinel/backend/config/models';
@@ -186,6 +187,22 @@ const Settings: FC = () => {
       await PlaySound(soundValue);
     } catch (err) {
       console.warn('Failed to play sound:', err);
+    }
+  };
+
+  const handleTestNotification = async () => {
+    try {
+      await TestNotification();
+    } catch (err) {
+      console.error('Failed to send test notification:', err);
+    }
+  };
+
+  const handleTestNotificationProgress = async () => {
+    try {
+      await TestNotificationProgress();
+    } catch (err) {
+      console.error('Failed to send test progress notification:', err);
     }
   };
 
@@ -412,7 +429,7 @@ const Settings: FC = () => {
 
         <div className='card settings-section'>
           <h4 className='settings-section-title'>
-            <Volume2 /> Notification Sound
+            <Volume2 /> Notification
           </h4>
           <hr className='divider' />
           <div className='settings-table-form'>
@@ -427,6 +444,17 @@ const Settings: FC = () => {
                   ))}
                 </select>
               </label>
+            </fieldset>
+            <fieldset className='hstack'>
+              <legend>Test Notification</legend>
+              <div className='hstack'>
+                <button className='outline' onClick={handleTestNotification}>
+                  Normal
+                </button>
+                <button className='outline' onClick={handleTestNotificationProgress}>
+                  Progress
+                </button>
+              </div>
             </fieldset>
           </div>
         </div>

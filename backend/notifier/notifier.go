@@ -220,6 +220,54 @@ func (s *Service) SendNotification(appId string, achievements map[string]ach.Ach
 	return nil
 }
 
+func (s *Service) TestNotification() error {
+	slog.Info("TestNotification called")
+
+	payload := &NotificationPayload{
+		Title:       "Test Notification",
+		Message:     "For those who come after",
+		IconPath:    filepath.Join(backend.MediaDir, "sentinel.png"),
+		SoundPath:   filepath.Join(backend.MediaDir, "steam-deck.wav"),
+		GameName:    "Sentinel",
+		Progress:    0,
+		MaxProgress: 0,
+		IsProgress:  false,
+	}
+
+	select {
+	case s.notificationQueue <- payload:
+		slog.Info("Queued test notification")
+	default:
+		slog.Warn("Notification queue full, dropping test notification")
+	}
+
+	return nil
+}
+
+func (s *Service) TestNotificationProgress() error {
+	slog.Info("TestNotificationProgress called")
+
+	payload := &NotificationPayload{
+		Title:       "For those who come after",
+		Message:     progressBar(7, 10, 22),
+		IconPath:    filepath.Join(backend.MediaDir, "sentinel.png"),
+		SoundPath:   filepath.Join(backend.MediaDir, "steam-deck.wav"),
+		GameName:    "Sentinel",
+		Progress:    7,
+		MaxProgress: 10,
+		IsProgress:  true,
+	}
+
+	select {
+	case s.notificationQueue <- payload:
+		slog.Info("Queued test progress notification")
+	default:
+		slog.Warn("Notification queue full, dropping test progress notification")
+	}
+
+	return nil
+}
+
 func progressBar(progress, max, width int) string {
 	if max == 0 {
 		return ""
