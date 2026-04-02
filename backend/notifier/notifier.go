@@ -30,7 +30,7 @@ type NotificationPayload struct {
 	Title       string
 	Message     string
 	IconPath    string
-	SoundPath   string
+	SoundFile   string
 	GameName    string
 	Progress    int
 	MaxProgress int
@@ -116,12 +116,6 @@ func (s *Service) sendNotificationSync(payload *NotificationPayload) {
 		}
 	}
 
-	if payload.SoundPath != "" {
-		if _, err := os.Stat(payload.SoundPath); err == nil {
-			args = append(args, "-h", fmt.Sprintf("%s%s", "string:sound-file:", payload.SoundPath))
-		}
-	}
-
 	cmd := exec.Command("notify-send", args...)
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Setsid: true, // Creates a new session, detaching from the terminal
@@ -133,6 +127,10 @@ func (s *Service) sendNotificationSync(payload *NotificationPayload) {
 		if err := cmd.Run(); err != nil {
 			slog.Warn("Failed to send notification", "error", err)
 			return
+		}
+
+		if payload.SoundFile != "" {
+			s.PlaySound(payload.SoundFile)
 		}
 
 		idStr := strings.TrimSpace(stdout.String())
@@ -186,12 +184,13 @@ func (s *Service) SendNotification(appId string, achievements map[string]ach.Ach
 					message = progressBar(a.Progress, a.MaxProgress, 22)
 				}
 
-				var soundPath string
+				var soundFile string
 				if shouldNotify && s.Config.NotificationSound != "" {
-					soundPath = filepath.Join(backend.MediaDir, s.Config.NotificationSound)
+					soundFile = s.Config.NotificationSound
+					soundPath := filepath.Join(backend.MediaDir, soundFile)
 					if _, err := os.Stat(soundPath); err != nil {
 						slog.Warn("Sound file not found, skipping sound", "sound", s.Config.NotificationSound, "path", soundPath)
-						soundPath = ""
+						soundFile = ""
 					}
 				}
 
@@ -199,7 +198,7 @@ func (s *Service) SendNotification(appId string, achievements map[string]ach.Ach
 					Title:       title,
 					Message:     message,
 					IconPath:    imagePath,
-					SoundPath:   soundPath,
+					SoundFile:   soundFile,
 					GameName:    gameName,
 					Progress:    a.Progress,
 					MaxProgress: a.MaxProgress,
@@ -227,7 +226,7 @@ func (s *Service) TestNotification() error {
 		Title:       "Test Notification",
 		Message:     "For those who come after",
 		IconPath:    filepath.Join(backend.MediaDir, "sentinel.png"),
-		SoundPath:   filepath.Join(backend.MediaDir, "steam-deck.wav"),
+		SoundFile:   s.Config.NotificationSound,
 		GameName:    "Sentinel",
 		Progress:    0,
 		MaxProgress: 0,
@@ -251,7 +250,7 @@ func (s *Service) TestNotificationProgress() error {
 		Title:       "For those who come after",
 		Message:     progressBar(7, 10, 22),
 		IconPath:    filepath.Join(backend.MediaDir, "sentinel.png"),
-		SoundPath:   filepath.Join(backend.MediaDir, "steam-deck.wav"),
+		SoundFile:   s.Config.NotificationSound,
 		GameName:    "Sentinel",
 		Progress:    7,
 		MaxProgress: 10,
@@ -285,7 +284,7 @@ func progressBar(progress, max, width int) string {
 	barStr := strings.Repeat(bar, filled) + strings.Repeat(emptyBar, empty)
 	percent := float64(progress) / float64(max) * 100.0
 
-	return fmt.Sprintf("[%s] %d/%d (%.1f%%)", barStr, progress, max, percent)
+	return fmt.Sprintf("%s %d/%d (%.1f%%)", barStr, progress, max, percent)
 }
 
 func isAvailable() bool {
