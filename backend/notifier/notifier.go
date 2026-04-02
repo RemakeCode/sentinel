@@ -313,6 +313,36 @@ func (s *Service) getAchDataForNotification(appId string) (*steam.GameBasics, st
 	return &gb, gb.Name, nil
 }
 
+// PlaySound plays a sound file asynchronously using paplay or aplay
+func (s *Service) PlaySound(filename string) error {
+	if filename == "" {
+		return nil
+	}
+
+	soundPath := filepath.Join(backend.MediaDir, filename)
+	if _, err := os.Stat(soundPath); err != nil {
+		return nil
+	}
+
+	go func() {
+		var cmd *exec.Cmd
+		if _, err := exec.LookPath("paplay"); err == nil {
+			cmd = exec.Command("paplay", soundPath)
+		} else if _, err := exec.LookPath("aplay"); err == nil {
+			cmd = exec.Command("aplay", soundPath)
+		} else {
+			slog.Warn("No audio playback utility available (paplay/aplay)")
+			return
+		}
+
+		if err := cmd.Run(); err != nil {
+			slog.Warn("Failed to play sound", "filename", filename, "error", err)
+		}
+	}()
+
+	return nil
+}
+
 //wails:internal
 func (s *Service) ServiceShutdown() error {
 	if s.cancel != nil {
