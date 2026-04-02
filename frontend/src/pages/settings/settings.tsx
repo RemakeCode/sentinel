@@ -20,7 +20,6 @@ import {
   GetAvailableSounds,
   GetConfig,
   GetSteamLanguages,
-  PlaySound,
   RemovePrefix,
   SetLanguage,
   SetLoggingEnabled,
@@ -29,10 +28,10 @@ import {
   SetSteamDataSource,
   ToggleEmulatorNotification
 } from '@wa/sentinel/backend/config/file';
-import { TestNotification, TestNotificationProgress } from '@wa/sentinel/backend/notifier/service';
+import { PlaySound, TestNotification, TestNotificationProgress } from '@wa/sentinel/backend/notifier/service';
 
 import type { AppInfo } from '@wa/sentinel/backend/config/models';
-import { Emulator, File, LogLevelOption, Prefix, SteamSource } from '@wa/sentinel/backend/config/models';
+import { Emulator, File, Prefix, SteamSource } from '@wa/sentinel/backend/config/models';
 
 import EmptyState from '@/shared/components/empty-state';
 
@@ -72,7 +71,6 @@ const Settings: FC = () => {
   const [languages, setLanguages] = useState<{ api: string; displayName: string }[]>([]);
   const [availableSounds, setAvailableSounds] = useState<{ name: string; value: string }[]>([]);
   const [selectedSound, setSelectedSound] = useState<string>('');
-  const [availableLogLevels, setAvailableLogLevels] = useState<LogLevelOption[]>([]);
   const [selectedLogLevel, setSelectedLogLevel] = useState<string>('');
   const [aboutDialogOpen, setAboutDialogOpen] = useState(false);
   const [appInfo, setAppInfo] = useState<AppInfo | null>(null);
