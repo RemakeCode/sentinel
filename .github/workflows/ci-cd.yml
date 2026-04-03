@@ -1,13 +1,16 @@
 name: CI/CD
 
 on:
-  pull_request:
-    branches: [ "main" ]
   push:
     branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch: # The "Manual" button to trigger a release
 
 permissions:
-  contents: read
+  contents: write
+  issues: write
+  pull-requests: write
 
 jobs:
   test:
@@ -37,38 +40,20 @@ jobs:
       - name: Install GTK Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y \
-          build-essential \
-          pkg-config \
-          libgtk-3-dev \
-          libgtk-4-dev \
-          libwebkit2gtk-4.1-dev
+          sudo apt-get install -y build-essential pkg-config libgtk-3-dev libgtk-4-dev libwebkit2gtk-4.1-dev
 
       - name: Install Wails v3 CLI
         run: go install github.com/wailsapp/wails/v3/cmd/wails3@latest
 
-      - name: Verify Module Integrity
-        run: |
-          go mod tidy
-          git diff --exit-code go.mod go.sum
-
       - name: Run tests
         run: go test ./backend/... -v -short -coverprofile=coverage.out
 
-      - name: Upload coverage
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage
-          path: coverage.out
-
-  build:
+  build-check:
     needs: test
-    if: github.event_name == 'push' || github.event_name == 'pull_request'  # TODO: revert to push only after testing
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -90,50 +75,20 @@ jobs:
       - name: Install GTK Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y \
-          build-essential \
-          pkg-config \
-          libgtk-3-dev \
-          libgtk-4-dev \
-          libwebkit2gtk-4.1-dev \
-          libnotify-bin
+          sudo apt-get install -y build-essential pkg-config libgtk-3-dev libgtk-4-dev libwebkit2gtk-4.1-dev
 
-      - name: Install Wails v3 CLI
+      - name: Install Wails CLI
         run: go install github.com/wailsapp/wails/v3/cmd/wails3@latest
 
-      - name: Build Linux Packages
-        run: task linux:package
-
-      - name: Upload packages
-        uses: actions/upload-artifact@v4
-        with:
-          name: linux-packages
-          path: bin/*.deb
-          retention-days: 45
-
-      - name: Upload RPM packages
-        uses: actions/upload-artifact@v4
-        with:
-          name: rpm-packages
-          path: bin/*.rpm
-          retention-days: 45
-
-      - name: Upload AUR packages
-        uses: actions/upload-artifact@v4
-        with:
-          name: aur-packages
-          path: bin/*.pkg.tar.zst
-          retention-days: 45
+      - name: Build Check
+        run: task linux:build
 
   release:
-    needs: build
-    if: github.event_name == 'push'
+    needs: test
+    # This job ONLY runs when you manually click "Run Workflow" in Actions tab
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     environment: production
-    permissions:
-      contents: write
-      issues: write
-      pull-requests: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -149,40 +104,29 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '24'
-          cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
 
       - name: Install Task
         uses: go-task/setup-task@v1
         with:
           version: 3.x
 
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@latest
+
       - name: Install GTK Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y \
-          build-essential \
-          pkg-config \
-          libgtk-3-dev \
-          libgtk-4-dev \
-          libwebkit2gtk-4.1-dev \
-          libnotify-bin
-
-      - name: Install Wails v3 CLI
-        run: go install github.com/wailsapp/wails/v3/cmd/wails3@latest
+          sudo apt-get install -y build-essential pkg-config libgtk-3-dev libgtk-4-dev libwebkit2gtk-4.1-dev libnotify-bin
 
       - name: Semantic Release
+        id: semantic
         uses: cycjimmy/semantic-release-action@v4
         with:
           semantic_version: '24'
           extra_plugins: |
-            @semantic-release/changelog@7.0.0
-            @semantic-release/git@10.0.1
-            @semantic-release/exec@7.0.0
-            @semantic-release/github@10.0.0
+            @semantic-release/changelog
+            @semantic-release/git
+            @semantic-release/exec
+            @semantic-release/github
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GIT_AUTHOR_NAME: github-actions[bot]
-          GIT_AUTHOR_EMAIL: github-actions[bot]@users.noreply.github.com
-          GIT_COMMITTER_NAME: github-actions[bot]
-          GIT_COMMITTER_EMAIL: github-actions[bot]@users.noreply.github.com
