@@ -12,7 +12,6 @@
   ],
   "plugins": [
     "@semantic-release/commit-analyzer",
-    "@semantic-release/release-notes-generator",
     [
       "@semantic-release/changelog",
       {
@@ -22,7 +21,7 @@
     [
       "@semantic-release/exec",
       {
-        "prepareCmd": "task linux:package"
+        "prepareCmd": "APP_VERSION=${nextRelease.version} task linux:package"
       }
     ],
     [
@@ -47,6 +46,17 @@
         "assets": ["CHANGELOG.md"],
         "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
       }
-    ]
+    ],
+    ["@semantic-release/release-notes-generator", {
+      "preset": "conventionalcommits",
+      "presetConfig": {
+        "types": [
+          {"type": "feat", "section": "🚀 New Features"},
+          {"type": "fix", "section": "🐛 Bug Fixes"},
+          {"type": "perf", "section": "⚡ Performance Improvements"},
+          {"type": "chore", "hidden": true}
+        ]
+      }
+    }]
   ]
 }
