@@ -81,6 +81,7 @@ const Settings: FC = () => {
   const [appInfo, setAppInfo] = useState<AppInfo | null>(null);
   const [testNotificationDisabled, setTestNotificationDisabled] = useState(false);
   const testNotificationTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const steamAPIKeyTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     Promise.all([loadConfig(), loadLanguages(), loadAvailableSounds()]);
@@ -101,14 +102,14 @@ const Settings: FC = () => {
   };
 
   const handleSaveSteamAPIKey = async () => {
-    if (timeout) {
-      clearTimeout(timeout);
+    if (steamAPIKeyTimeout.current) {
+      clearTimeout(steamAPIKeyTimeout.current);
     }
 
     try {
       if (steamAPIKey === '') {
         setSteamAPIKeyHasError(true);
-        timeout = setTimeout(() => setSteamAPIKeyHasError(false), 5000);
+        steamAPIKeyTimeout.current = setTimeout(() => setSteamAPIKeyHasError(false), 5000);
         return;
       }
       await Promise.all([SetSteamDataSource(SteamSource.Key), SetSteamAPIKey(steamAPIKey), loadConfig()]);
@@ -467,7 +468,11 @@ const Settings: FC = () => {
                 <button className='outline' onClick={handleTestNotification} disabled={testNotificationDisabled}>
                   Normal
                 </button>
-                <button className='outline' onClick={handleTestNotificationProgress} disabled={testNotificationDisabled}>
+                <button
+                  className='outline'
+                  onClick={handleTestNotificationProgress}
+                  disabled={testNotificationDisabled}
+                >
                   Progress
                 </button>
               </div>
