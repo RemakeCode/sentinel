@@ -5,7 +5,12 @@ tasks:
     summary: Runs `go mod tidy`
     internal: true
     cmds:
-      - go mod tidy
+      - |
+        if [ "$CI" = "true" ]; then
+          go mod tidy -e
+        else
+          go mod tidy
+        fi
 
   install:frontend:deps:
     summary: Install frontend dependencies
