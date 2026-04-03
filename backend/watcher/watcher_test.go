@@ -28,10 +28,14 @@ func (m *mockConfig) CheckShouldNotify(path string) bool  { return true }
 
 type mockSteam struct {
 	calledWithAppIDs []string
+	done             chan struct{} // Signal for async completion
 }
 
 func (m *mockSteam) FetchAppDetailsBulk(appIDs []string, language steamtypes.Language) ([]*steam.GameBasics, error) {
 	m.calledWithAppIDs = append(m.calledWithAppIDs, appIDs...)
+	if m.done != nil {
+		close(m.done)
+	}
 	return nil, nil
 }
 
@@ -221,7 +225,7 @@ func TestStart_WithEmulatorPaths(t *testing.T) {
 	require.NoError(t, os.MkdirAll(appIDDir, 0755))
 	require.NoError(t, os.WriteFile(filepath.Join(appIDDir, "achievements.json"), []byte(`{}`), 0644))
 
-	steamMock := &mockSteam{}
+	steamMock := &mockSteam{done: make(chan struct{})}
 	service := &Service{
 		Config: &config.File{
 			Prefixes: []config.Prefix{{Path: tempDir}},
@@ -234,8 +238,8 @@ func TestStart_WithEmulatorPaths(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.NotNil(t, service.watcher)
-	// triggerMetadataFetch runs async - give it a moment
-	time.Sleep(10 * time.Millisecond)
+	// Wait for async triggerMetadataFetch to complete via channel
+	<-steamMock.done
 	assert.Contains(t, steamMock.calledWithAppIDs, "99999")
 
 	service.Stop()
@@ -350,7 +354,7 @@ func TestRetryTimer_Creation(t *testing.T) {
 // ─── triggerMetadataFetch tests ───────────────────────────────────────────────
 
 func TestTriggerMetadataFetch_CallsSteam(t *testing.T) {
-	steamMock := &mockSteam{}
+	steamMock := &mockSteam{done: make(chan struct{})}
 	service := &Service{
 		Config: &config.File{},
 		Steam:  steamMock,
@@ -358,8 +362,8 @@ func TestTriggerMetadataFetch_CallsSteam(t *testing.T) {
 
 	service.triggerMetadataFetch([]string{"111", "222"})
 
-	// goroutine - wait briefly for it to complete
-	time.Sleep(10 * time.Millisecond)
+	// Wait for async goroutine to complete via channel
+	<-steamMock.done
 
 	assert.Contains(t, steamMock.calledWithAppIDs, "111")
 	assert.Contains(t, steamMock.calledWithAppIDs, "222")

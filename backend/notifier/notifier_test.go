@@ -1,9 +1,18 @@
 package notifier
 
 import (
+	"fmt"
+	"os"
+	"path/filepath"
 	"testing"
+	"time"
+
+	"sentinel/backend/ach"
+	"sentinel/backend/config"
+	steamtypes "sentinel/backend/steam/types"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestProgressBar_ZeroMax(t *testing.T) {
@@ -15,7 +24,6 @@ func TestProgressBar_HalfProgress(t *testing.T) {
 	result := progressBar(50, 100, 25)
 	assert.Contains(t, result, "50/100")
 	assert.Contains(t, result, "50.0%")
-	// Should have about 12 filled and 13 empty bars (25 total)
 	assert.Contains(t, result, "█")
 	assert.Contains(t, result, "░")
 }
@@ -24,14 +32,12 @@ func TestProgressBar_Complete(t *testing.T) {
 	result := progressBar(100, 100, 25)
 	assert.Contains(t, result, "100/100")
 	assert.Contains(t, result, "100.0%")
-	// All bars should be filled
 	assert.NotContains(t, result, "░")
 }
 
 func TestProgressBar_ProgressExceedsMax(t *testing.T) {
 	result := progressBar(150, 100, 25)
 	assert.Contains(t, result, "150/100")
-	// Progress should be capped at width
 	assert.NotContains(t, result, "░")
 }
 
@@ -39,13 +45,81 @@ func TestProgressBar_DifferentWidth(t *testing.T) {
 	result := progressBar(25, 100, 50)
 	assert.Contains(t, result, "25/100")
 	assert.Contains(t, result, "25.0%")
-	// Should have about 12 filled and 38 empty bars (50 total)
 }
 
 func TestIsAvailable_WithNotifySend(t *testing.T) {
-	// This test depends on the system having notify-send
-	// Just verify the function doesn't panic
 	result := isAvailable()
-	// Result could be true or false depending on the system
 	_ = result
+}
+
+func TestSendNotification_NotifySendNotAvailable(t *testing.T) {
+	oldPath := os.Getenv("PATH")
+	defer os.Setenv("PATH", oldPath)
+
+	os.Setenv("PATH", "/nonexistent")
+
+	svc := &Service{
+		Config: &config.File{},
+	}
+
+	err := svc.SendNotification("12345", map[string]ach.Achievement{"ach_1": {}}, false, true)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "notify-send not found")
+}
+
+func TestSendNotification_NoAchievements(t *testing.T) {
+	mockDir := t.TempDir()
+	mockScript := filepath.Join(mockDir, "notify-send")
+	require.NoError(t, os.WriteFile(mockScript, []byte("#!/bin/bash\n"), 0755))
+
+	oldPath := os.Getenv("PATH")
+	defer os.Setenv("PATH", oldPath)
+	os.Setenv("PATH", mockDir+":"+oldPath)
+
+	svc := &Service{
+		Config: &config.File{},
+	}
+
+	err := svc.SendNotification("12345", map[string]ach.Achievement{}, false, true)
+	assert.NoError(t, err)
+}
+
+func TestSendNotification_CorrectCommandArgs(t *testing.T) {
+	mockDir := t.TempDir()
+	argsFile := filepath.Join(mockDir, "notify_args.txt")
+	mockScript := filepath.Join(mockDir, "notify-send")
+	require.NoError(t, os.WriteFile(mockScript, []byte(fmt.Sprintf(`#!/bin/bash
+printf '%%s\n' "$@" > %s
+`, argsFile)), 0755))
+
+	oldPath := os.Getenv("PATH")
+	defer os.Setenv("PATH", oldPath)
+	os.Setenv("PATH", mockDir+":"+oldPath)
+
+	svc := &Service{
+		Config: &config.File{
+			Language:          steamtypes.Language{API: "english"},
+			NotificationSound: "",
+		},
+	}
+	svc.notificationQueue = make(chan *NotificationPayload, 10)
+
+	payload := &NotificationPayload{
+		Title:      "Test Game",
+		Message:    "Achievement Unlocked!",
+		IconPath:   "",
+		GameName:   "Test Game",
+		Progress:   0,
+		IsProgress: false,
+	}
+
+	svc.notificationQueue <- payload
+
+	select {
+	case p := <-svc.notificationQueue:
+		assert.Equal(t, "Test Game", p.Title)
+		assert.Equal(t, "Achievement Unlocked!", p.Message)
+	case <-time.After(time.Second):
+		t.Fatal("timeout waiting for notification")
+	}
 }
