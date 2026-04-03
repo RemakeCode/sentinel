@@ -120,5 +120,5 @@ npx commitlint --from HEAD~1
 ## Configuration
 
 - `.releaserc.json` - Semantic release configuration
-- `.github/workflows/release.yml` - GitHub Actions workflow
+- `.github/workflows/ci-cd.yml` - GitHub Actions workflow
 - `build/linux/Taskfile.yml` - Linux build tasks
