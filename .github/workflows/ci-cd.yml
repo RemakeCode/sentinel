@@ -21,17 +21,6 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.26'
-          cache: true
-
-      - name: Cache Go build
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
 
       - name: Set up Node
         uses: actions/setup-node@v4
@@ -85,7 +74,59 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.26'
-          cache: true
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Task
+        uses: go-task/setup-task@v1
+        with:
+          version: 3.x
+
+      - name: Install GTK Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+          build-essential \
+          pkg-config \
+          libgtk-3-dev \
+          libgtk-4-dev \
+          libwebkit2gtk-4.1-dev
+
+      - name: Install Wails v3 CLI
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@latest
+
+      - name: Verify Module Integrity
+        run: |
+          go mod tidy
+          git diff --exit-code go.mod go.sum
+
+      - name: Run tests
+        run: go test ./backend/... -v -short -coverprofile=coverage.out
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage.out
+
+  build:
+    needs: test
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
 
       - name: Set up Node
         uses: actions/setup-node@v4
@@ -156,7 +197,6 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.26'
-          cache: true
 
       - name: Set up Node
         uses: actions/setup-node@v4
