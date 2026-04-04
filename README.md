@@ -10,13 +10,12 @@ Sentinel monitors your Steam emulator save files and sends real-time desktop not
 
 ## Features
 
-- Real-time desktop notifications via `notify-send`
+- Real-time desktop notifications
 - Progress tracking for multi-step achievements
 - Game library with completion stats and sorting
 - Global achievement percentages from [Steam API](https://steamcommunity.com/dev)
 - Custom notification sounds (10 platform-themed options)
 - System tray support (runs in background)
-- Supports multiple Steam emulators ([Goldberg](https://github.com/Detanup01/gbe_fork), [CreamAPI](https://cs.rin.ru/forum/viewtopic.php?t=70576), etc.)
 - Choice of [Steam Web API key](https://steamcommunity.com/dev/apikey) or free external data source ([SteamHunters](https://steamhunters.com))
 
 ## Screenshots
@@ -60,23 +59,6 @@ sudo pacman -U sentinel-<version>-x86_64.pkg.tar.zst
 - **WebKitGTK 6.0** ([libwebkitgtk-6.0-4](https://webkitgtk.org/))
 - **libnotify** ([libnotify-bin](https://gitlab.gnome.org/GNOME/libnotify))
 
-### Build from Source
-
-**Prerequisites:**
-- [Go 1.26+](https://go.dev/dl/)
-- [Node.js 24+](https://nodejs.org/)
-- [Wails v3](https://wails.io/)
-- GTK4 development libraries (see above)
-
-```bash
-# Install Wails v3 CLI
-go install github.com/wailsapp/wails/v3/cmd/wails3@latest
-
-# Clone and build
-git clone https://github.com/RemakeCode/sentinel.git
-cd sentinel
-task build
-```
 
 ## Quick Start
 
@@ -84,22 +66,7 @@ task build
 2. **Configure Emulator Paths** — Add paths to emulator save directories (default: `AppData/Roaming/GSE Saves`)
 3. **Choose Data Source** — Use a [Steam API key](https://steamcommunity.com/dev/apikey) for faster data, or the free external source
 
-Sentinel will automatically scan for games and watch for achievement changes.
-
-## How It Works
-
-```
-Wine/Proton Prefixes ──┐
-                       ├──→ Sentinel discovers games ──→ Fetches metadata from Steam
-Emulator Save Paths ───┘                                         │
-                                                                 ↓
-                                                    Watches achievements.json ──→ Desktop notification
-```
-
-1. **Discovery** — Sentinel scans your prefix directories for emulated games
-2. **Metadata** — Fetches game info and achievement data from Steam (cached locally)
-3. **Watching** — Monitors `achievements.json` files for changes using `fsnotify`
-4. **Notifications** — Sends desktop notifications with icons and custom sounds
+Sentinel will automatically scan for games and watch for achievement changes as long as it is running in the system tray.
 
 ## Configuration
 
@@ -108,32 +75,43 @@ Config file location: `~/.cache/sentinel/config.json`
 ## FAQ
 
 ### What emulators are supported?
-Any emulator that writes `achievements.json` files in a `GSE Saves` directory structure. This includes [Goldberg Steam Emulator](https://github.com/Detanup01/gbe_fork), CreamAPI, and others.
+Any emulator that writes `achievements.json` files in a `GSE Saves` directory structure. This includes [Goldberg Steam Emulator](https://github.com/Detanup01/gbe_fork)
 
-### Where are my emulator save files?
-By default, most emulators use `AppData/Roaming/GSE Saves` inside the Wine/Proton prefix. You can configure custom paths in Settings.
 
 ### Do I need a Steam API key?
-No. Sentinel defaults to using [SteamHunters](https://steamhunters.com) and Steam Community pages as a free data source. A [Steam Web API key](https://steamcommunity.com/dev/apikey) is optional and provides faster, more reliable data.
+No. Sentinel defaults to using [SteamHunters](https://steamhunters.com) and Steam Community pages as a free data source. A [Steam Web API key](https://steamcommunity.com/dev/apikey) is advisable and provides faster, more reliable data.
 
 ### Why aren't notifications showing?
-- Ensure `libnotify-bin` is installed: `sudo apt install libnotify-bin`
+- Ensure you have `lib-notify` installed. Running `notify-send` shouldn't return `command`
 - Check that your desktop environment supports D-Bus notifications
-- Verify notification paths are enabled in Settings
+- Verify Notifications are enabled for your prefix paths in Settings
 
 ### Can I use this on Windows or macOS?
-Sentinel is Linux-first. Build targets exist for other platforms, but notifications and system tray are Linux-specific. Contributions for cross-platform support are welcome.
+Short answer - No. Sentinel is Linux-first. It is technically possible to have a Windows build, where is the fun in that 
 
 ### How do I add a new game after setup?
-Sentinel automatically rescans prefix directories every 5 seconds. New games appear in the library automatically.
+Sentinel automatically rescans prefix directories every few seconds. New games appear in the library automatically.
+
+### Is there a plan to support SteamDeck AKA running in Gamescope
+Yes.
 
 ## Acknowledgments
 
 - [Wails v3](https://wails.io/) — Desktop app framework
-- [React](https://react.dev/) — Frontend UI library
+- [React](https://react.dev/) — Frontend
+- [Oat UI](https://oat.ink/)
 - [fsnotify](https://github.com/fsnotify/fsnotify) — File system watcher
 - [Goldberg Emulator](https://github.com/Detanup01/gbe_fork) — Inspiration and compatibility
 
 ## License
 
 [MIT](LICENSE)
+
+## Legal
+⚠️ Software provided here is purely for informational purposes and does not provide nor encourage illegal access to copyrighted material.
+
+This software is provided "as is" without warranty of any kind. The authors accept no liability for any damages or issues arising from its use.
+
+This project is not affiliated with, endorsed by, or associated with Valve Corporation, Steam, or any other trademark owners. Achievement data is fetched from publicly available Steam APIs and third-party sources.
+
+All trademarks mentioned are the property of their respective owners.
