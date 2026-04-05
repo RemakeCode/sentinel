@@ -38,14 +38,14 @@ overrides:
   rpm:
     depends:
       - gtk4
-      - webkit2gtk6.0
+      - webkitgtk-6.0
       - libnotify
 
   # Arch Linux packages
   archlinux:
     depends:
       - gtk4
-      - webkit2gtk-6.0
+      - webkitgtk-6.0
       - libnotify
 
 # scripts section to ensure desktop database is updated after install
