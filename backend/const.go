@@ -32,6 +32,10 @@ var ACHCacheDataDir = filepath.Join(ACHCacheDir, "data")
 var ACHCacheIconDir = filepath.Join(ACHCacheDir, "icon")
 var GameCacheDir = filepath.Join(ACHCacheDir, "games")
 
+// Log file path
+var LogDir = filepath.Join(ConfigDir, "logs")
+var LogFilePath = filepath.Join(LogDir, "sentinel.log")
+
 var WalkerInterval = 5 * time.Second
 
 // Notification timing

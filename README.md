@@ -72,6 +72,8 @@ Sentinel will automatically scan for games and watch for achievement changes as 
 
 Config file location: `~/.cache/sentinel/config.json`
 
+Logs are written to `~/.cache/sentinel/logs/sentinel.log`. Enable logging from the Settings menu.
+
 ## FAQ
 
 ### What emulators are supported?
