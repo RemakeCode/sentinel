@@ -29,13 +29,13 @@
       {
         "assets": [
           {
-            "path": "bin/*.AppImage"
-          },
-          {
             "path": "bin/*.deb"
           },
           {
             "path": "bin/*.rpm"
+          },
+          {
+            "path": "bin/*.pkg.tar.zst"
           }
         ]
       }
