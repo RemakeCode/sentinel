@@ -74,6 +74,8 @@ type Service struct {
 }
 
 // Response struct for ISteamUserStats/GetSchemaForGame
+// NOTE: This API returns empty descriptions for hidden achievements
+// Kept for reference; use fetchAchievementsWithKeyLegacy as fallback if needed
 type schemaResponse struct {
 	Game struct {
 		GameName           string `json:"gameName"`
@@ -89,6 +91,21 @@ type schemaResponse struct {
 			} `json:"achievements"`
 		} `json:"availableGameStats"`
 	} `json:"game"`
+}
+
+// Response struct for IPlayerService/GetGameAchievements
+// Returns full descriptions including for hidden achievements
+type gameAchievementsResponse struct {
+	Response struct {
+		Achievements []struct {
+			Apiname     string `json:"internal_name"`
+			DisplayName string `json:"localized_name"`
+			Description string `json:"localized_desc"`
+			Icon        string `json:"icon"`
+			IconGray    string `json:"icon_gray"`
+			Hidden      bool   `json:"hidden"`
+		} `json:"achievements"`
+	} `json:"response"`
 }
 
 // ServiceStartup implements the Wails service lifecycle hook.
@@ -254,7 +271,7 @@ func (s *Service) fetchAchievementsWithKey(appID string, language string) ([]ach
 	apiKey, _ := s.Config.GetSteamAPIKey()
 
 	url := fmt.Sprintf(
-		"https://api.steampowered.com/ISteamUserStats/GetSchemaForGame/v2/?key=%s&appid=%s&l=%s",
+		"https://api.steampowered.com/IPlayerService/GetGameAchievements/v1/?key=%s&appid=%s&language=%s",
 		apiKey, appID, language,
 	)
 
@@ -269,31 +286,84 @@ func (s *Service) fetchAchievementsWithKey(appID string, language string) ([]ach
 		return nil, errors.New("steam api returned " + resp.Status)
 	}
 
-	var schema schemaResponse
+	var schema gameAchievementsResponse
 	if err := json.NewDecoder(resp.Body).Decode(&schema); err != nil {
-		return nil, nil
+		return nil, err
 	}
 
 	var achievements []achievement
 
-	for _, a := range schema.Game.AvailableGameStats.Achievements {
-		// Cache the achievement icon
+	steamCDN := fmt.Sprintf("https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/%s/", appID)
+
+	for _, a := range schema.Response.Achievements {
 		_ = s.cacheAchievementIcon(appID, a.Icon)
 
+		hiddenVal := 0
+		if a.Hidden {
+			hiddenVal = 1
+		}
+
 		achievement := achievement{
-			Name:         a.Name,
-			DisplayName:  a.DisplayName,
-			Description:  a.Description,
-			Icon:         a.Icon,
-			IconGray:     a.IconGray,
-			DefaultValue: a.DefaultValue,
-			Hidden:       a.Hidden,
+			Name:        a.Apiname,
+			DisplayName: a.DisplayName,
+			Description: a.Description,
+			Icon:        steamCDN + a.Icon,
+			IconGray:    steamCDN + a.IconGray,
+			Hidden:      hiddenVal,
 		}
 		achievements = append(achievements, achievement)
 	}
 
 	return achievements, nil
 }
+
+// fetchAchievementsWithKeyLegacy is a fallback using GetSchemaForGame API
+// NOTE: This API returns empty descriptions for hidden achievements
+// Use only as fallback if GetGameAchievements fails
+// func (s *Service) fetchAchievementsWithKeyLegacy(appID string, language string) ([]achievement, error) {
+// 	apiKey, _ := s.Config.GetSteamAPIKey()
+//
+// 	url := fmt.Sprintf(
+// 		"https://api.steampowered.com/ISteamUserStats/GetSchemaForGame/v2/?key=%s&appid=%s&l=%s",
+// 		apiKey, appID, language,
+// 	)
+//
+// 	resp, err := http.Get(url)
+//
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	defer resp.Body.Close()
+//
+// 	if resp.StatusCode != http.StatusOK {
+// 		return nil, errors.New("steam api returned " + resp.Status)
+// 	}
+//
+// 	var schema schemaResponse
+// 	if err := json.NewDecoder(resp.Body).Decode(&schema); err != nil {
+// 		return nil, nil
+// 	}
+//
+// 	var achievements []achievement
+//
+// 	for _, a := range schema.Game.AvailableGameStats.Achievements {
+// 		// Cache the achievement icon
+// 		_ = s.cacheAchievementIcon(appID, a.Icon)
+//
+// 		achievement := achievement{
+// 			Name:         a.Name,
+// 			DisplayName:  a.DisplayName,
+// 			Description:  a.Description,
+// 			Icon:         a.Icon,
+// 			IconGray:     a.IconGray,
+// 			DefaultValue: a.DefaultValue,
+// 			Hidden:       a.Hidden,
+// 		}
+// 		achievements = append(achievements, achievement)
+// 	}
+//
+// 	return achievements, nil
+// }
 
 func (s *Service) fetchAchievementsFromThirdParty(appID string, language string) ([]achievement, error) {
 	// 1. Fetch JSON data from SteamHunters
