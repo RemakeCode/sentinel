@@ -112,7 +112,9 @@ const Settings: FC = () => {
         steamAPIKeyTimeout.current = setTimeout(() => setSteamAPIKeyHasError(false), 5000);
         return;
       }
-      await Promise.all([SetSteamDataSource(SteamSource.Key), SetSteamAPIKey(steamAPIKey), loadConfig()]);
+      await Promise.all([SetSteamDataSource(SteamSource.Key), SetSteamAPIKey(steamAPIKey)]);
+
+      await loadConfig();
 
       window.ot?.toast('Steam API key saved', 'Success', { variant: 'success' });
 
