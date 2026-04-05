@@ -419,33 +419,6 @@ const Settings: FC = () => {
 
         <div className='card settings-section'>
           <h4 className='settings-section-title'>
-            <Globe /> Language
-          </h4>
-          <hr className='divider' />
-          <div className='settings-table-form'>
-            <fieldset className='hstack'>
-              <legend>Preferred Language</legend>
-              <label>
-                <select
-                  className='settings-select'
-                  value={selectedLanguage}
-                  onChange={handleLanguageChange}
-                  disabled={true}
-                >
-                  {languages.map((lang: { api: string; displayName: string }) => (
-                    <option key={lang.api} value={lang.api}>
-                      {lang.displayName}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <span className='badge'>Coming Soon</span>
-            </fieldset>
-          </div>
-        </div>
-
-        <div className='card settings-section'>
-          <h4 className='settings-section-title'>
             <Volume2 /> Notification
           </h4>
           <hr className='divider' />
@@ -476,6 +449,33 @@ const Settings: FC = () => {
                   Progress
                 </button>
               </div>
+            </fieldset>
+          </div>
+        </div>
+
+        <div className='card settings-section'>
+          <h4 className='settings-section-title'>
+            <Globe /> Language
+          </h4>
+          <hr className='divider' />
+          <div className='settings-table-form'>
+            <fieldset className='hstack'>
+              <legend>Preferred Language</legend>
+              <label>
+                <select
+                  className='settings-select'
+                  value={selectedLanguage}
+                  onChange={handleLanguageChange}
+                  disabled={true}
+                >
+                  {languages.map((lang: { api: string; displayName: string }) => (
+                    <option key={lang.api} value={lang.api}>
+                      {lang.displayName}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <span className='badge'>Coming Soon</span>
             </fieldset>
           </div>
         </div>
