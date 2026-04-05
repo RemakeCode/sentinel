@@ -4,11 +4,33 @@ This project uses [semantic-release](https://semantic-release.gitbook.io/) with 
 
 ## How It Works
 
-- Every push to `main` branch triggers the release workflow
+- Every push to `main` branch runs tests and build checks
+- GitHub Release is created manually via "Run Workflow" button
 - Commit messages are analyzed to determine version bumps
 - Linux packages (AppImage, .deb, .rpm) are built automatically
 - GitHub Release is created with changelog
 - Version tags are created automatically
+
+## Workflow Triggers
+
+| Event | Jobs Run | Description |
+|-------|----------|-------------|
+| Push to `main` | test, build-check | Automatic CI on every commit |
+| Manual Dispatch | test, release | Creates a new release |
+
+### Manual Release
+
+To create a release:
+1. Go to GitHub Actions → CI/CD workflow
+2. Click "Run workflow"
+3. Select branch and click "Run workflow"
+
+The release job will:
+- Run tests first
+- Analyze commit messages since last release
+- Determine version bump (major/minor/patch)
+- Create GitHub Release with changelog
+- Upload Linux packages
 
 ## Commit Message Format
 
@@ -44,48 +66,12 @@ feat!: change configuration format (BREAKING)
 docs: update installation instructions
 ```
 
-## Branch Strategy
-
-### `main` branch
-- Production releases (e.g., `v1.0.0`, `v1.1.0`, `v1.0.1`)
-- Stable releases only
-
-### `beta` branch (optional)
-- Pre-releases (e.g., `v1.0.0-beta.1`, `v1.0.0-beta.2`)
-- For testing before production
-
-### `alpha` branch (optional)
-- Early pre-releases (e.g., `v1.0.0-alpha.1`)
-- For experimental features
-
 ## Release Assets
 
 Each release includes:
-- `sentinel-{version}.x86_64.AppImage` - Universal Linux binary
-- `sentinel_{version}_amd64.deb` - Debian/Ubuntu package
-- `sentinel-{version}.x86_64.rpm` - Fedora/RHEL package
-
-## Manual Override
-
-To trigger a specific version bump, use commit message footers:
-
-```
-fix: minor update
-
-[skip ci]
-
-Release Notes: This is a manual version bump
-```
-
-## First Release
-
-The initial release will be `v1.0.0`. To start from `v0.x.x`, the first commit should be:
-
-```
-chore: initial release
-
-Release Notes: Initial development release
-```
+- `sentinel.deb` - Debian/Ubuntu package
+- `sentinel.rpm` - Fedora/RHEL package  
+- `sentinel.pkg.tar.zst` - Arch Linux package
 
 ## Troubleshooting
 
@@ -100,22 +86,6 @@ Release Notes: Initial development release
 - `feat:` triggers minor version
 - `fix:` triggers patch version
 
-### Build failed
-- Check GitHub Actions logs
-- Verify all dependencies are available
-- Ensure Task and Wails CLI install correctly
-
-## Local Testing
-
-Test your commit messages locally:
-
-```bash
-# Check what version would be released
-npx semantic-release --dry-run
-
-# Verify commit message format
-npx commitlint --from HEAD~1
-```
 
 ## Configuration
 
