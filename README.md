@@ -20,19 +20,29 @@ Sentinel monitors your Steam emulator save files and sends real-time desktop not
 
 ## Screenshots
 
+### In Game
+![In Game](.github/assets/in-game.gif)
+
+*WB Games - Middle Earth: Shadow of Mordor*
+
+### Dashboard
 ![Dashboard](.github/assets/dashboard.png)
-*Game library with completion progress*
 
+### Achievement Details
 ![Game Details](.github/assets/game-details.png)
-*Achievement list with global percentages*
 
-![Notification](.github/assets/notification.png)
-*Desktop notification with achievement icon*
 
+### Settings
 ![Settings](.github/assets/settings.png)
-*Configuration panel*
 
 ## Installation
+
+### System Requirements
+
+- **GTK 4** ([libgtk-4-1](https://www.gtk.org/))
+- **WebKitGTK 6.0** ([libwebkitgtk-6.0-4](https://webkitgtk.org/))
+- **libnotify** ([libnotify-bin](https://gitlab.gnome.org/GNOME/libnotify))
+
 
 ### Linux Packages
 
@@ -40,24 +50,18 @@ Download the latest release from [GitHub Releases](https://github.com/RemakeCode
 
 **Debian/Ubuntu (.deb):**
 ```bash
-sudo dpkg -i sentinel_<version>_amd64.deb
+sudo dpkg -i sentinel.deb
 ```
 
 **Fedora/RHEL (.rpm):**
 ```bash
-sudo dnf install sentinel-<version>.x86_64.rpm
+sudo dnf install sentinel.rpm
 ```
 
 **Arch Linux:**
 ```bash
-sudo pacman -U sentinel-<version>-x86_64.pkg.tar.zst
+sudo pacman -U sentinel.pkg.tar.zst
 ```
-
-### System Requirements
-
-- **GTK 4** ([libgtk-4-1](https://www.gtk.org/))
-- **WebKitGTK 6.0** ([libwebkitgtk-6.0-4](https://webkitgtk.org/))
-- **libnotify** ([libnotify-bin](https://gitlab.gnome.org/GNOME/libnotify))
 
 
 ## Quick Start
@@ -81,7 +85,7 @@ Any emulator that writes `achievements.json` files in a `GSE Saves` directory st
 
 
 ### Do I need a Steam API key?
-No. Sentinel defaults to using [SteamHunters](https://steamhunters.com) and Steam Community pages as a free data source. A [Steam Web API key](https://steamcommunity.com/dev/apikey) is advisable and provides faster, more reliable data.
+No, Sentinel defaults to using [SteamHunters](https://steamhunters.com) and Steam Community pages as a free data source. A [Steam Web API key](https://steamcommunity.com/dev/apikey) is advisable and provides faster, and more reliable data.
 
 ### Why aren't notifications showing?
 - Ensure you have `lib-notify` installed. Running `notify-send` shouldn't return `command`
@@ -94,16 +98,12 @@ Short answer - No. Sentinel is Linux-first. It is technically possible to have a
 ### How do I add a new game after setup?
 Sentinel automatically rescans prefix directories every few seconds. New games appear in the library automatically.
 
-### Is there a plan to support SteamDeck AKA running in Gamescope
+### Is there a plan to support SteamDeck/Decky Loader Plugin.
 Yes.
 
 ## Acknowledgments
-
-- [Wails v3](https://wails.io/) — Desktop app framework
-- [React](https://react.dev/) — Frontend
-- [Oat UI](https://oat.ink/)
-- [fsnotify](https://github.com/fsnotify/fsnotify) — File system watcher
-- [Goldberg Emulator](https://github.com/Detanup01/gbe_fork) — Inspiration and compatibility
+- [Achievement Watcher](https://github.com/xan105/Achievement-Watcher) - Inspiration
+- [Goldberg Emulator](https://github.com/Detanup01/gbe_fork) - Compatibility
 
 ## License
 
