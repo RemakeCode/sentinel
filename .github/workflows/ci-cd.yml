@@ -3,6 +3,8 @@ name: CI/CD
 on:
   push:
     branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
   workflow_dispatch: # The "Manual" button to trigger a release
 
 permissions:
