@@ -239,6 +239,7 @@ const Settings: FC = () => {
       const selectedPath = await Dialogs.OpenFile({
         CanChooseDirectories: true,
         CanChooseFiles: false,
+        ShowHiddenFiles: true,
         Title: 'Select A Prefix Folder'
       });
 
