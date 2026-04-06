@@ -124,11 +124,11 @@ jobs:
         uses: cycjimmy/semantic-release-action@v4
         with:
           semantic_version: '24'
-        extra_plugins: |
-          @semantic-release/release-notes-generator
-          @semantic-release/changelog
-          @semantic-release/git
-          @semantic-release/exec
-          @semantic-release/github
+          extra_plugins: |
+            @semantic-release/release-notes-generator
+            @semantic-release/changelog
+            @semantic-release/git
+            @semantic-release/exec
+            @semantic-release/github
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
