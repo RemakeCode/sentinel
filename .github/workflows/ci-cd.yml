@@ -99,7 +99,7 @@ jobs:
         with:
           token: ${{ steps.app-token.outputs.token }}
           fetch-depth: 0
-          persist-credentials: false
+          persist-credentials: true
 
       - name: Set up Go
         uses: actions/setup-go@v5
