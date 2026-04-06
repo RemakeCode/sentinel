@@ -82,7 +82,6 @@ jobs:
         run: task linux:build
 
   release:
-    needs: test
     # This job ONLY runs when you manually click "Run Workflow" in Actions tab
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
@@ -125,6 +124,7 @@ jobs:
         with:
           semantic_version: '24'
           extra_plugins: |
+            conventional-changelog-conventionalcommits
             @semantic-release/release-notes-generator
             @semantic-release/changelog
             @semantic-release/git
