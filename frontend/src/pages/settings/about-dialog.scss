@@ -53,4 +53,15 @@
       opacity: 0.9;
     }
   }
+
+  &::backdrop {
+    background:rgba(0,0,0, 0.5);
+    backdrop-filter: blur(0px);
+    -webkit-backdrop-filter: blur(0px);
+    transition: backdrop-filter 0.3s ease-in-out;
+  }
+  &[open]::backdrop {
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+  }
 }
