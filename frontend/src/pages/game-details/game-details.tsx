@@ -273,9 +273,13 @@ const GameDetails: FC = () => {
                           </span>
                           {hasProgress && (
                             <div className='game-details-ach-progress'>
-                              <progress value={progress} max={maxProgress} />
+                              <progress
+                                value={currentAch?.earned && progress !== maxProgress ? progress + 1 : progress}
+                                max={maxProgress}
+                              />
                               <span className='game-details-ach-progress-text'>
-                                {progress} / {maxProgress}
+                                {currentAch?.earned && progress !== maxProgress ? progress + 1 : progress} /{' '}
+                                {maxProgress}
                               </span>
                             </div>
                           )}
