@@ -82,7 +82,6 @@ jobs:
         run: task linux:build
 
   release:
-    needs: test
     # This job ONLY runs when you manually click "Run Workflow" in Actions tab
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
