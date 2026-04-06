@@ -125,6 +125,7 @@ jobs:
         with:
           semantic_version: '24'
           extra_plugins: |
+            conventional-changelog-conventionalcommits
             @semantic-release/release-notes-generator
             @semantic-release/changelog
             @semantic-release/git
