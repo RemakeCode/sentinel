@@ -1,3 +1,5 @@
+# yaml-language-server: $schema=https://nfpm.goreleaser.com/schema.json
+
 # Feel free to remove those if you don't want/need to use them.
 # Make sure to check the documentation at https://nfpm.goreleaser.com
 #
@@ -6,10 +8,10 @@
 name: "sentinel"
 arch: ${GOARCH}
 platform: "linux"
-version: ${VERSION}
+version: ${APP_VERSION}
 section: "default"
 priority: "extra"
-maintainer: "afk-rightNow"
+maintainer: "Remake Code <258896796+afk-rightnow@users.noreply.github.com>"
 description: "An Achievement Watcher for Linux"
 vendor: "Remake Code"
 homepage: "https://github.com/RemakeCode/sentinel"
@@ -47,6 +49,13 @@ overrides:
       - gtk4
       - webkitgtk-6.0
       - libnotify
+
+
+archlinux:
+  packager: "Remake Code"
+
+rpm:
+  packager: "Remake Code"
 
 # scripts section to ensure desktop database is updated after install
 scripts:
