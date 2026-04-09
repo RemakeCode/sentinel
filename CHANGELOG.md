@@ -1,3 +1,9 @@
+## [1.0.4](https://github.com/RemakeCode/sentinel/compare/v1.0.3...v1.0.4) (2026-04-09)
+
+### 🐛 Bug Fixes
+
+* Config init issue on Settings page ([#27](https://github.com/RemakeCode/sentinel/issues/27)) ([56e0153](https://github.com/RemakeCode/sentinel/commit/56e0153ce97f97a0814ae0b3d86a34fe1017ffb7))
+
 ## [1.0.3](https://github.com/RemakeCode/sentinel/compare/v1.0.2...v1.0.3) (2026-04-09)
 
 ### 🐛 Bug Fixes
