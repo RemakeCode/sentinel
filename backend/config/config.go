@@ -151,7 +151,7 @@ func (c *File) ServiceStartup(ctx context.Context, options application.ServiceOp
 			Language: types.Language{
 				DisplayName: "English", API: "english", WebAPI: "en",
 			},
-			LogLevel: "off",
+			LogLevel: "info",
 		}
 		config, marshalErr := json.MarshalIndent(defaultConfig, "", "  ")
 		if marshalErr != nil {

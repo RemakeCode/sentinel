@@ -129,7 +129,7 @@ func (s *Service) FetchAppDetailsBulk(appIDs []string, language types.Language) 
 
 	// Emit 0% immediately to signal fetch is starting (even if no appIDs)
 	if app != nil {
-		app.Event.Emit(backend.EventFetchStatus, backend.FetchStatusEvt{Current: 0, Total: total})
+		app.Event.Emit(backend.EventFetchStatus, backend.FetchStatusEvt{Current: 0, Total: uint32(total)})
 	}
 
 	if len(appIDs) == 0 {
@@ -144,10 +144,10 @@ func (s *Service) FetchAppDetailsBulk(appIDs []string, language types.Language) 
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 
-	var completed int
+	var completed uint32
 
 	if app != nil {
-		app.Event.Emit(backend.EventFetchStatus, backend.FetchStatusEvt{Current: 0, Total: total})
+		app.Event.Emit(backend.EventFetchStatus, backend.FetchStatusEvt{Current: 0, Total: uint32(total)})
 	}
 
 	sem := make(chan struct{}, 5)
@@ -168,7 +168,7 @@ func (s *Service) FetchAppDetailsBulk(appIDs []string, language types.Language) 
 				completed++
 				mu.Unlock()
 				if app != nil {
-					app.Event.Emit(backend.EventFetchStatus, backend.FetchStatusEvt{Current: completed, Total: total})
+					app.Event.Emit(backend.EventFetchStatus, backend.FetchStatusEvt{Current: completed, Total: uint32(total)})
 				}
 				return
 			}
@@ -179,7 +179,7 @@ func (s *Service) FetchAppDetailsBulk(appIDs []string, language types.Language) 
 				completed++
 				mu.Unlock()
 				if app != nil {
-					app.Event.Emit(backend.EventFetchStatus, backend.FetchStatusEvt{Current: completed, Total: total})
+					app.Event.Emit(backend.EventFetchStatus, backend.FetchStatusEvt{Current: completed, Total: uint32(total)})
 				}
 				return
 			}
@@ -198,7 +198,7 @@ func (s *Service) FetchAppDetailsBulk(appIDs []string, language types.Language) 
 			mu.Unlock()
 
 			if app != nil {
-				app.Event.Emit(backend.EventFetchStatus, backend.FetchStatusEvt{Current: completed, Total: total})
+				app.Event.Emit(backend.EventFetchStatus, backend.FetchStatusEvt{Current: completed, Total: uint32(total)})
 			}
 		}(id)
 	}
