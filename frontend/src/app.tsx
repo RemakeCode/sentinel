@@ -1,10 +1,10 @@
+import './app.scss';
 import type { FC } from 'react';
 import { useEffect, useState } from 'react';
 import { Outlet, ScrollRestoration } from 'react-router';
 import { GetAppInfo } from '@wa/sentinel/backend/config/file';
 import { GamesProvider } from '@/shared/context/games-context';
 
-import './app.scss';
 
 const App: FC = () => {
   const [ready, setReady] = useState(false);
@@ -15,10 +15,10 @@ const App: FC = () => {
 
   if (!ready) {
     return (
-      <div class="app-loader">
-        <div class="app-loader-content">
+      <div className="app-loader">
+        <div className="hstack">
           <div aria-busy="true" data-spinner="large" />
-          <p class="app-loader-text">Loading Sentinel...</p>
+          <span>Loading Sentinel ...</span>
         </div>
       </div>
     );

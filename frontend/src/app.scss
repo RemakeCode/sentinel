@@ -1,0 +1,11 @@
+.app-loader {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+ &-content {
+   display: flex;
+   gap: 1rem; align-items: center;
+   justify-content: center;
+ }
+}
