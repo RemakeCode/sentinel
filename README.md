@@ -39,8 +39,8 @@ Sentinel monitors your Steam emulator save files and sends real-time desktop not
 
 ### System Requirements
 
-- **GTK 4** ([libgtk-4-1](https://www.gtk.org/))
-- **WebKitGTK 6.0** ([libwebkitgtk-6.0-4](https://webkitgtk.org/))
+- **GTK 3** ([libgtk-3-0](https://www.gtk.org/))
+- **WebKitGTK 4.1** ([libwebkit2gtk-4.1-0](https://webkitgtk.org/))
 - **libnotify** ([libnotify-bin](https://gitlab.gnome.org/GNOME/libnotify))
 
 
