@@ -18,7 +18,7 @@ import {
   AddPrefix,
   GetAppInfo,
   GetAvailableSounds,
-  GetConfig,
+  LoadConfig,
   GetSteamLanguages,
   RemovePrefix,
   SetLanguage,
@@ -126,7 +126,7 @@ const Settings: FC = () => {
 
   const loadConfig = async () => {
     try {
-      const cfg = await GetConfig();
+      const cfg = await LoadConfig();
       setAppConfig(cfg);
       setStmSrc(cfg?.steamDataSource);
       setSelectedLanguage(cfg?.language?.api || 'english');

@@ -30,8 +30,8 @@ contents:
 
 # Default dependencies for Debian 12/Ubuntu 22.04+
 depends:
-  - libgtk-4-1
-  - libwebkitgtk-6.0-4
+  - libgtk-3-0
+  - libwebkit2gtk-4.1-0
   - libnotify-bin
 
 # Distribution-specific overrides for different package formats
@@ -39,15 +39,15 @@ overrides:
   # RPM packages for RHEL/CentOS/AlmaLinux/Rocky Linux
   rpm:
     depends:
-      - gtk4
-      - webkitgtk-6.0
+      - gtk3
+      - webkit2gtk-4.1
       - libnotify
 
   # Arch Linux packages
   archlinux:
     depends:
-      - gtk4
-      - webkitgtk-6.0
+      - gtk3
+      - webkit2gtk-4.1
       - libnotify
 
 

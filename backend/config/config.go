@@ -196,10 +196,6 @@ func (c *File) LoadConfig() (*File, error) {
 	return c, nil
 }
 
-func (c *File) GetConfig() (*File, error) {
-	return c.LoadConfig()
-}
-
 func (c *File) SaveConfig() error {
 	data, err := json.MarshalIndent(c, "", "  ")
 
