@@ -1,3 +1,9 @@
+## [1.0.3](https://github.com/RemakeCode/sentinel/compare/v1.0.2...v1.0.3) (2026-04-09)
+
+### 🐛 Bug Fixes
+
+* Fix issue with settings not initializing properly on first load ([#25](https://github.com/RemakeCode/sentinel/issues/25)) ([fa3f40d](https://github.com/RemakeCode/sentinel/commit/fa3f40d38c66437c5c43ae98b80b35c1a65fabbc))
+
 ## [1.0.2](https://github.com/RemakeCode/sentinel/compare/v1.0.1...v1.0.2) (2026-04-07)
 
 ### 🐛 Bug Fixes
