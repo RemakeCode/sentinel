@@ -1,6 +1,6 @@
 package backend
 
 type FetchStatusEvt struct {
-	Current int
-	Total   int
+	Current uint32
+	Total   uint32
 }
