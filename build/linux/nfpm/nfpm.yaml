@@ -40,7 +40,7 @@ overrides:
   rpm:
     depends:
       - gtk3
-      - webkit2gtk-4.1
+      - webkit2gtk4.1
       - libnotify
 
   # Arch Linux packages
