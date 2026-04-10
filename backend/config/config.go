@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"sentinel/backend"
 	"sentinel/backend/logger"
+	"sentinel/backend/migrate"
 	"sentinel/backend/steam/types"
 	"strings"
 	"sync"
@@ -119,14 +120,19 @@ func ResetSingleton() {
 func (c *File) ServiceStartup(ctx context.Context, options application.ServiceOptions) error {
 	slog.Info("Starting config initialization")
 
+	// Run migration from old XDG locations if needed
+	if err := migrate.MigrateAll(); err != nil {
+		slog.Error("Migration failed", "error", err)
+	}
+
 	// Ensure config directory exists
 	if err := os.MkdirAll(backend.ConfigDir, 0755); err != nil {
 		slog.Error("Failed to create config directory", "error", err)
 	}
 
-	// Ensure cache directory exists (subdirectories are created automatically)
-	if err := os.MkdirAll(backend.ACHCacheDir, 0755); err != nil {
-		slog.Error("Failed to create cache directory", "error", err)
+	// Ensure data directory exists (subdirectories are created automatically)
+	if err := os.MkdirAll(backend.DataDir, 0755); err != nil {
+		slog.Error("Failed to create data directory", "error", err)
 	}
 
 	// Create language folders in game cache directory based on steam languages
