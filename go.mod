@@ -3,7 +3,6 @@ module sentinel
 go 1.26.0
 
 require (
-	fyne.io/systray v1.12.0
 	github.com/PuerkitoBio/goquery v1.12.0
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/stretchr/testify v1.11.1

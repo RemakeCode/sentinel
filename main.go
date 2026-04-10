@@ -108,7 +108,7 @@ func main() {
 		DefaultContextMenuDisabled: false,
 		Linux: application.LinuxWindow{
 			WindowIsTranslucent: false,
-			WebviewGpuPolicy:    1,
+			WebviewGpuPolicy:    application.WebviewGpuPolicyOnDemand,
 		},
 	})
 
@@ -117,11 +117,25 @@ func main() {
 		e.Cancel()
 	})
 
-	startFn, endFn := setupSystray(app, window, trayIcon)
-	defer endFn()
+	tray := app.SystemTray.New()
+	tray.SetIcon(trayIcon)
+	tray.SetTooltip("Sentinel")
+
+	menu := application.NewMenu()
+	showItem := menu.Add("Show")
+	showItem.OnClick(func(_ *application.Context) {
+		window.Show()
+		window.Focus()
+	})
+
+	menu.AddSeparator()
+	exitItem := menu.Add("Exit")
+	exitItem.OnClick(func(_ *application.Context) {
+		app.Quit()
+	})
+	tray.SetMenu(menu)
 
 	window.OnWindowEvent(events.Common.WindowRuntimeReady, func(e *application.WindowEvent) {
-		startFn()
 		app.Event.Emit("sentinel::ready")
 
 		slog.Info(fmt.Sprintf("%s %s is running", backend.AppName, backend.Version))
