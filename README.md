@@ -74,9 +74,17 @@ Sentinel will automatically scan for games and watch for achievement changes as 
 
 ## Configuration
 
-Config file location: `~/.cache/sentinel/config.json`
+Sentinel follows the [XDG Base Directory Specification](https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html):
 
-Logs are written to `~/.cache/sentinel/logs/sentinel.log`. Enable logging from the Settings menu.
+- **Config:** `~/.config/sentinel/config.json`
+- **Data:** `~/.local/share/sentinel/` (media, achievement data, icons, games)
+- **Logs:** `~/.local/state/sentinel/logs/sentinel.log`
+
+Enable logging from the Settings menu.
+
+### Migration from v1.0.x
+
+If you're upgrading from v1.0.x, your data in `~/.cache/sentinel/` will be automatically migrated to the new XDG-compliant locations on first run. The old directory will be backed up with a `.backup` suffix.
 
 ## FAQ
 

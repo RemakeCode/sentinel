@@ -45,7 +45,7 @@ func main() {
 	}
 	slog.SetDefault(appLogger)
 
-	// Initialize services manually to handle dependencies
+	// Initialize services
 	configService := &config.File{}
 	steamService := &steam.Service{
 		Config: configService,
