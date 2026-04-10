@@ -106,6 +106,10 @@ func main() {
 		URL:                        "/",
 		UseApplicationMenu:         false,
 		DefaultContextMenuDisabled: false,
+		Linux: application.LinuxWindow{
+			WindowIsTranslucent: false,
+			WebviewGpuPolicy:    1,
+		},
 	})
 
 	window.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
