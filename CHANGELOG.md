@@ -1,3 +1,9 @@
+## [1.0.5](https://github.com/RemakeCode/sentinel/compare/v1.0.4...v1.0.5) (2026-04-10)
+
+### 🐛 Bug Fixes
+
+* package name mismatch for rpm package ([#30](https://github.com/RemakeCode/sentinel/issues/30)) ([8442c73](https://github.com/RemakeCode/sentinel/commit/8442c73f4cc4309a4f400b5187491c363524ae19))
+
 ## [1.0.4](https://github.com/RemakeCode/sentinel/compare/v1.0.3...v1.0.4) (2026-04-09)
 
 ### 🐛 Bug Fixes
