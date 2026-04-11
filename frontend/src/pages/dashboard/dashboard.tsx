@@ -8,6 +8,7 @@ import { Header } from '@/shared/components/header/header';
 import { computeProgress } from '@/shared/utils';
 import { useGames } from '@/shared/context/games-context';
 import logo from '@/assets/images/sentinel.webp';
+import missingCover from '@/assets/images/missing-cover.png';
 
 const Dashboard: FC = () => {
   const { games, loading, status } = useGames();
@@ -70,7 +71,7 @@ const Dashboard: FC = () => {
                     <div className='games-item-progress'>
                       <progress value={progress} max={100} />
                     </div>
-                    <img src={game?.PortraitImage} alt={game?.Name || ''} />
+                    <img src={game?.PortraitImage} alt={game?.Name || ''} onError={(e) => { e.currentTarget.src = missingCover; }} />
 
                     <div className='games-item-overlay'>
                       <div className='games-item-title'>{game?.Name}</div>

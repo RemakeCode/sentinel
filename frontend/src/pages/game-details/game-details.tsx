@@ -7,6 +7,7 @@ import { GameBasics } from '@wa/sentinel/backend/steam';
 import { GetGlobalAchievementPercentages } from '@wa/sentinel/backend/steam/service';
 import { Header } from '@/shared/components/header/header';
 import { computeProgress } from '@/shared/utils';
+import missingCover from '@/assets/images/missing-cover.png';
 
 type SortOption = 'name-asc' | 'name-desc' | 'time-newest' | 'time-oldest';
 
@@ -164,7 +165,7 @@ const GameDetails: FC = () => {
                 className='game-details-image card'
                 style={{ viewTransitionName: `game-image-${idx}` } as CSSProperties}
               >
-                <img src={game?.PortraitImage} alt={game?.Name} />
+                <img src={game?.PortraitImage} alt={game?.Name} onError={(e) => { e.currentTarget.src = missingCover; }} />
               </div>
               <progress value={stats.percentage} max={100} className='mt-6'></progress>
               <div className='game-details-stats'>
