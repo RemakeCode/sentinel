@@ -126,7 +126,7 @@ func main() {
 		Hidden:                     startMinimized,
 		UseApplicationMenu:         false,
 		DefaultContextMenuDisabled: false,
-		BackgroundColour:           application.NewRGB(255, 255, 255),
+		BackgroundColour:           application.NewRGB(18, 18, 18),
 		Linux: application.LinuxWindow{
 			WebviewGpuPolicy: application.WebviewGpuPolicyOnDemand,
 		},
