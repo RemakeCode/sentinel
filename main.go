@@ -92,16 +92,16 @@ func main() {
 		Linux: application.LinuxOptions{
 			ProgramName: "sentinel",
 		},
-		SingleInstance: &application.SingleInstanceOptions{
-			UniqueID: "dev.sentinel",
-			OnSecondInstanceLaunch: func(data application.SecondInstanceData) {
-				// Bring the existing instance to front when second instance is launched
-				if window != nil {
-					window.Show()
-					window.Focus()
-				}
-			},
-		},
+		// SingleInstance: &application.SingleInstanceOptions{
+		// 	UniqueID: "dev.sentinel",
+		// 	OnSecondInstanceLaunch: func(data application.SecondInstanceData) {
+		// 		// Bring the existing instance to front when second instance is launched
+		// 		if window != nil {
+		// 			window.Show()
+		// 			window.Focus()
+		// 		}
+		// 	},
+		// },
 	}
 
 	// Sync slog level with Wails LogLevel option
