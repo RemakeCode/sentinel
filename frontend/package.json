@@ -15,6 +15,7 @@
   "dependencies": {
     "@knadh/oat": "^0.4.2",
     "@wailsio/runtime": "^3.0.0-alpha.79",
+    "framer-motion": "^12.38.0",
     "lucide-react": "^0.574.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",

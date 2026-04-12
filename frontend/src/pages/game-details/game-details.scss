@@ -7,17 +7,16 @@
     display: grid;
     grid-template-columns: minmax(200px, 300px) 1fr;
     gap: var(--space-2);
-    align-items: center;
+    align-items: start;
   }
 
   &-container {
     height: 100%;
     position: relative;
-    overflow: hidden;
 
     &-inner {
       display: flex;
-      position: fixed;
+      position: sticky;
       top: 120px;
       flex-direction: column;
       width: min(270px, 20vw);
@@ -31,15 +30,12 @@
     box-shadow: var(--shadow-medium);
     border-radius: var(--radius-large);
 
-    > img {
+    >img {
       width: 100%;
       height: max-content;
       aspect-ratio: 9/13;
       object-fit: cover;
       object-position: bottom;
-      will-change: transform;
-      transform: translateZ(0);
-      backface-visibility: hidden;
     }
   }
 
@@ -62,7 +58,6 @@
       padding: var(--space-2);
       gap: var(--space-1);
       position: relative;
-      transition: opacity 300ms ease-out, transform 300ms ease-out;
     }
 
     &-icon {
@@ -114,7 +109,7 @@
       display: flex;
       gap: var(--space-4);
 
-      > [role='button'] {
+      >[role='button'] {
         transition: all var(--transition);
         cursor: pointer;
 
@@ -168,7 +163,7 @@
       border-radius: var(--radius-large);
       display: flex;
       gap: var(--space-4);
-      transition: background var(--transition), opacity 300ms ease-out, transform 300ms ease-out;
+      transition: background var(--transition);
       height: 100px;
     }
 
@@ -206,7 +201,7 @@
       align-items: center;
       gap: var(--space-2);
 
-      > .blur {
+      >.blur {
         filter: blur(4px);
         cursor: pointer;
         transition: filter var(--transition);
@@ -281,6 +276,7 @@
     from {
       opacity: 0;
     }
+
     to {
       opacity: 1;
     }

@@ -18,8 +18,8 @@ import {
   AddPrefix,
   GetAppInfo,
   GetAvailableSounds,
-  LoadConfig,
   GetSteamLanguages,
+  LoadConfig,
   RemovePrefix,
   SetLanguage,
   SetLoggingEnabled,
@@ -41,9 +41,9 @@ import { Emulator, File, Prefix, SteamSource } from '@wa/sentinel/backend/config
 import EmptyState from '@/shared/components/empty-state';
 
 import { Dialogs } from '@wailsio/runtime';
-import { Header } from '@/shared/components/header/header';
 import { Start, Stop } from '@wa/sentinel/backend/watcher/service';
 import AboutDialog from './about-dialog';
+import { HeaderPortal } from '@/shared/components/header/header';
 
 declare global {
   interface Window {
@@ -283,7 +283,7 @@ const Settings: FC = () => {
 
   return (
     <main className='full-layout'>
-      <Header className='settings-header'>
+      <HeaderPortal>
         <div className='header-nav'>
           <Link to='/'>
             <ArrowLeft />
@@ -293,7 +293,7 @@ const Settings: FC = () => {
         <div onClick={handleAboutDialog} title='About' className='settings-header-about-icon'>
           <Info size={20} />
         </div>
-      </Header>
+      </HeaderPortal>
       <div className='page-content'>
         <div className='card settings-section'>
           <div className='flex justify-between items-center'>

@@ -1,20 +1,44 @@
 import './dashboard.scss';
-import type { CSSProperties, FC } from 'react';
+import type { FC } from 'react';
+import { motion } from 'framer-motion';
 
 import { Gamepad2, Settings } from 'lucide-react';
 import { Link } from 'react-router';
 import EmptyState from '@/shared/components/empty-state';
-import { Header } from '@/shared/components/header/header';
 import { computeProgress } from '@/shared/utils';
 import { useGames } from '@/shared/context/games-context';
 import logo from '@/assets/images/sentinel.webp';
+import { HeaderPortal } from '@/shared/components/header/header';
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.03
+    }
+  }
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 10, scale: 0.98 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: {
+      duration: 0.3,
+      ease: 'easeOut'
+    }
+  }
+};
 
 const Dashboard: FC = () => {
   const { games, loading, status } = useGames();
 
   return (
     <main className='full-layout'>
-      <Header className='dashboard-header'>
+      <HeaderPortal>
         <div className='logo'>
           <img src={logo} alt='sentinel logo' width='50px' height='50px' />
           <div className='logo-text'>
@@ -34,7 +58,7 @@ const Dashboard: FC = () => {
         <Link to='/settings' className='dashboard-header-settings-link'>
           <Settings className='dashboard-header-settings-link-icon' />
         </Link>
-      </Header>
+      </HeaderPortal>
       <section className='page-content'>
         <h2 className='dashboard-section-header'>Library</h2>
 
@@ -51,34 +75,28 @@ const Dashboard: FC = () => {
             <EmptyState message='No games found.' icon={<Gamepad2 />} />
           </div>
         ) : (
-          <div className='games-container'>
+          <motion.div className='games-container' variants={containerVariants} initial='hidden' animate='visible'>
             {games.map((game, idx) => {
               const progress = computeProgress(game?.Achievement.List);
 
               return (
-                <Link
-                  to={`/game/${game?.AppID}`}
-                  state={{ game, idx }}
-                  className='games-item'
-                  key={`${game?.Name}#${idx}`}
-                >
-                  <div
-                    className='games-item-card card'
-                    style={{ viewTransitionName: `game-image-${idx}` } as CSSProperties}
-                  >
-                    <div className='games-item-progress'>
-                      <progress value={progress} max={100} />
-                    </div>
-                    <img src={game?.PortraitImage} alt={game?.Name || ''} />
+                <motion.div key={`${game?.Name}#${idx}`} variants={itemVariants}>
+                  <Link to={`/game/${game?.AppID}`} state={{ game, idx }} className='games-item'>
+                    <div className='games-item-card card'>
+                      <div className='games-item-progress'>
+                        <progress value={progress} max={100} />
+                      </div>
+                      <img src={game?.PortraitImage} alt={game?.Name || ''} />
 
-                    <div className='games-item-overlay'>
-                      <div className='games-item-title'>{game?.Name}</div>
+                      <div className='games-item-overlay'>
+                        <div className='games-item-title'>{game?.Name}</div>
+                      </div>
                     </div>
-                  </div>
-                </Link>
+                  </Link>
+                </motion.div>
               );
             })}
-          </div>
+          </motion.div>
         )}
       </section>
     </main>
