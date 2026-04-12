@@ -2,6 +2,7 @@ package main
 
 import (
 	"embed"
+	"flag"
 	"fmt"
 	"log/slog"
 	"sentinel/backend"
@@ -22,7 +23,10 @@ var assets embed.FS
 //go:embed build/appicon.png
 var trayIcon []byte
 
+var startMinimized bool
+
 func init() {
+	flag.BoolVar(&startMinimized, "startminimized", false, "Start with window minimized (systray only)")
 	application.RegisterEvent[application.Void]("sentinel::ready")
 	application.RegisterEvent[backend.FetchStatusEvt](backend.EventFetchStatus)
 	application.RegisterEvent[application.Void](backend.EventDataUpdated)
@@ -95,6 +99,8 @@ func main() {
 	// Sync slog level with Wails LogLevel option
 	logger.SetLevel(options.LogLevel)
 
+	flag.Parse()
+
 	app := application.New(options)
 
 	window = app.Window.NewWithOptions(application.WebviewWindowOptions{
@@ -104,6 +110,7 @@ func main() {
 		Width:                      1920,
 		Height:                     1080,
 		URL:                        "/",
+		Hidden:                     startMinimized,
 		UseApplicationMenu:         false,
 		DefaultContextMenuDisabled: false,
 	})

@@ -8,6 +8,7 @@ import {
   FolderOpen,
   Globe,
   Info,
+  Rocket,
   Terminal,
   Trash2,
   Volume2,
@@ -24,6 +25,7 @@ import {
   SetLanguage,
   SetLoggingEnabled,
   SetNotificationSound,
+  SetStartOnLogin,
   SetSteamAPIKey,
   SetSteamDataSource,
   ToggleEmulatorNotification
@@ -80,6 +82,7 @@ const Settings: FC = () => {
   const [aboutDialogOpen, setAboutDialogOpen] = useState(false);
   const [appInfo, setAppInfo] = useState<AppInfo | null>(null);
   const [testNotificationDisabled, setTestNotificationDisabled] = useState(false);
+  const [startOnLogin, setStartOnLogin] = useState(false);
   const testNotificationTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const steamAPIKeyTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -132,6 +135,7 @@ const Settings: FC = () => {
       setSelectedLanguage(cfg?.language?.api || 'english');
       setSelectedSound(cfg?.notificationSound || '');
       setSelectedLogLevel(cfg?.logLevel || 'info');
+      setStartOnLogin(cfg?.startOnLogin ?? false);
     } catch (err) {
       window.ot?.toast('Failed to load settings', 'Error', { variant: 'danger' });
     }
@@ -163,6 +167,17 @@ const Settings: FC = () => {
       window.ot?.toast(`Logging ${newValue ? 'enabled' : 'disabled'}`, 'Success', { variant: 'success' });
     } catch (err) {
       window.ot?.toast('Failed to update logging setting', 'Error', { variant: 'danger' });
+    }
+  };
+
+  const handleStartOnLoginToggle = async () => {
+    const newValue = !startOnLogin;
+    try {
+      await SetStartOnLogin(newValue);
+      setStartOnLogin(newValue);
+      window.ot?.toast(`Autostart ${newValue ? 'enabled' : 'disabled'}`, 'Success', { variant: 'success' });
+    } catch (err) {
+      window.ot?.toast('Failed to update autostart setting', 'Error', { variant: 'danger' });
     }
   };
 
@@ -480,6 +495,28 @@ const Settings: FC = () => {
               </label>
               <span className='badge'>Coming Soon</span>
             </fieldset>
+          </div>
+        </div>
+
+        <div className='card settings-section'>
+          <h4 className='settings-section-title'>
+            <Rocket /> Startup
+          </h4>
+          <hr className='divider' />
+          <div className='settings-grid'>
+            <div className='settings-grid-item'>
+              <span className='badge info'>Autostart</span>
+              <span>Start on login (minimized to tray)</span>
+              <label className='switch' title='Toggle autostart on login'>
+                <input
+                  type='checkbox'
+                  role='switch'
+                  checked={startOnLogin}
+                  onChange={handleStartOnLoginToggle}
+                />
+              </label>
+              <div />
+            </div>
           </div>
         </div>
 

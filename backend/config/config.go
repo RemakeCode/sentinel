@@ -14,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"sentinel/backend"
+	"sentinel/backend/autostart"
 	"sentinel/backend/logger"
 	"sentinel/backend/steam/types"
 	"strings"
@@ -69,6 +70,7 @@ type File struct {
 	SteamAPIKeyMasked string         `json:"steamApiKeyMasked"`
 	NotificationSound string         `json:"notificationSound"`
 	LogLevel          string         `json:"logLevel"`
+	StartOnLogin      bool           `json:"startOnLogin"`
 }
 
 var defaultEmulatorPaths = []Emulator{
@@ -151,7 +153,8 @@ func (c *File) ServiceStartup(ctx context.Context, options application.ServiceOp
 			Language: types.Language{
 				DisplayName: "English", API: "english", WebAPI: "en",
 			},
-			LogLevel: "info",
+			LogLevel:     "info",
+			StartOnLogin: true,
 		}
 		config, marshalErr := json.MarshalIndent(defaultConfig, "", "  ")
 		if marshalErr != nil {
@@ -176,6 +179,11 @@ func (c *File) ServiceStartup(ctx context.Context, options application.ServiceOp
 	// Load config into this instance so injected services have the values
 	if _, err := c.LoadConfig(); err != nil {
 		slog.Error("Failed to load config into service", "error", err)
+	}
+
+	// Sync autostart file state with config preference
+	if err := autostart.SetAutostartEnabled(c.StartOnLogin); err != nil {
+		slog.Error("Failed to sync autostart state", "error", err)
 	}
 
 	slog.Info("Config initialization complete")
@@ -510,4 +518,16 @@ func (c *File) GetAppInfo() AppInfo {
 		Description: "An Achievement Watcher for Linux",
 		GitHub:      "https://github.com/RemakeCode/sentinel",
 	}
+}
+
+func (c *File) GetStartOnLogin() bool {
+	return c.StartOnLogin
+}
+
+func (c *File) SetStartOnLogin(enabled bool) error {
+	c.StartOnLogin = enabled
+	if err := c.SaveConfig(); err != nil {
+		return err
+	}
+	return autostart.SetAutostartEnabled(enabled)
 }
