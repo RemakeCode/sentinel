@@ -71,7 +71,7 @@ func main() {
 	}
 
 	options := application.Options{
-		Name:        "sentinel",
+		Name:        "dev.sentinel.app",
 		Description: "An Achievement Watcher",
 		Logger:      appLogger,
 		LogLevel:    logger.ParseLevel(logLevel),
@@ -90,7 +90,7 @@ func main() {
 			ApplicationShouldTerminateAfterLastWindowClosed: false,
 		},
 		Linux: application.LinuxOptions{
-			ProgramName: "sentinel",
+			ProgramName: "dev.sentinel.app",
 		},
 		// SingleInstance: &application.SingleInstanceOptions{
 		// 	UniqueID: "dev.sentinel",

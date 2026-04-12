@@ -7,7 +7,7 @@ version: '3'
 info:
   companyName: "Remake Code"
   productName: "Sentinel"
-  productIdentifier: "dev.sentinel"
+  productIdentifier: "dev.sentinel.app"
   description: "An Achievement Watcher for Linux"
   copyright: "(c) 2026"
   comments: "https://github.com/RemakeCode/sentinel"
