@@ -37,10 +37,6 @@ func main() {
 	// This must be set before any GTK/WebKit initialization.
 	if runtime.GOOS == "linux" {
 		os.Setenv("WEBKIT_DISABLE_DMABUF_RENDERER", "1")
-		// Force X11 backend (XWayland) and disable GTK portals to prevent
-		// Wayland-specific SIGSEGV crashes on Nvidia proprietary drivers.
-		os.Setenv("GDK_BACKEND", "x11")
-		os.Setenv("GTK_USE_PORTAL", "0")
 	}
 
 	var window *application.WebviewWindow
@@ -97,16 +93,16 @@ func main() {
 			// ProgramName is intentionally omitted due to a Use-After-Free bug in Wails v3.0.0-alpha.74:
 			// Wails calls g_set_prgname(cStr) and immediately frees the cStr, causing GTK to crash in g_application_run.
 		},
-		// SingleInstance: &application.SingleInstanceOptions{
-		// 	UniqueID: "dev.sentinel.app",
-		// 	OnSecondInstanceLaunch: func(data application.SecondInstanceData) {
-		// 		// Bring the existing instance to front when second instance is launched
-		// 		if window != nil {
-		// 			window.Show()
-		// 			window.Focus()
-		// 		}
-		// 	},
-		// },
+		SingleInstance: &application.SingleInstanceOptions{
+			UniqueID: "dev.sentinel.app",
+			OnSecondInstanceLaunch: func(data application.SecondInstanceData) {
+				// Bring the existing instance to front when second instance is launched
+				if window != nil {
+					window.Show()
+					window.Focus()
+				}
+			},
+		},
 	}
 
 	// Sync slog level with Wails LogLevel option
@@ -125,36 +121,32 @@ func main() {
 		DefaultContextMenuDisabled: false,
 		BackgroundColour:           application.NewRGB(255, 255, 255),
 		Linux: application.LinuxWindow{
-			WebviewGpuPolicy: application.WebviewGpuPolicyNever,
+			WebviewGpuPolicy: application.WebviewGpuPolicyOnDemand,
 		},
 	})
 
-	// window.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
-	// 	window.Hide()
-	// 	e.Cancel()
-	// })
+	window.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
+		window.Hide()
+		e.Cancel()
+	})
 
-	// System tray disabled on Linux — the DBus StatusNotifierItem protocol
-	// conflicts with GTK's g_application_run, causing a SIGSEGV at addr=0x48.
-	// See: https://github.com/wailsapp/wails/issues/XXXX
-	//
-	// tray := app.SystemTray.New()
-	// tray.SetIcon(trayIcon)
-	// tray.SetTooltip("Sentinel")
-	//
-	// menu := application.NewMenu()
-	// showItem := menu.Add("Show")
-	// showItem.OnClick(func(_ *application.Context) {
-	// 	window.Show()
-	// 	window.Focus()
-	// })
-	//
-	// menu.AddSeparator()
-	// exitItem := menu.Add("Exit")
-	// exitItem.OnClick(func(_ *application.Context) {
-	// 	app.Quit()
-	// })
-	// tray.SetMenu(menu)
+	tray := app.SystemTray.New()
+	tray.SetIcon(trayIcon)
+	tray.SetTooltip("Sentinel")
+
+	menu := application.NewMenu()
+	showItem := menu.Add("Show")
+	showItem.OnClick(func(_ *application.Context) {
+		window.Show()
+		window.Focus()
+	})
+
+	menu.AddSeparator()
+	exitItem := menu.Add("Exit")
+	exitItem.OnClick(func(_ *application.Context) {
+		app.Quit()
+	})
+	tray.SetMenu(menu)
 
 	window.OnWindowEvent(events.Common.WindowRuntimeReady, func(e *application.WindowEvent) {
 		app.Event.Emit("sentinel::ready")
