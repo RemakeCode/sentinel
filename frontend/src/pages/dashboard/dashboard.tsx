@@ -31,7 +31,7 @@ const Dashboard: FC = () => {
         {/*  </fieldset>*/}
         {/*</div>*/}
 
-        <Link to='/settings' viewTransition className='dashboard-header-settings-link'>
+        <Link to='/settings' className='dashboard-header-settings-link'>
           <Settings className='dashboard-header-settings-link-icon' />
         </Link>
       </Header>
@@ -59,7 +59,6 @@ const Dashboard: FC = () => {
                 <Link
                   to={`/game/${game?.AppID}`}
                   state={{ game, idx }}
-                  viewTransition
                   className='games-item'
                   key={`${game?.Name}#${idx}`}
                 >

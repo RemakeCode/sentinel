@@ -285,7 +285,7 @@ const Settings: FC = () => {
     <main className='full-layout'>
       <Header className='settings-header'>
         <div className='header-nav'>
-          <Link to='/' viewTransition>
+          <Link to='/'>
             <ArrowLeft />
           </Link>
           <h2>Settings</h2>

@@ -150,7 +150,7 @@ const GameDetails: FC = () => {
     <main className='full-layout'>
       <Header>
         <div className='header-nav'>
-          <Link to='/' viewTransition>
+          <Link to='/'>
             <ArrowLeft />
           </Link>
           <h2>Achievements</h2>
