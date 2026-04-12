@@ -4,6 +4,8 @@ import (
 	"embed"
 	"fmt"
 	"log/slog"
+	"os"
+	"runtime"
 	"sentinel/backend"
 	"sentinel/backend/ach"
 	"sentinel/backend/config"
@@ -29,6 +31,13 @@ func init() {
 }
 
 func main() {
+	// Workaround for WebKit2GTK DMA-BUF renderer crash on Nvidia proprietary drivers.
+	// WebKit2GTK 2.42+ defaults to DMA-BUF for the UI process compositor, which
+	// triggers a SIGSEGV due to buggy GBM support in Nvidia's driver.
+	// This must be set before any GTK/WebKit initialization.
+	if runtime.GOOS == "linux" {
+		os.Setenv("WEBKIT_DISABLE_DMABUF_RENDERER", "1")
+	}
 
 	var window *application.WebviewWindow
 
@@ -115,28 +124,32 @@ func main() {
 		},
 	})
 
-	window.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
-		window.Hide()
-		e.Cancel()
-	})
+	// window.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
+	// 	window.Hide()
+	// 	e.Cancel()
+	// })
 
-	tray := app.SystemTray.New()
-	tray.SetIcon(trayIcon)
-	tray.SetTooltip("Sentinel")
-
-	menu := application.NewMenu()
-	showItem := menu.Add("Show")
-	showItem.OnClick(func(_ *application.Context) {
-		window.Show()
-		window.Focus()
-	})
-
-	menu.AddSeparator()
-	exitItem := menu.Add("Exit")
-	exitItem.OnClick(func(_ *application.Context) {
-		app.Quit()
-	})
-	tray.SetMenu(menu)
+	// System tray disabled on Linux — the DBus StatusNotifierItem protocol
+	// conflicts with GTK's g_application_run, causing a SIGSEGV at addr=0x48.
+	// See: https://github.com/wailsapp/wails/issues/XXXX
+	//
+	// tray := app.SystemTray.New()
+	// tray.SetIcon(trayIcon)
+	// tray.SetTooltip("Sentinel")
+	//
+	// menu := application.NewMenu()
+	// showItem := menu.Add("Show")
+	// showItem.OnClick(func(_ *application.Context) {
+	// 	window.Show()
+	// 	window.Focus()
+	// })
+	//
+	// menu.AddSeparator()
+	// exitItem := menu.Add("Exit")
+	// exitItem.OnClick(func(_ *application.Context) {
+	// 	app.Quit()
+	// })
+	// tray.SetMenu(menu)
 
 	window.OnWindowEvent(events.Common.WindowRuntimeReady, func(e *application.WindowEvent) {
 		app.Event.Emit("sentinel::ready")
