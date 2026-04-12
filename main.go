@@ -4,7 +4,6 @@ import (
 	"embed"
 	"fmt"
 	"log/slog"
-	"os"
 	"sentinel/backend"
 	"sentinel/backend/ach"
 	"sentinel/backend/config"
@@ -30,7 +29,6 @@ func init() {
 }
 
 func main() {
-	os.Setenv("WEBKIT_DISABLE_DMABUF_RENDERER", "1")
 
 	var window *application.WebviewWindow
 
@@ -111,7 +109,7 @@ func main() {
 		DefaultContextMenuDisabled: false,
 		Linux: application.LinuxWindow{
 			WindowIsTranslucent: false,
-			WebviewGpuPolicy:    application.WebviewGpuPolicyOnDemand,
+			WebviewGpuPolicy:    application.WebviewGpuPolicyNever,
 		},
 	})
 
