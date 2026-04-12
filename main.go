@@ -37,6 +37,10 @@ func main() {
 	// This must be set before any GTK/WebKit initialization.
 	if runtime.GOOS == "linux" {
 		os.Setenv("WEBKIT_DISABLE_DMABUF_RENDERER", "1")
+		// Force X11 backend (XWayland) and disable GTK portals to prevent
+		// Wayland-specific SIGSEGV crashes on Nvidia proprietary drivers.
+		os.Setenv("GDK_BACKEND", "x11")
+		os.Setenv("GTK_USE_PORTAL", "0")
 	}
 
 	var window *application.WebviewWindow
@@ -93,7 +97,7 @@ func main() {
 			ProgramName: "dev.sentinel.app",
 		},
 		// SingleInstance: &application.SingleInstanceOptions{
-		// 	UniqueID: "dev.sentinel",
+		// 	UniqueID: "dev.sentinel.app",
 		// 	OnSecondInstanceLaunch: func(data application.SecondInstanceData) {
 		// 		// Bring the existing instance to front when second instance is launched
 		// 		if window != nil {
@@ -120,7 +124,7 @@ func main() {
 		DefaultContextMenuDisabled: false,
 		BackgroundColour:           application.NewRGB(255, 255, 255),
 		Linux: application.LinuxWindow{
-			WebviewGpuPolicy: application.WebviewGpuPolicyOnDemand,
+			WebviewGpuPolicy: application.WebviewGpuPolicyNever,
 		},
 	})
 
