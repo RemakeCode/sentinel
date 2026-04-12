@@ -109,9 +109,9 @@ func main() {
 		URL:                        "/",
 		UseApplicationMenu:         false,
 		DefaultContextMenuDisabled: false,
+		BackgroundColour:           application.NewRGB(255, 255, 255),
 		Linux: application.LinuxWindow{
-			WindowIsTranslucent: false,
-			WebviewGpuPolicy:    application.WebviewGpuPolicyNever,
+			WebviewGpuPolicy: application.WebviewGpuPolicyNever,
 		},
 	})
 
@@ -120,23 +120,23 @@ func main() {
 		e.Cancel()
 	})
 
-	//tray := app.SystemTray.New()
-	//tray.SetIcon(trayIcon)
-	//tray.SetTooltip("Sentinel")
-	//
-	//menu := application.NewMenu()
-	//showItem := menu.Add("Show")
-	//showItem.OnClick(func(_ *application.Context) {
-	//	window.Show()
-	//	window.Focus()
-	//})
-	//
-	//menu.AddSeparator()
-	//exitItem := menu.Add("Exit")
-	//exitItem.OnClick(func(_ *application.Context) {
-	//	app.Quit()
-	//})
-	//tray.SetMenu(menu)
+	tray := app.SystemTray.New()
+	tray.SetIcon(trayIcon)
+	tray.SetTooltip("Sentinel")
+
+	menu := application.NewMenu()
+	showItem := menu.Add("Show")
+	showItem.OnClick(func(_ *application.Context) {
+		window.Show()
+		window.Focus()
+	})
+
+	menu.AddSeparator()
+	exitItem := menu.Add("Exit")
+	exitItem.OnClick(func(_ *application.Context) {
+		app.Quit()
+	})
+	tray.SetMenu(menu)
 
 	window.OnWindowEvent(events.Common.WindowRuntimeReady, func(e *application.WindowEvent) {
 		app.Event.Emit("sentinel::ready")
