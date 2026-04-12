@@ -44,11 +44,13 @@ func main() {
 
 	// Initialize services manually to handle dependencies
 	configService := &config.File{}
+	achService := &ach.Service{}
+
 	steamService := &steam.Service{
 		Config: configService,
-		Ach:    &ach.Service{},
+		Ach:    achService,
 	}
-	achService := steamService.Ach // Share the same instance
+
 	notifierService := &notifier.Service{
 		Config: configService,
 	}
