@@ -35,10 +35,6 @@ func init() {
 }
 
 func main() {
-	// Workaround for WebKit2GTK DMA-BUF renderer crash on Nvidia proprietary drivers.
-	// WebKit2GTK 2.42+ defaults to DMA-BUF for the UI process compositor, which
-	// triggers a SIGSEGV due to buggy GBM support in Nvidia's driver.
-	// This must be set before any GTK/WebKit initialization.
 	if runtime.GOOS == "linux" {
 		os.Setenv("WEBKIT_DISABLE_DMABUF_RENDERER", "1")
 	}
@@ -53,6 +49,7 @@ func main() {
 		logLevel = cfg.LogLevel
 		logger.SetLevel(logger.ParseLevel(logLevel))
 	}
+
 	slog.SetDefault(appLogger)
 
 	// Initialize services
