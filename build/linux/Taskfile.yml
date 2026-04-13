@@ -211,10 +211,10 @@ tasks:
     summary: Generates an autostart `.desktop` file for XDG autostart
     dir: build
     cmds:
-      - mkdir -p {{.ROOT_DIR}}/build/linux/appimage
       - wails3 generate .desktop -name "{{.NAME | title}}" -exec "{{.EXEC}}" -icon "{{.ICON}}" -outputfile "{{.OUTPUTFILE}}" -categories "{{.CATEGORIES}}" -comment "{{.COMMENT}}"
       - sed -i 's/^Name=sentinel/Name=Sentinel/' "{{.OUTPUTFILE}}"
       - echo 'X-GNOME-Autostart-enabled=true' >> "{{.OUTPUTFILE}}"
+      - cp {{.OUTPUTFILE}} {{.ROOT_DIR}}/backend/autostart/sentinel-autostart.desktop
     vars:
       NAME: '{{.APP_NAME}}'
       EXEC: '{{.APP_NAME}} --startminimized'
