@@ -1,13 +1,14 @@
 import './settings.scss';
-import type { ChangeEvent, FC } from 'react';
-import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router';
+import type {ChangeEvent, FC} from 'react';
+import {useEffect, useRef, useState} from 'react';
+import {Link} from 'react-router';
 import {
   ArrowLeft,
   DatabaseSearchIcon,
   FolderOpen,
   Globe,
   Info,
+  Rocket,
   Terminal,
   Trash2,
   Volume2,
@@ -18,12 +19,13 @@ import {
   AddPrefix,
   GetAppInfo,
   GetAvailableSounds,
-  LoadConfig,
   GetSteamLanguages,
+  LoadConfig,
   RemovePrefix,
   SetLanguage,
   SetLoggingEnabled,
   SetNotificationSound,
+  SetStartOnLogin,
   SetSteamAPIKey,
   SetSteamDataSource,
   ToggleEmulatorNotification
@@ -35,15 +37,15 @@ import {
   TestNotificationProgress
 } from '@wa/sentinel/backend/notifier/service';
 
-import type { AppInfo } from '@wa/sentinel/backend/config/models';
-import { Emulator, File, Prefix, SteamSource } from '@wa/sentinel/backend/config/models';
+import type {AppInfo} from '@wa/sentinel/backend/config/models';
+import {Emulator, File, Prefix, SteamSource} from '@wa/sentinel/backend/config/models';
 
 import EmptyState from '@/shared/components/empty-state';
 
-import { Dialogs } from '@wailsio/runtime';
-import { Header } from '@/shared/components/header/header';
-import { Start, Stop } from '@wa/sentinel/backend/watcher/service';
+import {Dialogs} from '@wailsio/runtime';
+import {Start, Stop} from '@wa/sentinel/backend/watcher/service';
 import AboutDialog from './about-dialog';
+import {HeaderPortal} from '@/shared/components/header/header';
 
 declare global {
   interface Window {
@@ -80,6 +82,7 @@ const Settings: FC = () => {
   const [aboutDialogOpen, setAboutDialogOpen] = useState(false);
   const [appInfo, setAppInfo] = useState<AppInfo | null>(null);
   const [testNotificationDisabled, setTestNotificationDisabled] = useState(false);
+  const [startOnLogin, setStartOnLogin] = useState(false);
   const testNotificationTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const steamAPIKeyTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -132,6 +135,7 @@ const Settings: FC = () => {
       setSelectedLanguage(cfg?.language?.api || 'english');
       setSelectedSound(cfg?.notificationSound || '');
       setSelectedLogLevel(cfg?.logLevel || 'info');
+      setStartOnLogin(cfg?.startOnLogin ?? false);
     } catch (err) {
       window.ot?.toast('Failed to load settings', 'Error', { variant: 'danger' });
     }
@@ -163,6 +167,17 @@ const Settings: FC = () => {
       window.ot?.toast(`Logging ${newValue ? 'enabled' : 'disabled'}`, 'Success', { variant: 'success' });
     } catch (err) {
       window.ot?.toast('Failed to update logging setting', 'Error', { variant: 'danger' });
+    }
+  };
+
+  const handleStartOnLoginToggle = async () => {
+    const newValue = !startOnLogin;
+    try {
+      await SetStartOnLogin(newValue);
+      setStartOnLogin(newValue);
+      window.ot?.toast(`Autostart ${newValue ? 'enabled' : 'disabled'}`, 'Success', { variant: 'success' });
+    } catch (err) {
+      window.ot?.toast('Failed to update autostart setting', 'Error', { variant: 'danger' });
     }
   };
 
@@ -283,9 +298,9 @@ const Settings: FC = () => {
 
   return (
     <main className='full-layout'>
-      <Header className='settings-header'>
+      <HeaderPortal>
         <div className='header-nav'>
-          <Link to='/' viewTransition>
+          <Link to='/'>
             <ArrowLeft />
           </Link>
           <h2>Settings</h2>
@@ -293,7 +308,7 @@ const Settings: FC = () => {
         <div onClick={handleAboutDialog} title='About' className='settings-header-about-icon'>
           <Info size={20} />
         </div>
-      </Header>
+      </HeaderPortal>
       <div className='page-content'>
         <div className='card settings-section'>
           <div className='flex justify-between items-center'>
@@ -480,6 +495,28 @@ const Settings: FC = () => {
               </label>
               <span className='badge'>Coming Soon</span>
             </fieldset>
+          </div>
+        </div>
+
+        <div className='card settings-section'>
+          <h4 className='settings-section-title'>
+            <Rocket /> Startup
+          </h4>
+          <hr className='divider' />
+          <div className='settings-grid'>
+            <div className='settings-grid-item'>
+              <span className='badge success'>Autostart</span>
+              <span>Start on login (minimized to tray)</span>
+              <label className='switch' title='Toggle autostart on login'>
+                <input
+                  type='checkbox'
+                  role='switch'
+                  checked={startOnLogin}
+                  onChange={handleStartOnLoginToggle}
+                />
+              </label>
+              <div />
+            </div>
           </div>
         </div>
 

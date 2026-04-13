@@ -39,6 +39,7 @@
 
 html {
   scroll-behavior: smooth;
+  color-scheme: dark;
 
   &:has(dialog[open]) {
     overflow: hidden;

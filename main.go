@@ -2,8 +2,11 @@ package main
 
 import (
 	"embed"
+	"flag"
 	"fmt"
 	"log/slog"
+	"os"
+	"runtime"
 	"sentinel/backend"
 	"sentinel/backend/ach"
 	"sentinel/backend/config"
@@ -22,13 +25,20 @@ var assets embed.FS
 //go:embed build/appicon.png
 var trayIcon []byte
 
+var startMinimized bool
+
 func init() {
+	flag.BoolVar(&startMinimized, "startminimized", false, "Start with window minimized (systray only)")
 	application.RegisterEvent[application.Void]("sentinel::ready")
 	application.RegisterEvent[backend.FetchStatusEvt](backend.EventFetchStatus)
 	application.RegisterEvent[application.Void](backend.EventDataUpdated)
 }
 
 func main() {
+	if runtime.GOOS == "linux" {
+		os.Setenv("WEBKIT_DISABLE_DMABUF_RENDERER", "1")
+	}
+
 	var window *application.WebviewWindow
 
 	appLogger := logger.New()
@@ -39,15 +49,18 @@ func main() {
 		logLevel = cfg.LogLevel
 		logger.SetLevel(logger.ParseLevel(logLevel))
 	}
+
 	slog.SetDefault(appLogger)
 
-	// Initialize services manually to handle dependencies
+	// Initialize services
 	configService := &config.File{}
+	achService := &ach.Service{}
+
 	steamService := &steam.Service{
 		Config: configService,
-		Ach:    &ach.Service{},
+		Ach:    achService,
 	}
-	achService := steamService.Ach // Share the same instance
+
 	notifierService := &notifier.Service{
 		Config: configService,
 	}
@@ -59,7 +72,7 @@ func main() {
 	}
 
 	options := application.Options{
-		Name:        "sentinel",
+		Name:        "dev.sentinel.app",
 		Description: "An Achievement Watcher",
 		Logger:      appLogger,
 		LogLevel:    logger.ParseLevel(logLevel),
@@ -78,10 +91,11 @@ func main() {
 			ApplicationShouldTerminateAfterLastWindowClosed: false,
 		},
 		Linux: application.LinuxOptions{
-			ProgramName: "sentinel",
+			// ProgramName is intentionally omitted due to a Use-After-Free bug in Wails v3.0.0-alpha.74:
+			// Wails calls g_set_prgname(cStr) and immediately frees the cStr, causing GTK to crash in g_application_run.
 		},
 		SingleInstance: &application.SingleInstanceOptions{
-			UniqueID: "dev.sentinel",
+			UniqueID: "dev.sentinel.app",
 			OnSecondInstanceLaunch: func(data application.SecondInstanceData) {
 				// Bring the existing instance to front when second instance is launched
 				if window != nil {
@@ -95,6 +109,8 @@ func main() {
 	// Sync slog level with Wails LogLevel option
 	logger.SetLevel(options.LogLevel)
 
+	flag.Parse()
+
 	app := application.New(options)
 
 	window = app.Window.NewWithOptions(application.WebviewWindowOptions{
@@ -104,8 +120,13 @@ func main() {
 		Width:                      1920,
 		Height:                     1080,
 		URL:                        "/",
+		Hidden:                     startMinimized,
 		UseApplicationMenu:         false,
 		DefaultContextMenuDisabled: false,
+		BackgroundColour:           application.NewRGB(18, 18, 18),
+		Linux: application.LinuxWindow{
+			WebviewGpuPolicy: application.WebviewGpuPolicyOnDemand,
+		},
 	})
 
 	window.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
@@ -113,11 +134,25 @@ func main() {
 		e.Cancel()
 	})
 
-	startFn, endFn := setupSystray(app, window, trayIcon)
-	defer endFn()
+	tray := app.SystemTray.New()
+	tray.SetIcon(trayIcon)
+	tray.SetTooltip("Sentinel")
+
+	menu := application.NewMenu()
+	showItem := menu.Add("Show")
+	showItem.OnClick(func(_ *application.Context) {
+		window.Show()
+		window.Focus()
+	})
+
+	menu.AddSeparator()
+	exitItem := menu.Add("Exit")
+	exitItem.OnClick(func(_ *application.Context) {
+		app.Quit()
+	})
+	tray.SetMenu(menu)
 
 	window.OnWindowEvent(events.Common.WindowRuntimeReady, func(e *application.WindowEvent) {
-		startFn()
 		app.Event.Emit("sentinel::ready")
 
 		slog.Info(fmt.Sprintf("%s %s is running", backend.AppName, backend.Version))

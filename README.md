@@ -1,7 +1,4 @@
 # Sentinel
-
-![Banner](.github/assets/banner.png)
-
 **An achievement watcher for Steam emulator games on Linux**
 
 Sentinel monitors your Steam emulator save files and sends real-time desktop notifications when achievements are unlocked or progress is updated. It also serves as a library viewer with completion stats, global achievement percentages, and more.
@@ -74,9 +71,17 @@ Sentinel will automatically scan for games and watch for achievement changes as 
 
 ## Configuration
 
-Config file location: `~/.cache/sentinel/config.json`
+Sentinel follows the [XDG Base Directory Specification](https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html):
 
-Logs are written to `~/.cache/sentinel/logs/sentinel.log`. Enable logging from the Settings menu.
+- **Config:** `~/.config/sentinel/config.json`
+- **Data:** `~/.local/share/sentinel/` (media, achievement data, icons, games)
+- **Logs:** `~/.local/state/sentinel/logs/sentinel.log`
+
+Enable logging from the Settings menu.
+
+### Migration from v1.0.x
+
+If you're upgrading from v1.0.x, your data in `~/.cache/sentinel/` will be automatically migrated to the new XDG-compliant locations on first run. The old directory will be backed up with a `.backup` suffix.
 
 ## FAQ
 

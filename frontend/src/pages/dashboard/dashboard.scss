@@ -19,14 +19,13 @@
       }
     }
 
-    &-settings-link {
-      display: inline-flex;
-      view-transition-name: settings-icon;
+   &-settings-link {
+     display: inline-flex;
 
-      &-icon {
-        color: var(--muted-foreground);
-      }
-    }
+     &-icon {
+       color: var(--muted-foreground);
+     }
+   }
   }
 
   &-section {
