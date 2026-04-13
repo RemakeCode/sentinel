@@ -8,9 +8,40 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// setupTestPaths overrides package-level variables in migrate.go to use a temporary directory for testing.
+// It also unsets XDG environment variables to ensure consistent behavior across platforms.
+func setupTestPaths(t *testing.T, tempHome string) {
+	origOldCacheDir := oldCacheDir
+	origNewConfigDir := newConfigDir
+	origNewDataDir := newDataDir
+	origNewStateDir := newStateDir
+
+	// Restore original values after test
+	t.Cleanup(func() {
+		oldCacheDir = origOldCacheDir
+		newConfigDir = origNewConfigDir
+		newDataDir = origNewDataDir
+		newStateDir = origNewStateDir
+	})
+
+	// Override paths
+	oldCacheDir = filepath.Join(tempHome, ".cache", "sentinel")
+	newConfigDir = filepath.Join(tempHome, ".local", "config", "sentinel")
+	newDataDir = filepath.Join(tempHome, ".local", "share", "sentinel")
+	newStateDir = filepath.Join(tempHome, ".local", "state", "sentinel")
+
+	// Ensure XDG environment variables don't interfere
+	os.Unsetenv("XDG_DATA_HOME")
+	os.Unsetenv("XDG_CONFIG_HOME")
+	os.Unsetenv("XDG_STATE_HOME")
+	os.Unsetenv("XDG_CACHE_HOME")
+}
+
 // TestMigration_MediaDirectory verifies media directory migration to XDG_DATA_HOME
 func TestMigration_MediaDirectory(t *testing.T) {
 	tempHome := t.TempDir()
+	setupTestPaths(t, tempHome)
+
 	oldCacheBase := filepath.Join(tempHome, ".cache")
 	newDataBase := filepath.Join(tempHome, ".local", "share")
 
@@ -36,6 +67,8 @@ func TestMigration_MediaDirectory(t *testing.T) {
 // TestMigration_LogsDirectory verifies logs directory migration to XDG_STATE_HOME
 func TestMigration_LogsDirectory(t *testing.T) {
 	tempHome := t.TempDir()
+	setupTestPaths(t, tempHome)
+
 	oldCacheBase := filepath.Join(tempHome, ".cache")
 	newStateBase := filepath.Join(tempHome, ".local", "state")
 
@@ -61,6 +94,8 @@ func TestMigration_LogsDirectory(t *testing.T) {
 // TestMigration_AchievementData verifies achievement data directory migration to XDG_DATA_HOME
 func TestMigration_AchievementData(t *testing.T) {
 	tempHome := t.TempDir()
+	setupTestPaths(t, tempHome)
+
 	oldCacheBase := filepath.Join(tempHome, ".cache")
 	newDataBase := filepath.Join(tempHome, ".local", "share")
 
@@ -68,7 +103,7 @@ func TestMigration_AchievementData(t *testing.T) {
 	os.Setenv("HOME", tempHome)
 	defer func() { os.Setenv("HOME", oldHome) }()
 
-	oldDataDir := filepath.Join(oldCacheBase, "sentinel", "data")
+	oldDataDir := filepath.Join(oldCacheBase, "sentinel", "cache", "data")
 	require.NoError(t, os.MkdirAll(oldDataDir, 0755))
 
 	testAchData := []byte(`{"achievements":[{"id":"ACH_001","unlocked":true}]}`)
@@ -86,6 +121,8 @@ func TestMigration_AchievementData(t *testing.T) {
 // TestMigration_AchievementIcons verifies achievement icons directory migration to XDG_DATA_HOME
 func TestMigration_AchievementIcons(t *testing.T) {
 	tempHome := t.TempDir()
+	setupTestPaths(t, tempHome)
+
 	oldCacheBase := filepath.Join(tempHome, ".cache")
 	newDataBase := filepath.Join(tempHome, ".local", "share")
 
@@ -93,7 +130,7 @@ func TestMigration_AchievementIcons(t *testing.T) {
 	os.Setenv("HOME", tempHome)
 	defer func() { os.Setenv("HOME", oldHome) }()
 
-	oldIconDir := filepath.Join(oldCacheBase, "sentinel", "icon", "123456")
+	oldIconDir := filepath.Join(oldCacheBase, "sentinel", "cache", "icon", "123456")
 	require.NoError(t, os.MkdirAll(oldIconDir, 0755))
 
 	testIcon := []byte("fake png icon data")
@@ -111,6 +148,8 @@ func TestMigration_AchievementIcons(t *testing.T) {
 // TestMigration_GameMetadata verifies games directory migration to XDG_DATA_HOME
 func TestMigration_GameMetadata(t *testing.T) {
 	tempHome := t.TempDir()
+	setupTestPaths(t, tempHome)
+
 	oldCacheBase := filepath.Join(tempHome, ".cache")
 	newDataBase := filepath.Join(tempHome, ".local", "share")
 

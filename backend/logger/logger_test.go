@@ -88,38 +88,9 @@ func TestLogRotation(t *testing.T) {
 
 	logger := NewWithFile(writer)
 
-	// Write enough data to trigger rotation (messages are ~50-100 bytes each)
-	for i := 0; i < 500; i++ {
-		logger.Info("test message for rotation", "index", i)
-	}
-
-	writer.Close()
-
-	// Verify rotated files exist
-	files, err := os.ReadDir(tmpDir)
-	assert.NoError(t, err)
-	assert.Greater(t, len(files), 1)
-}
-
-	logger := NewWithFile(writer)
-
-	// Write enough data to trigger rotation (messages are ~50-100 bytes each)
-	for i := 0; i < 500; i++ {
-		logger.Info("test message for rotation", "index", i)
-	}
-
-	writer.Close()
-
-	// Verify rotated files exist
-	files, err := os.ReadDir(tmpDir)
-	assert.NoError(t, err)
-	assert.Greater(t, len(files), 1)
-}
-
-	logger := NewWithFile(writer)
-
-	// Write enough data to trigger rotation (more than 1 MB)
-	for i := 0; i < 200000; i++ {
+	// Write enough data to trigger rotation (messages are ~60-100 bytes each)
+	// 25,000 messages * ~60 bytes = ~1.5 MB, which exceeds the 1MB limit.
+	for i := 0; i < 25000; i++ {
 		logger.Info("test message for rotation", "index", i)
 	}
 

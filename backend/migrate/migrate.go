@@ -58,37 +58,6 @@ func MigrateAll() error {
 	return nil
 }
 
-func detectOldData() bool {
-	oldConfigPath := filepath.Join(oldCacheDir, "config.json")
-	if _, err := os.Stat(oldConfigPath); err == nil {
-		return true
-	}
-
-	oldDirs := []string{
-		filepath.Join(oldCacheDir, "media"),
-		filepath.Join(oldCacheDir, "logs"),
-		filepath.Join(oldCacheDir, "cache", "data"),
-		filepath.Join(oldCacheDir, "cache", "icon"),
-		filepath.Join(oldCacheDir, "cache", "games"),
-	}
-
-	for _, dir := range oldDirs {
-		if _, err := os.Stat(dir); err == nil {
-			return true
-		}
-	}
-
-	return false
-}
-
-func detectNewData() bool {
-	newConfigPath := filepath.Join(newConfigDir, "config.json")
-	if _, err := os.Stat(newConfigPath); err == nil {
-		return true
-	}
-	return false
-}
-
 func migrateConfig() bool {
 	oldPath := filepath.Join(oldCacheDir, "config.json")
 	newPath := filepath.Join(newConfigDir, "config.json")
