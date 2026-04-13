@@ -1,7 +1,7 @@
 import './settings.scss';
-import type { ChangeEvent, FC } from 'react';
-import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router';
+import type {ChangeEvent, FC} from 'react';
+import {useEffect, useRef, useState} from 'react';
+import {Link} from 'react-router';
 import {
   ArrowLeft,
   DatabaseSearchIcon,
@@ -37,15 +37,15 @@ import {
   TestNotificationProgress
 } from '@wa/sentinel/backend/notifier/service';
 
-import type { AppInfo } from '@wa/sentinel/backend/config/models';
-import { Emulator, File, Prefix, SteamSource } from '@wa/sentinel/backend/config/models';
+import type {AppInfo} from '@wa/sentinel/backend/config/models';
+import {Emulator, File, Prefix, SteamSource} from '@wa/sentinel/backend/config/models';
 
 import EmptyState from '@/shared/components/empty-state';
 
-import { Dialogs } from '@wailsio/runtime';
-import { Start, Stop } from '@wa/sentinel/backend/watcher/service';
+import {Dialogs} from '@wailsio/runtime';
+import {Start, Stop} from '@wa/sentinel/backend/watcher/service';
 import AboutDialog from './about-dialog';
-import { HeaderPortal } from '@/shared/components/header/header';
+import {HeaderPortal} from '@/shared/components/header/header';
 
 declare global {
   interface Window {
@@ -505,7 +505,7 @@ const Settings: FC = () => {
           <hr className='divider' />
           <div className='settings-grid'>
             <div className='settings-grid-item'>
-              <span className='badge info'>Autostart</span>
+              <span className='badge success'>Autostart</span>
               <span>Start on login (minimized to tray)</span>
               <label className='switch' title='Toggle autostart on login'>
                 <input
