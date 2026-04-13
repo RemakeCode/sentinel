@@ -1,3 +1,9 @@
+## [1.0.6](https://github.com/RemakeCode/sentinel/compare/v1.0.5...v1.0.6) (2026-04-13)
+
+### 🐛 Bug Fixes
+
+* Nvidia crash issues ([#33](https://github.com/RemakeCode/sentinel/issues/33)) ([59c6569](https://github.com/RemakeCode/sentinel/commit/59c6569bff39004b6902e7946e28a2a7b54ebb69))
+
 ## [1.0.5](https://github.com/RemakeCode/sentinel/compare/v1.0.4...v1.0.5) (2026-04-10)
 
 ### 🐛 Bug Fixes
