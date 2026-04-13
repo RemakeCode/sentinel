@@ -157,7 +157,7 @@ func TestMigration_GameMetadata(t *testing.T) {
 	os.Setenv("HOME", tempHome)
 	defer func() { os.Setenv("HOME", oldHome) }()
 
-	oldGamesDir := filepath.Join(oldCacheBase, "sentinel", "games", "english")
+	oldGamesDir := filepath.Join(oldCacheBase, "sentinel", "cache", "games", "english")
 	require.NoError(t, os.MkdirAll(oldGamesDir, 0755))
 
 	testMeta := []byte(`{"appName":"Test Game","achievements":[]}`)
