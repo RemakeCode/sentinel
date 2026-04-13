@@ -1,7 +1,4 @@
 # Sentinel
-
-![Banner](.github/assets/banner.png)
-
 **An achievement watcher for Steam emulator games on Linux**
 
 Sentinel monitors your Steam emulator save files and sends real-time desktop notifications when achievements are unlocked or progress is updated. It also serves as a library viewer with completion stats, global achievement percentages, and more.
