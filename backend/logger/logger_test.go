@@ -82,9 +82,39 @@ func TestLogRotation(t *testing.T) {
 
 	writer := &lumberjack.Logger{
 		Filename:   logFile,
-		MaxSize:    1, // 1 MB - small for testing
+		MaxSize:    1, // 1 KB - small for testing
 		MaxBackups: 3,
 	}
+
+	logger := NewWithFile(writer)
+
+	// Write enough data to trigger rotation (messages are ~50-100 bytes each)
+	for i := 0; i < 500; i++ {
+		logger.Info("test message for rotation", "index", i)
+	}
+
+	writer.Close()
+
+	// Verify rotated files exist
+	files, err := os.ReadDir(tmpDir)
+	assert.NoError(t, err)
+	assert.Greater(t, len(files), 1)
+}
+
+	logger := NewWithFile(writer)
+
+	// Write enough data to trigger rotation (messages are ~50-100 bytes each)
+	for i := 0; i < 500; i++ {
+		logger.Info("test message for rotation", "index", i)
+	}
+
+	writer.Close()
+
+	// Verify rotated files exist
+	files, err := os.ReadDir(tmpDir)
+	assert.NoError(t, err)
+	assert.Greater(t, len(files), 1)
+}
 
 	logger := NewWithFile(writer)
 
