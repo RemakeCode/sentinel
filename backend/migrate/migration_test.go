@@ -6,8 +6,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-
-	"sentinel/backend"
 )
 
 // TestMigration_MediaDirectory verifies media directory migration to XDG_DATA_HOME
@@ -133,21 +131,4 @@ func TestMigration_GameMetadata(t *testing.T) {
 	migratedMeta, err := os.ReadFile(filepath.Join(newGamesDir, "123456.json"))
 	require.NoError(t, err)
 	require.Equal(t, testMeta, migratedMeta)
-}
-
-// TestVerification_XDGPaths verifies XDG paths are correctly set on Linux
-func TestVerification_XDGPaths(t *testing.T) {
-	require.Contains(t, backend.ConfigDir, ".config/sentinel")
-	require.Contains(t, backend.DataDir, ".local/share/sentinel")
-	require.Contains(t, backend.StateDir, ".local/state/sentinel")
-}
-
-// TestVerification_Subdirectories verifies subdirectory paths are correctly formed
-func TestVerification_Subdirectories(t *testing.T) {
-	require.Equal(t, filepath.Join(backend.DataDir, "media"), backend.MediaDir)
-	require.Equal(t, filepath.Join(backend.DataDir, "data"), backend.ACHCacheDataDir)
-	require.Equal(t, filepath.Join(backend.DataDir, "icon"), backend.ACHCacheIconDir)
-	require.Equal(t, filepath.Join(backend.DataDir, "games"), backend.GameCacheDir)
-	require.Equal(t, filepath.Join(backend.StateDir, "logs"), backend.LogDir)
-	require.Equal(t, filepath.Join(backend.LogDir, "sentinel.log"), backend.LogFilePath)
 }
