@@ -9,3 +9,15 @@
    justify-content: center;
  }
 }
+
+.header-portal-root {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.page-transition-wrapper {
+  min-height: calc(100vh - 80px);
+  width: 100%;
+}
