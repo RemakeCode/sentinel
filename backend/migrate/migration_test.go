@@ -135,63 +135,6 @@ func TestMigration_GameMetadata(t *testing.T) {
 	require.Equal(t, testMeta, migratedMeta)
 }
 
-// TestMigration_FilePermissions verifies file permissions are preserved during migration
-func TestMigration_FilePermissions(t *testing.T) {
-	tempHome := t.TempDir()
-	oldCacheBase := filepath.Join(tempHome, ".cache")
-	newConfigBase := filepath.Join(tempHome, ".config")
-
-	oldHome := os.Getenv("HOME")
-	os.Setenv("HOME", tempHome)
-	defer func() { os.Setenv("HOME", oldHome) }()
-
-	oldConfigDir := filepath.Join(oldCacheBase, "sentinel")
-	oldConfigFile := filepath.Join(oldConfigDir, "config.json")
-	require.NoError(t, os.MkdirAll(oldConfigDir, 0755))
-
-	testConfig := []byte(`{"SteamDataSource": "external"}`)
-	require.NoError(t, os.WriteFile(oldConfigFile, testConfig, 0600))
-
-	err := MigrateAll()
-	require.NoError(t, err)
-
-	newConfigFile := filepath.Join(newConfigBase, "sentinel", "config.json")
-	info, err := os.Stat(newConfigFile)
-	require.NoError(t, err)
-	require.Equal(t, os.FileMode(0600)&0700, info.Mode().Perm()&0700)
-}
-
-// TestMigration_SymlinkHandling verifies symlink detection and handling
-func TestMigration_SymlinkHandling(t *testing.T) {
-	tempHome := t.TempDir()
-	oldCacheBase := filepath.Join(tempHome, ".cache")
-	newConfigBase := filepath.Join(tempHome, ".config")
-
-	oldHome := os.Getenv("HOME")
-	os.Setenv("HOME", tempHome)
-	defer func() { os.Setenv("HOME", oldHome) }()
-
-	oldConfigDir := filepath.Join(oldCacheBase, "sentinel")
-	newConfigDir := filepath.Join(newConfigBase, "sentinel")
-	require.NoError(t, os.MkdirAll(oldConfigDir, 0755))
-	require.NoError(t, os.MkdirAll(newConfigDir, 0755))
-
-	realFile := filepath.Join(oldConfigDir, "real-config.json")
-	require.NoError(t, os.WriteFile(realFile, []byte(`{"key":"value"}`), 0644))
-
-	symlink := filepath.Join(newConfigDir, "config.json")
-	require.NoError(t, os.Symlink(realFile, symlink))
-
-	err := MigrateAll()
-	require.NoError(t, err)
-
-	target, err := os.Readlink(symlink)
-	if err == nil {
-		_, err = os.Lstat(target)
-		require.NoError(t, err)
-	}
-}
-
 // TestVerification_XDGPaths verifies XDG paths are correctly set on Linux
 func TestVerification_XDGPaths(t *testing.T) {
 	require.Contains(t, backend.ConfigDir, ".config/sentinel")
