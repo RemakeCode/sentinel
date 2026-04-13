@@ -2,7 +2,7 @@ import './app.scss';
 import type { FC } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, type Variants } from 'framer-motion';
-import { ScrollRestoration, useLocation, useOutlet } from 'react-router';
+import { ScrollRestoration, useLocation, useNavigationType, useOutlet } from 'react-router';
 import { GetAppInfo } from '@wa/sentinel/backend/config/file';
 import { GamesProvider } from '@/shared/context/games-context';
 import { Header } from '@/shared/components/header/header';
@@ -38,6 +38,7 @@ const App: FC = () => {
   const [ready, setReady] = useState(false);
   const location = useLocation();
   const outlet = useOutlet();
+  const navigationType = useNavigationType();
 
   // Track depth to determine animation direction
   const prevDepth = useRef(0);
@@ -50,6 +51,15 @@ const App: FC = () => {
 
   const currentDepth = getDepth(location.pathname);
   const direction = currentDepth > prevDepth.current ? 'into' : 'out';
+
+  const onExitComplete = () => {
+    // Only scroll to top on forward/replace navigation.
+    // POP navigation (back/forward buttons) should keep its native scroll restoration
+    // managed by <ScrollRestoration />.
+    if (navigationType !== 'POP') {
+      window.scrollTo(0, 0);
+    }
+  };
 
   useEffect(() => {
     prevDepth.current = currentDepth;
@@ -77,7 +87,7 @@ const App: FC = () => {
       <Header id='global-header'>
         <div id='header-portal-root' className='header-portal-root' />
       </Header>
-      <AnimatePresence mode='wait' custom={direction}>
+      <AnimatePresence mode='wait' custom={direction} onExitComplete={onExitComplete}>
         <motion.div
           key={location.pathname}
           custom={direction}
