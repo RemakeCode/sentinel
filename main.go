@@ -15,6 +15,10 @@ import (
 	"sentinel/backend/steam"
 	"sentinel/backend/watcher"
 
+	"net/http"
+	"path/filepath"
+	"strings"
+
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
 )
@@ -85,7 +89,15 @@ func main() {
 		},
 
 		Assets: application.AssetOptions{
-			Handler: application.AssetFileServerFS(assets),
+			Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if strings.HasPrefix(r.URL.Path, "/api/media/") {
+					relPath := strings.TrimPrefix(r.URL.Path, "/api/media/")
+					fullPath := filepath.Join(backend.DataDir, relPath)
+					http.ServeFile(w, r, fullPath)
+					return
+				}
+				application.AssetFileServerFS(assets).ServeHTTP(w, r)
+			}),
 		},
 		Mac: application.MacOptions{
 			ApplicationShouldTerminateAfterLastWindowClosed: false,
