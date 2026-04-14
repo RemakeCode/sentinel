@@ -603,32 +603,66 @@ func (s *Service) loadCachedGameData(appID string, language string) (*GameBasics
 		return nil, fmt.Errorf("failed to unmarshal game data: %w", err)
 	}
 
+	dirty := false
+
 	// Lazy migration: Proactively check for local image files even if JSON has URLs
-	if !filepath.IsAbs(game.PortraitImage) {
+	if strings.HasPrefix(game.PortraitImage, "http") {
 		if localPath, err := s.loadCachedGameImage(appID, "portraitImage"); err == nil {
 			game.PortraitImage = localPath
+			dirty = true
 		}
 	}
 
-	if !filepath.IsAbs(game.HeaderImage) {
+	if strings.HasPrefix(game.HeaderImage, "http") {
 		if localPath, err := s.loadCachedGameImage(appID, "headerImage"); err == nil {
 			game.HeaderImage = localPath
+			dirty = true
 		}
 	}
 
 	// Process achievement icons
 	for i, a := range game.Achievement.List {
-		if path, err := s.loadCachedAchievementIcon(appID, a.Icon); err == nil {
-			a.Icon = path
+		if strings.HasPrefix(a.Icon, "http") {
+			if path, err := s.loadCachedAchievementIcon(appID, a.Icon); err == nil {
+				a.Icon = path
+				dirty = true
+			}
 		}
-		if path, err := s.loadCachedAchievementIcon(appID, a.IconGray); err == nil {
-			a.IconGray = path
+		if strings.HasPrefix(a.IconGray, "http") {
+			if path, err := s.loadCachedAchievementIcon(appID, a.IconGray); err == nil {
+				a.IconGray = path
+				dirty = true
+			}
 		}
 		game.Achievement.List[i] = a
 	}
 
+	// Standardize all paths to virtual and detect if any changes were made (including filesystem -> virtual)
+	origHeader := game.HeaderImage
+	origPortrait := game.PortraitImage
 	game.HeaderImage = s.toVirtualPath(game.HeaderImage)
 	game.PortraitImage = s.toVirtualPath(game.PortraitImage)
+
+	if game.HeaderImage != origHeader || game.PortraitImage != origPortrait {
+		dirty = true
+	}
+
+	for i, a := range game.Achievement.List {
+		origIcon := a.Icon
+		origIconGray := a.IconGray
+		a.Icon = s.toVirtualPath(a.Icon)
+		a.IconGray = s.toVirtualPath(a.IconGray)
+		if a.Icon != origIcon || a.IconGray != origIconGray {
+			dirty = true
+		}
+		game.Achievement.List[i] = a
+	}
+
+	// Save back if we cleaned up any CDN URLs or legacy absolute paths
+	if dirty {
+		slog.Info("Sanitizing game cache to local paths", "appID", appID)
+		_ = s.cacheGameData(appID, language, &game)
+	}
 
 	return &game, nil
 }
@@ -849,7 +883,7 @@ func (s *Service) GetGlobalAchievementPercentages(appID string) ([]GlobalAchieve
 }
 
 func (s *Service) toVirtualPath(absPath string) string {
-	if absPath == "" || !filepath.IsAbs(absPath) {
+	if absPath == "" || !filepath.IsAbs(absPath) || strings.HasPrefix(absPath, "/api/media/") {
 		return absPath
 	}
 	rel, err := filepath.Rel(backend.DataDir, absPath)

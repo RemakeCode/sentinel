@@ -102,10 +102,6 @@ func main() {
 		Mac: application.MacOptions{
 			ApplicationShouldTerminateAfterLastWindowClosed: false,
 		},
-		Linux: application.LinuxOptions{
-			// ProgramName is intentionally omitted due to a Use-After-Free bug in Wails v3.0.0-alpha.74:
-			// Wails calls g_set_prgname(cStr) and immediately frees the cStr, causing GTK to crash in g_application_run.
-		},
 		SingleInstance: &application.SingleInstanceOptions{
 			UniqueID: "dev.sentinel.app",
 			OnSecondInstanceLaunch: func(data application.SecondInstanceData) {
