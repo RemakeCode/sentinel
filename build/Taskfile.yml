@@ -196,9 +196,10 @@ tasks:
       Builds the Docker image needed for cross-compiling to any platform.
       Run this once to enable cross-platform builds from any OS.
     cmds:
-      - docker build -t wails-cross -f build/docker/Dockerfile.cross build/docker/
+      - docker build -t wails-cross -f build/docker/Dockerfile.cross build/docker/ --platform {{.PLATFORM | default "linux/amd64"}}
     preconditions:
       - sh: docker info > /dev/null 2>&1
         msg: "Docker is required. Please install Docker first."
-
+    vars:
+      PLATFORM: "{{.PLATFORM}}"
 
