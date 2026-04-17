@@ -610,6 +610,15 @@ func (s *Service) loadCachedGameData(appID string, language string) (*GameBasics
 		if localPath, err := s.loadCachedGameImage(appID, "portraitImage"); err == nil {
 			game.PortraitImage = localPath
 			dirty = true
+		} else {
+			// TODO(remove after legacy pre-fallback portrait caches have aged out): self-heal stale remote portrait URLs.
+			if err := s.cacheGameImage(appID, game.PortraitImage, "portraitImage"); err == nil {
+				if localPath, err := s.loadCachedGameImage(appID, "portraitImage"); err == nil {
+					slog.Info("Self-healed cached portrait image", "appID", appID)
+					game.PortraitImage = localPath
+					dirty = true
+				}
+			}
 		}
 	}
 
@@ -835,7 +844,7 @@ func (s *Service) loadCachedGameImage(appID string, imageType string) (string, e
 		if strings.HasPrefix(entry.Name(), imageType) {
 			fullPath := filepath.Join(cacheDir, entry.Name())
 
-			// Self-healing: handle query parameters in filename
+			// TODO(remove after legacy malformed cache filenames have aged out): drop query-string filename self-healing.
 			if strings.Contains(entry.Name(), "?") {
 				cleanName := strings.Split(entry.Name(), "?")[0]
 				cleanPath := filepath.Join(cacheDir, cleanName)

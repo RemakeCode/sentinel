@@ -2,11 +2,14 @@ package steam
 
 import (
 	"encoding/json"
+	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"sentinel/backend"
 	"sentinel/backend/config"
 	"sentinel/backend/steam/types"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -17,6 +20,12 @@ import (
 
 type mockConfig struct {
 	mock.Mock
+}
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req)
 }
 
 func (m *mockConfig) GetSteamAPIKey() (string, error) {
@@ -139,4 +148,73 @@ func TestFetchAppDetailsBulk_Cached(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, results, 1)
 	assert.Equal(t, "Test Game", results[0].Name)
+}
+
+func TestLoadCachedGameData_SelfHealsRemotePortraitImage(t *testing.T) {
+	tmpDir := t.TempDir()
+	backend.DataDir = tmpDir
+	backend.GameCacheDir = filepath.Join(tmpDir, "games")
+	backend.ACHCacheIconDir = filepath.Join(tmpDir, "icon")
+
+	svc := &Service{}
+	appID := "12345"
+	lang := "english"
+	primaryPortraitURL := "https://cdn.akamai.steamstatic.com/steam/apps/12345/library_600x900.jpg"
+	fallbackAPIURL := "https://steam-asset-proxy.steampoacher.workers.dev/?appid=12345"
+	fallbackPortraitURL := "https://shared.steamstatic.com/store_item_assets/steam/apps/12345/fallback-capsule.jpg"
+
+	game := &GameBasics{
+		AppID:         appID,
+		Name:          "Test Game",
+		PortraitImage: primaryPortraitURL,
+	}
+
+	err := svc.cacheGameData(appID, lang, game)
+	assert.NoError(t, err)
+
+	originalTransport := http.DefaultTransport
+	http.DefaultTransport = roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		switch req.URL.String() {
+		case primaryPortraitURL:
+			return &http.Response{
+				StatusCode: http.StatusNotFound,
+				Body:       io.NopCloser(strings.NewReader("not found")),
+				Header:     make(http.Header),
+			}, nil
+		case fallbackAPIURL:
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body: io.NopCloser(strings.NewReader(`{
+					"assets": {
+						"library_capsule": "fallback-capsule.jpg"
+					}
+				}`)),
+				Header: make(http.Header),
+			}, nil
+		case fallbackPortraitURL:
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body:       io.NopCloser(strings.NewReader("image-bytes")),
+				Header:     make(http.Header),
+			}, nil
+		default:
+			return nil, assert.AnError
+		}
+	})
+	t.Cleanup(func() {
+		http.DefaultTransport = originalTransport
+	})
+
+	loaded, err := svc.loadCachedGameData(appID, lang)
+
+	assert.NoError(t, err)
+	assert.Equal(t, "/api/media/icon/12345/portraitImage.jpg", loaded.PortraitImage)
+
+	portraitCachePath := filepath.Join(backend.ACHCacheIconDir, appID, "portraitImage.jpg")
+	_, err = os.Stat(portraitCachePath)
+	assert.NoError(t, err)
+
+	reloaded, err := svc.loadCachedGameData(appID, lang)
+	assert.NoError(t, err)
+	assert.Equal(t, "/api/media/icon/12345/portraitImage.jpg", reloaded.PortraitImage)
 }
