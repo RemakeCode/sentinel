@@ -132,9 +132,6 @@ func main() {
 		UseApplicationMenu:         false,
 		DefaultContextMenuDisabled: false,
 		BackgroundColour:           application.NewRGB(18, 18, 18),
-		Linux: application.LinuxWindow{
-			WebviewGpuPolicy: application.WebviewGpuPolicyOnDemand,
-		},
 	})
 
 	window.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
