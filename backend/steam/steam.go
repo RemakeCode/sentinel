@@ -531,7 +531,7 @@ func (s *Service) fetchGameDetails(appID string, language string) (*GameBasics, 
 		return nil, fmt.Errorf("failed to fetch metadata for appid: %s", appID)
 	}
 
-	portraitImageURL := fmt.Sprintf("https://cdn.akamai.steamstatic.com/steam/apps/%s/library_600x900.jpg", appID)
+	portraitImageURL := s.primaryPortraitImageURL(appID)
 
 	// Cache game images
 	_ = s.cacheGameImage(appID, appData.Data.HeaderImage, "headerImage")
@@ -606,13 +606,18 @@ func (s *Service) loadCachedGameData(appID string, language string) (*GameBasics
 	dirty := false
 
 	// Lazy migration: Proactively check for local image files even if JSON has URLs
-	if strings.HasPrefix(game.PortraitImage, "http") {
+	if game.PortraitImage != "" {
 		if localPath, err := s.loadCachedGameImage(appID, "portraitImage"); err == nil {
 			game.PortraitImage = localPath
 			dirty = true
-		} else {
-			// TODO(remove after legacy pre-fallback portrait caches have aged out): self-heal stale remote portrait URLs.
-			if err := s.cacheGameImage(appID, game.PortraitImage, "portraitImage"); err == nil {
+		} else if strings.HasPrefix(game.PortraitImage, "http") || strings.HasPrefix(game.PortraitImage, "/api/media/") || filepath.IsAbs(game.PortraitImage) {
+			// TODO(remove after legacy pre-fallback portrait caches have aged out): self-heal stale portrait cache references.
+			portraitImageURL := game.PortraitImage
+			if !strings.HasPrefix(portraitImageURL, "http") {
+				portraitImageURL = s.primaryPortraitImageURL(appID)
+			}
+
+			if err := s.cacheGameImage(appID, portraitImageURL, "portraitImage"); err == nil {
 				if localPath, err := s.loadCachedGameImage(appID, "portraitImage"); err == nil {
 					slog.Info("Self-healed cached portrait image", "appID", appID)
 					game.PortraitImage = localPath
@@ -772,6 +777,10 @@ func is404Error(err error) bool {
 	return err != nil && strings.Contains(err.Error(), "status 404")
 }
 
+func (s *Service) primaryPortraitImageURL(appID string) string {
+	return fmt.Sprintf("https://cdn.akamai.steamstatic.com/steam/apps/%s/library_600x900.jpg", appID)
+}
+
 func (s *Service) downloadImageToCache(appID string, imageURL string, cachePath string) error {
 	// Download the image
 	resp, err := http.Get(imageURL)
@@ -816,6 +825,13 @@ func (s *Service) fallbackPortraitURL(appID string) string {
 		Assets struct {
 			LibraryCapsule string `json:"library_capsule"`
 		} `json:"assets"`
+		Response struct {
+			StoreItems []struct {
+				Assets struct {
+					LibraryCapsule string `json:"library_capsule"`
+				} `json:"assets"`
+			} `json:"store_items"`
+		} `json:"response"`
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
@@ -823,12 +839,17 @@ func (s *Service) fallbackPortraitURL(appID string) string {
 		return ""
 	}
 
-	if response.Assets.LibraryCapsule == "" {
+	libraryCapsule := response.Assets.LibraryCapsule
+	if libraryCapsule == "" && len(response.Response.StoreItems) > 0 {
+		libraryCapsule = response.Response.StoreItems[0].Assets.LibraryCapsule
+	}
+
+	if libraryCapsule == "" {
 		slog.Warn("Fallback API response missing library_capsule asset", "appID", appID)
 		return ""
 	}
 
-	return fmt.Sprintf("https://shared.steamstatic.com/store_item_assets/steam/apps/%s/%s", appID, response.Assets.LibraryCapsule)
+	return fmt.Sprintf("https://shared.steamstatic.com/store_item_assets/steam/apps/%s/%s", appID, libraryCapsule)
 }
 
 func (s *Service) loadCachedGameImage(appID string, imageType string) (string, error) {

@@ -218,3 +218,110 @@ func TestLoadCachedGameData_SelfHealsRemotePortraitImage(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "/api/media/icon/12345/portraitImage.jpg", reloaded.PortraitImage)
 }
+
+func TestLoadCachedGameData_SelfHealsMissingLocalPortraitImage(t *testing.T) {
+	tmpDir := t.TempDir()
+	backend.DataDir = tmpDir
+	backend.GameCacheDir = filepath.Join(tmpDir, "games")
+	backend.ACHCacheIconDir = filepath.Join(tmpDir, "icon")
+
+	svc := &Service{}
+	appID := "12345"
+	lang := "english"
+	stalePortraitPath := "/api/media/icon/12345/portraitImage.jpg"
+	primaryPortraitURL := "https://cdn.akamai.steamstatic.com/steam/apps/12345/library_600x900.jpg"
+	fallbackAPIURL := "https://steam-asset-proxy.steampoacher.workers.dev/?appid=12345"
+	fallbackPortraitURL := "https://shared.steamstatic.com/store_item_assets/steam/apps/12345/fallback-capsule.jpg"
+
+	game := &GameBasics{
+		AppID:         appID,
+		Name:          "Test Game",
+		PortraitImage: stalePortraitPath,
+	}
+
+	err := svc.cacheGameData(appID, lang, game)
+	assert.NoError(t, err)
+
+	originalTransport := http.DefaultTransport
+	http.DefaultTransport = roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		switch req.URL.String() {
+		case primaryPortraitURL:
+			return &http.Response{
+				StatusCode: http.StatusNotFound,
+				Body:       io.NopCloser(strings.NewReader("not found")),
+				Header:     make(http.Header),
+			}, nil
+		case fallbackAPIURL:
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body: io.NopCloser(strings.NewReader(`{
+					"assets": {
+						"library_capsule": "fallback-capsule.jpg"
+					}
+				}`)),
+				Header: make(http.Header),
+			}, nil
+		case fallbackPortraitURL:
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body:       io.NopCloser(strings.NewReader("image-bytes")),
+				Header:     make(http.Header),
+			}, nil
+		default:
+			return nil, assert.AnError
+		}
+	})
+	t.Cleanup(func() {
+		http.DefaultTransport = originalTransport
+	})
+
+	loaded, err := svc.loadCachedGameData(appID, lang)
+
+	assert.NoError(t, err)
+	assert.Equal(t, stalePortraitPath, loaded.PortraitImage)
+
+	portraitCachePath := filepath.Join(backend.ACHCacheIconDir, appID, "portraitImage.jpg")
+	_, err = os.Stat(portraitCachePath)
+	assert.NoError(t, err)
+}
+
+func TestFallbackPortraitURL_UsesNestedStoreItemsAssets(t *testing.T) {
+	svc := &Service{}
+	appID := "3764200"
+	fallbackAPIURL := "https://steam-asset-proxy.steampoacher.workers.dev/?appid=3764200"
+
+	originalTransport := http.DefaultTransport
+	http.DefaultTransport = roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		switch req.URL.String() {
+		case fallbackAPIURL:
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body: io.NopCloser(strings.NewReader(`{
+					"response": {
+						"store_items": [
+							{
+								"assets": {
+									"library_capsule": "ed3b2cae7d15f598f41006f5f1e605ec5517b5e4/library_capsule.jpg"
+								}
+							}
+						]
+					}
+				}`)),
+				Header: make(http.Header),
+			}, nil
+		default:
+			return nil, assert.AnError
+		}
+	})
+	t.Cleanup(func() {
+		http.DefaultTransport = originalTransport
+	})
+
+	fallbackURL := svc.fallbackPortraitURL(appID)
+
+	assert.Equal(
+		t,
+		"https://shared.steamstatic.com/store_item_assets/steam/apps/3764200/ed3b2cae7d15f598f41006f5f1e605ec5517b5e4/library_capsule.jpg",
+		fallbackURL,
+	)
+}
