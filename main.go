@@ -15,6 +15,10 @@ import (
 	"sentinel/backend/steam"
 	"sentinel/backend/watcher"
 
+	"net/http"
+	"path/filepath"
+	"strings"
+
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
 )
@@ -85,14 +89,18 @@ func main() {
 		},
 
 		Assets: application.AssetOptions{
-			Handler: application.AssetFileServerFS(assets),
+			Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if strings.HasPrefix(r.URL.Path, "/api/media/") {
+					relPath := strings.TrimPrefix(r.URL.Path, "/api/media/")
+					fullPath := filepath.Join(backend.DataDir, relPath)
+					http.ServeFile(w, r, fullPath)
+					return
+				}
+				application.AssetFileServerFS(assets).ServeHTTP(w, r)
+			}),
 		},
 		Mac: application.MacOptions{
 			ApplicationShouldTerminateAfterLastWindowClosed: false,
-		},
-		Linux: application.LinuxOptions{
-			// ProgramName is intentionally omitted due to a Use-After-Free bug in Wails v3.0.0-alpha.74:
-			// Wails calls g_set_prgname(cStr) and immediately frees the cStr, causing GTK to crash in g_application_run.
 		},
 		SingleInstance: &application.SingleInstanceOptions{
 			UniqueID: "dev.sentinel.app",
@@ -124,9 +132,6 @@ func main() {
 		UseApplicationMenu:         false,
 		DefaultContextMenuDisabled: false,
 		BackgroundColour:           application.NewRGB(18, 18, 18),
-		Linux: application.LinuxWindow{
-			WebviewGpuPolicy: application.WebviewGpuPolicyOnDemand,
-		},
 	})
 
 	window.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {

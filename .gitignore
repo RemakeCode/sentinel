@@ -10,11 +10,12 @@ dist/
 .opencode/
 .kilocode/
 openspec/
-
+.serena
 /build/frontend/
 /build/.task/
 /build/bin/
 /bin
+node_modules
 
 */**/.DS_Store
 

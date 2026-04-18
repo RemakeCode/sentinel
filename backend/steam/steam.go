@@ -235,19 +235,12 @@ func (s *Service) LoadAllCachedGameData() ([]*GameBasics, error) {
 	}
 
 	for _, dir := range dirs {
-		cachePath := filepath.Join(schemaPath, dir.Name())
-		data, err := os.ReadFile(cachePath)
+		appID := strings.TrimSuffix(dir.Name(), ".json")
+		gb, err := s.loadCachedGameData(appID, language)
 
 		if err != nil {
-			slog.Error("Unable to read cached game data for FE")
-			return nil, errors.New("unable to read cached game data for FE")
-		}
-
-		var gb GameBasics
-
-		if err := json.Unmarshal(data, &gb); err != nil {
-			slog.Error("Unable to unmarshal cached game data for FE")
-			return nil, errors.New("unable to unmarshal cached game data for FE")
+			slog.Error("Unable to load cached game data for FE", "appID", appID, "error", err)
+			continue
 		}
 
 		// Map achievement data by appId to each GameBasics.Achievement.List element
@@ -260,16 +253,16 @@ func (s *Service) LoadAllCachedGameData() ([]*GameBasics, error) {
 			}
 		}
 
-		cached = append(cached, &gb)
+		cached = append(cached, gb)
 	}
 
 	return cached, nil
-
 }
 
 func (s *Service) fetchAchievementsWithKey(appID string, language string) ([]achievement, error) {
 	apiKey, _ := s.Config.GetSteamAPIKey()
 
+	//Strangely doesn't require a key
 	url := fmt.Sprintf(
 		"https://api.steampowered.com/IPlayerService/GetGameAchievements/v1/?key=%s&appid=%s&language=%s",
 		apiKey, appID, language,
@@ -303,12 +296,22 @@ func (s *Service) fetchAchievementsWithKey(appID string, language string) ([]ach
 			hiddenVal = 1
 		}
 
+		iconPath := steamCDN + a.Icon
+		if path, err := s.loadCachedAchievementIcon(appID, iconPath); err == nil {
+			iconPath = path
+		}
+
+		iconGrayPath := steamCDN + a.IconGray
+		if path, err := s.loadCachedAchievementIcon(appID, iconGrayPath); err == nil {
+			iconGrayPath = path
+		}
+
 		achievement := achievement{
 			Name:        a.Apiname,
 			DisplayName: a.DisplayName,
 			Description: a.Description,
-			Icon:        steamCDN + a.Icon,
-			IconGray:    steamCDN + a.IconGray,
+			Icon:        iconPath,
+			IconGray:    iconGrayPath,
 			Hidden:      hiddenVal,
 		}
 		achievements = append(achievements, achievement)
@@ -459,6 +462,11 @@ func (s *Service) mergeAchievements(shItems []struct {
 
 			// Cache the achievement icon
 			_ = s.cacheAchievementIcon(appID, data.Icon)
+
+			// Use cached icon if available
+			if path, err := s.loadCachedAchievementIcon(appID, data.Icon); err == nil {
+				a.Icon = path
+			}
 		}
 
 		achievements = append(achievements, a)
@@ -494,12 +502,8 @@ func (s *Service) fetchGameDetails(appID string, language string) (*GameBasics, 
 	}
 
 	// 2. Check cache for game images
-	headerImagePath, _ := s.loadCachedGameImage(appID, "header-image")
-	portraitImagePath, _ := s.loadCachedGameImage(appID, "portrait-image")
-
-	// If all images are cached, we can skip the API call for now
-	// Note: We still need to fetch achievement count, so we'll make the API call anyway
-	// This is a simplified approach - in a full implementation, we'd cache the full GameBasics object
+	headerImagePath, _ := s.loadCachedGameImage(appID, "headerImage")
+	portraitImagePath, _ := s.loadCachedGameImage(appID, "portraitImage")
 
 	url := fmt.Sprintf("https://store.steampowered.com/api/appdetails?appids=%s&l=%s", appID, language)
 
@@ -527,7 +531,7 @@ func (s *Service) fetchGameDetails(appID string, language string) (*GameBasics, 
 		return nil, fmt.Errorf("failed to fetch metadata for appid: %s", appID)
 	}
 
-	portraitImageURL := fmt.Sprintf("https://cdn.akamai.steamstatic.com/steam/apps/%s/library_600x900.jpg", appID)
+	portraitImageURL := s.primaryPortraitImageURL(appID)
 
 	// Cache game images
 	_ = s.cacheGameImage(appID, appData.Data.HeaderImage, "headerImage")
@@ -548,8 +552,8 @@ func (s *Service) fetchGameDetails(appID string, language string) (*GameBasics, 
 	return &GameBasics{
 		AppID:         appID,
 		Name:          appData.Data.Name,
-		HeaderImage:   headerImage,
-		PortraitImage: portraitImage,
+		HeaderImage:   s.toVirtualPath(headerImage),
+		PortraitImage: s.toVirtualPath(portraitImage),
 	}, nil
 }
 
@@ -597,6 +601,81 @@ func (s *Service) loadCachedGameData(appID string, language string) (*GameBasics
 	var game GameBasics
 	if err := json.Unmarshal(data, &game); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal game data: %w", err)
+	}
+
+	dirty := false
+
+	// Lazy migration: Proactively check for local image files even if JSON has URLs
+	if game.PortraitImage != "" {
+		if localPath, err := s.loadCachedGameImage(appID, "portraitImage"); err == nil {
+			game.PortraitImage = localPath
+			dirty = true
+		} else if strings.HasPrefix(game.PortraitImage, "http") || strings.HasPrefix(game.PortraitImage, "/api/media/") || filepath.IsAbs(game.PortraitImage) {
+			// TODO(remove after legacy pre-fallback portrait caches have aged out): self-heal stale portrait cache references.
+			portraitImageURL := game.PortraitImage
+			if !strings.HasPrefix(portraitImageURL, "http") {
+				portraitImageURL = s.primaryPortraitImageURL(appID)
+			}
+
+			if err := s.cacheGameImage(appID, portraitImageURL, "portraitImage"); err == nil {
+				if localPath, err := s.loadCachedGameImage(appID, "portraitImage"); err == nil {
+					slog.Info("Self-healed cached portrait image", "appID", appID)
+					game.PortraitImage = localPath
+					dirty = true
+				}
+			}
+		}
+	}
+
+	if strings.HasPrefix(game.HeaderImage, "http") {
+		if localPath, err := s.loadCachedGameImage(appID, "headerImage"); err == nil {
+			game.HeaderImage = localPath
+			dirty = true
+		}
+	}
+
+	// Process achievement icons
+	for i, a := range game.Achievement.List {
+		if strings.HasPrefix(a.Icon, "http") {
+			if path, err := s.loadCachedAchievementIcon(appID, a.Icon); err == nil {
+				a.Icon = path
+				dirty = true
+			}
+		}
+		if strings.HasPrefix(a.IconGray, "http") {
+			if path, err := s.loadCachedAchievementIcon(appID, a.IconGray); err == nil {
+				a.IconGray = path
+				dirty = true
+			}
+		}
+		game.Achievement.List[i] = a
+	}
+
+	// Standardize all paths to virtual and detect if any changes were made (including filesystem -> virtual)
+	origHeader := game.HeaderImage
+	origPortrait := game.PortraitImage
+	game.HeaderImage = s.toVirtualPath(game.HeaderImage)
+	game.PortraitImage = s.toVirtualPath(game.PortraitImage)
+
+	if game.HeaderImage != origHeader || game.PortraitImage != origPortrait {
+		dirty = true
+	}
+
+	for i, a := range game.Achievement.List {
+		origIcon := a.Icon
+		origIconGray := a.IconGray
+		a.Icon = s.toVirtualPath(a.Icon)
+		a.IconGray = s.toVirtualPath(a.IconGray)
+		if a.Icon != origIcon || a.IconGray != origIconGray {
+			dirty = true
+		}
+		game.Achievement.List[i] = a
+	}
+
+	// Save back if we cleaned up any CDN URLs or legacy absolute paths
+	if dirty {
+		slog.Info("Sanitizing game cache to local paths", "appID", appID)
+		_ = s.cacheGameData(appID, language, &game)
 	}
 
 	return &game, nil
@@ -647,14 +726,15 @@ func (s *Service) cacheAchievementIcon(appID string, iconURL string) error {
 	return nil
 }
 
-// Game image caching
+// Game image caching with fallback support
 func (s *Service) cacheGameImage(appID string, imageURL string, imageType string) error {
 	if imageURL == "" {
 		return nil
 	}
 
-	// Extract extension from image URL
-	ext := filepath.Ext(imageURL)
+	// Strip query parameters from URL to get clean extension
+	cleanURL := strings.Split(imageURL, "?")[0]
+	ext := filepath.Ext(cleanURL)
 	if ext == "" {
 		ext = ".jpg" // Default to .jpg if no extension found
 	}
@@ -671,6 +751,37 @@ func (s *Service) cacheGameImage(appID string, imageURL string, imageType string
 		return fmt.Errorf("failed to create cache directory: %w", err)
 	}
 
+	// Try to download the image
+	err := s.downloadImageToCache(appID, imageURL, cachePath)
+	if err != nil {
+		// Check if it's a 404 and we should try fallback
+		if imageType == "portraitImage" && is404Error(err) {
+			slog.Warn("Primary portrait image returned 404, trying fallback", "appID", appID)
+			if fallbackURL := s.fallbackPortraitURL(appID); fallbackURL != "" {
+				if err := s.downloadImageToCache(appID, fallbackURL, cachePath); err != nil {
+					slog.Warn("Failed to cache fallback portrait image", "appID", appID, "error", err)
+					return nil // Return nil to avoid blocking; placeholder will be used
+				}
+				slog.Info("Successfully cached fallback portrait image", "appID", appID)
+				return nil
+			}
+			slog.Warn("No fallback portrait URL available", "appID", appID)
+		}
+		return err
+	}
+
+	return nil
+}
+
+func is404Error(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "status 404")
+}
+
+func (s *Service) primaryPortraitImageURL(appID string) string {
+	return fmt.Sprintf("https://cdn.akamai.steamstatic.com/steam/apps/%s/library_600x900.jpg", appID)
+}
+
+func (s *Service) downloadImageToCache(appID string, imageURL string, cachePath string) error {
 	// Download the image
 	resp, err := http.Get(imageURL)
 	if err != nil {
@@ -695,6 +806,52 @@ func (s *Service) cacheGameImage(appID string, imageURL string, imageType string
 	return nil
 }
 
+func (s *Service) fallbackPortraitURL(appID string) string {
+	fallbackAPIURL := fmt.Sprintf("https://steam-asset-proxy.steampoacher.workers.dev/?appid=%s", appID)
+
+	resp, err := http.Get(fallbackAPIURL)
+	if err != nil {
+		slog.Warn("Failed to call fallback API", "appID", appID, "error", err)
+		return ""
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		slog.Warn("Fallback API returned non-200 status", "appID", appID, "status", resp.StatusCode)
+		return ""
+	}
+
+	var response struct {
+		Assets struct {
+			LibraryCapsule string `json:"library_capsule"`
+		} `json:"assets"`
+		Response struct {
+			StoreItems []struct {
+				Assets struct {
+					LibraryCapsule string `json:"library_capsule"`
+				} `json:"assets"`
+			} `json:"store_items"`
+		} `json:"response"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+		slog.Warn("Failed to decode fallback API response", "appID", appID, "error", err)
+		return ""
+	}
+
+	libraryCapsule := response.Assets.LibraryCapsule
+	if libraryCapsule == "" && len(response.Response.StoreItems) > 0 {
+		libraryCapsule = response.Response.StoreItems[0].Assets.LibraryCapsule
+	}
+
+	if libraryCapsule == "" {
+		slog.Warn("Fallback API response missing library_capsule asset", "appID", appID)
+		return ""
+	}
+
+	return fmt.Sprintf("https://shared.steamstatic.com/store_item_assets/steam/apps/%s/%s", appID, libraryCapsule)
+}
+
 func (s *Service) loadCachedGameImage(appID string, imageType string) (string, error) {
 	cacheDir := s.getGameImageCachePath(appID, "")
 
@@ -706,7 +863,18 @@ func (s *Service) loadCachedGameImage(appID string, imageType string) (string, e
 
 	for _, entry := range entries {
 		if strings.HasPrefix(entry.Name(), imageType) {
-			return filepath.Join(cacheDir, entry.Name()), nil
+			fullPath := filepath.Join(cacheDir, entry.Name())
+
+			// TODO(remove after legacy malformed cache filenames have aged out): drop query-string filename self-healing.
+			if strings.Contains(entry.Name(), "?") {
+				cleanName := strings.Split(entry.Name(), "?")[0]
+				cleanPath := filepath.Join(cacheDir, cleanName)
+				if err := os.Rename(fullPath, cleanPath); err == nil {
+					return cleanPath, nil
+				}
+			}
+
+			return fullPath, nil
 		}
 	}
 
@@ -742,4 +910,35 @@ func (s *Service) GetGlobalAchievementPercentages(appID string) ([]GlobalAchieve
 	}
 
 	return data.AchievementPercentages.Achievements, nil
+}
+
+func (s *Service) toVirtualPath(absPath string) string {
+	if absPath == "" || !filepath.IsAbs(absPath) || strings.HasPrefix(absPath, "/api/media/") {
+		return absPath
+	}
+	rel, err := filepath.Rel(backend.DataDir, absPath)
+	if err != nil {
+		return absPath
+	}
+	return "/api/media/" + filepath.ToSlash(rel)
+}
+
+// TestAssetServer returns a hardcoded path for frontend testing
+func (s *Service) TestAssetServer() string {
+	return "/api/media/icon/241930/portrait-image.jpg"
+}
+
+func (s *Service) loadCachedAchievementIcon(appID string, iconURL string) (string, error) {
+	if iconURL == "" {
+		return "", errors.New("empty icon URL")
+	}
+
+	filename := filepath.Base(iconURL)
+	cachePath := s.getIconCachePath(appID, filename)
+
+	if _, err := os.Stat(cachePath); err == nil {
+		return s.toVirtualPath(cachePath), nil
+	}
+
+	return "", errors.New("icon not found")
 }
