@@ -1,3 +1,9 @@
+## [1.0.7](https://github.com/RemakeCode/sentinel/compare/v1.0.6...v1.0.7) (2026-04-18)
+
+### 🐛 Bug Fixes
+
+* missing image cover ([18c7625](https://github.com/RemakeCode/sentinel/commit/18c7625d58c8597b99afdfdf984ca99f6cfaee7c))
+
 ## [1.0.6](https://github.com/RemakeCode/sentinel/compare/v1.0.5...v1.0.6) (2026-04-13)
 
 ### 🐛 Bug Fixes
