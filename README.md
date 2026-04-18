@@ -109,6 +109,9 @@ Yes.
 ## Acknowledgments
 - [Achievement Watcher](https://github.com/xan105/Achievement-Watcher) - Inspiration
 - [Goldberg Emulator](https://github.com/Detanup01/gbe_fork) - Compatibility
+- [SteamHunters](https://steamhunters.com/) - Data source
+- [Steam Community](https://steamcommunity.com) - Data source
+- [SteamPoacher](https://steampoacher.com/) - Data source
 
 ## License
 
