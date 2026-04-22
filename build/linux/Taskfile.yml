@@ -227,6 +227,67 @@ tasks:
     cmds:
       - '{{.BIN_DIR}}/{{.APP_NAME}}'
 
+
+  decky:install:deps:
+    summary: Install frontend dep for decky
+    dir: decky-plugin
+    sources:
+      - package.json
+      - package-lock.json
+    generates:
+      - node_modules
+    preconditions:
+      - sh: npm version
+        msg: "Looks like npm isn't installed. Npm is part of the Node installer: https://nodejs.org/en/download/"
+    cmds:
+      - |
+        if [ "$CI" = "true" ]; then
+          npm ci
+        else
+          npm install
+        fi
+
+
+  decky:dev:
+    summary: Build and watch decky
+    dir: decky-plugin
+    sources:
+      - package.json
+      - package-lock.json
+    cmds:
+      - npm run dev
+
+  decky:build:fe:
+    summary: Build Decky Frontend
+    dir: decky-plugin
+    cmds:
+       - npm run build
+
+  # One off alias - sudo ln -s /home/user/Documents/sentinel-dev /home/user/homebrew/plugins/
+  decky:deploy:ssh:
+    summary: Builds and deploys the plugin to Decky Loader via SSH
+    dir: decky-plugin
+    cmds:
+     # - task: build:docker
+      - npm run build
+      - mkdir -p out/bin
+      - mkdir -p out/dist/
+      - cp -r ./dist ./out/
+      - cp ../bin/{{.APP_NAME}} out/bin/
+      - cp ./plugin.json ./package.json ./main.py ./out/
+      - chmod +x out/bin/{{.APP_NAME}}
+      - |
+        source .vscode/settings.json
+        echo "Deploying to $deckip..."
+        ssh "$deckuser@$deckip" -p "$deckport" $deckkey "rm -rf $deckdir/Documents/sentinel-dev"
+        rsync -avz out/ -e "ssh -p $deckport" "$deckuser@$deckip:$deckdir/Documents/sentinel-dev/"
+        echo ""
+        echo "Verifying deployment..."
+        ssh "$deckuser@$deckip" -p "$deckport" $deckkey "ls -la $deckdir/homebrew/plugins/sentinel-dev"
+        echo "Done! Restart Decky to load the plugin."
+        rm -rf ./out
+
+
   sign:deb:
     summary: Signs the DEB package
     desc: |

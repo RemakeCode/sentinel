@@ -1,5 +1,5 @@
 {
-  "name": "Example Plugin",
+  "name": "Sentinel",
   "author": "John Doe",
   "flags": ["debug", "_root"],
   "api_version": 1,

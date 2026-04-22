@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Sentinel
+Exec=sentinel --startminimized
+Icon=sentinel
+Categories=Game;
+Comment=An Achievement Watcher for Linux
+Terminal=false
+Keywords=wails
+Version=1.0
+StartupNotify=false
+X-GNOME-Autostart-enabled=true
