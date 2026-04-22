@@ -4,8 +4,8 @@
   "description": "A template to quickly create decky plugins from scratch, based on TypeScript and webpack",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build"
+    "dev": "rollup -c -w",
+    "build": "rollup -c"
   },
   "repository": {
     "type": "git",
@@ -25,12 +25,14 @@
   },
   "homepage": "https://github.com/SteamDeckHomebrew/decky-plugin-template#readme",
   "devDependencies": {
+    "@decky/rollup": "^1.0.2",
     "@decky/ui": "^4.11.0",
     "@types/react": "19.1.1",
     "@types/react-dom": "19.1.1",
     "@vitejs/plugin-react": "^6.0.1",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
+    "rollup": "^4.60.2",
     "typescript": "^6.0.2",
     "vite": "^8.0.8"
   },
