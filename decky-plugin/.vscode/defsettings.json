@@ -1,0 +1,9 @@
+{
+    "deckip": "0.0.0.0",
+    "deckport": "22",
+    "deckuser": "deck",
+    "deckpass": "1234",
+    "deckkey": "",
+    "deckdir": "/home/deck",
+    "pluginname": "Sentinel"
+}
