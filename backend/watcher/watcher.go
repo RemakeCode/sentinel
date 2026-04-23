@@ -235,6 +235,18 @@ func (s *Service) scanAndWatchPrefix(prefix string) {
 	watchlist := s.watcher.WatchList()
 
 	err := filepath.WalkDir(prefix, func(path string, d os.DirEntry, err error) error {
+		// Handle walk errors first
+		if err != nil {
+			// If there's a walk error, log it and skip this directory
+			slog.Warn("Error walking path", "path", path, "error", err)
+			return filepath.SkipDir
+		}
+
+		// Check if d is nil (shouldn't happen with proper error handling, but just in case)
+		if d == nil {
+			return nil
+		}
+
 		if d.IsDir() && strings.EqualFold(d.Name(), "drive_c") && slices.ContainsFunc(watchlist, func(s string) bool { return strings.Contains(s, path) }) {
 			return filepath.SkipDir
 		}
@@ -249,14 +261,13 @@ func (s *Service) scanAndWatchPrefix(prefix string) {
 			}
 
 			s.triggerMetadataFetch([]string{filepath.Base(path)})
-
 		}
 
 		return nil
-
 	})
 
 	if err != nil {
+		slog.Error("Error scanning prefix", "prefix", prefix, "error", err)
 		return
 	}
 }
