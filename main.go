@@ -49,6 +49,7 @@ func main() {
 		os.Setenv("WEBKIT_DISABLE_DMABUF_RENDERER", "1")
 	}
 
+	flag.Parse()
 	var window *application.WebviewWindow
 
 	appLogger := logger.New()
@@ -85,40 +86,41 @@ func main() {
 		ctx := context.Background()
 		options := application.DefaultServiceOptions
 
+		slog.Info("slogger")
 		// Initialize config service first
 		if err := configService.ServiceStartup(ctx, options); err != nil {
 			slog.Error("Failed to initialize config service", "error", err)
-			os.Exit(1)
 		}
 
 		// Initialize steam service (depends on config)
 		if err := steamService.ServiceStartup(ctx, options); err != nil {
 			slog.Error("Failed to initialize steam service", "error", err)
-			os.Exit(1)
+
 		}
 
 		// Initialize ach service
 		if err := achService.ServiceStartup(ctx, options); err != nil {
 			slog.Error("Failed to initialize ach service", "error", err)
-			os.Exit(1)
+
 		}
 
 		// Initialize watcher service (depends on config)
 		if err := watcherService.ServiceStartup(ctx, options); err != nil {
 			slog.Error("Failed to initialize watcher service", "error", err)
-			os.Exit(1)
 		}
 
 		// Initialize notifier service (depends on config)
 		if err := notifierService.ServiceStartup(ctx, options); err != nil {
 			slog.Error("Failed to initialize notifier service", "error", err)
-			os.Exit(1)
 		}
 
 		go func() {
 			router := api.NewRouter(configService, steamService, watcherService, notifierService)
 			port := decky.GetPort()
 			slog.Info(fmt.Sprintf("Decky API Server on 127.0.0.1:%d", port))
+
+			slog.Info(fmt.Sprintf("-----isDeckyInstalled:%t IsSteamInBPM:%t, isGameScope:%t  -------", decky.IsDeckyInstalled(), decky.IsSteamInBPM(), decky.IsGamescopeSession()))
+
 			if err := http.ListenAndServe(fmt.Sprintf("127.0.0.1:%d", port), router.Handler()); err != nil {
 				slog.Error("Decky API Server failed", "error", err)
 			}
@@ -166,8 +168,6 @@ func main() {
 	}
 
 	logger.SetLevel(options.LogLevel)
-
-	flag.Parse()
 
 	app := application.New(options)
 

@@ -1,7 +1,7 @@
 {
   "name": "Sentinel",
   "author": "John Doe",
-  "flags": ["debug", "_root"],
+  "flags": ["debug"],
   "api_version": 1,
   "publish": {
     "tags": ["template", "root"],

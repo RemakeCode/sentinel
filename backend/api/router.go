@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"sentinel/backend/config"
@@ -115,7 +116,6 @@ func (r *Router) Handler() http.Handler {
 		api.Delete("/config/prefix/{index}", Wrap(r.handleRemovePrefix))
 
 		// Steam service endpoints
-		api.Get("/steam/status", Wrap(r.handleSteamStatus))
 		api.Get("/steam/games", Wrap(r.handleGetAllGames))
 		api.Get("/steam/games/{id}/global-achievement-percentages", Wrap(r.handleGetGlobalAchievementPercentages))
 
@@ -123,6 +123,7 @@ func (r *Router) Handler() http.Handler {
 		api.Post("/notifier/play-sound", Wrap(r.handlePlaySound))
 		api.Post("/notifier/test", Wrap(r.handleTestNotification))
 		api.Post("/notifier/test-progress", Wrap(r.handleTestNotificationProgress))
+		api.Get("/notifications", Wrap(r.handleNotifications))
 	})
 
 	return router
@@ -253,11 +254,6 @@ func (r *Router) handleRemovePrefix(w http.ResponseWriter, req *http.Request) er
 	return JSON(w, http.StatusOK, map[string]string{"status": "success"})
 }
 
-// handleSteamStatus returns Steam service status
-func (r *Router) handleSteamStatus(w http.ResponseWriter, req *http.Request) error {
-	return JSON(w, http.StatusOK, map[string]string{"status": "online"})
-}
-
 // handleGetAllGames returns all cached games
 func (r *Router) handleGetAllGames(w http.ResponseWriter, req *http.Request) error {
 	games, err := r.Steam.LoadAllCachedGameData()
@@ -313,4 +309,39 @@ func (r *Router) handleTestNotificationProgress(w http.ResponseWriter, req *http
 	}
 
 	return JSON(w, http.StatusOK, map[string]string{"status": "success"})
+}
+
+// handleNotifications serves as the SSE endpoint for real-time notifications
+func (r *Router) handleNotifications(w http.ResponseWriter, req *http.Request) error {
+	// Set SSE headers
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+
+	// Create a channel for this client
+	//clientID := fmt.Sprintf("%d", time.Now().UnixNano())
+	clientID := "sentinel-decky-client"
+
+	notifications := make(chan string, 100)
+
+	// Register this client
+	r.Notifier.RegisterClient(clientID, notifications)
+
+	// Close connection when client disconnects
+	ctx := req.Context()
+	go func() {
+		<-ctx.Done()
+		r.Notifier.UnregisterClient(clientID)
+		close(notifications)
+	}()
+
+	// Send notifications to client
+	for notification := range notifications {
+		fmt.Fprintf(w, "data: %s\n\n", notification)
+		if f, ok := w.(http.Flusher); ok {
+			f.Flush()
+		}
+	}
+
+	return nil
 }

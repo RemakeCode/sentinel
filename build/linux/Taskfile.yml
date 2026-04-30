@@ -230,15 +230,12 @@ tasks:
 
   decky:install:deps:
     summary: Install frontend dep for decky
-    dir: decky-plugin
+    dir: ./decky-plugin
     sources:
       - package.json
       - package-lock.json
     generates:
       - node_modules
-    preconditions:
-      - sh: npm version
-        msg: "Looks like npm isn't installed. Npm is part of the Node installer: https://nodejs.org/en/download/"
     cmds:
       - |
         if [ "$CI" = "true" ]; then
@@ -254,38 +251,80 @@ tasks:
     sources:
       - package.json
       - package-lock.json
+    generates:
+      - dist
     cmds:
       - npm run dev
 
-  decky:build:fe:
+  decky:build:
     summary: Build Decky Frontend
     dir: decky-plugin
+    sources:
+      - package.json
+      - package-lock.json
+    generates:
+      - dist
     cmds:
        - npm run build
 
-  # One off alias - sudo ln -s /home/user/Documents/sentinel-dev /home/user/homebrew/plugins/
-  decky:deploy:ssh:
+   # add to visudo
+   # deck ALL=(root) NOPASSWD: /bin/chown -R deck /home/deck/homebrew/plugins/sentinel, /bin/mkdir -p /home/deck/homebrew/plugins/sentinel, /bin/mv /home/deck/homebrew/plugins/sentinel/bin/sentinel /home/deck/homebrew/plugins/sentinel/bin/sentinel.old, /bin/cp -R * /home/deck/homebrew/plugins/sentinel, /bin/rm -f /home/deck/homebrew/plugins/sentinel/bin/sentinel.old, /bin/touch /home/deck/homebrew/plugins/sentinel/main.py
+  decky:deploy:local:
     summary: Builds and deploys the plugin to Decky Loader via SSH
     dir: decky-plugin
+    sources:
+      - "./dist/index.js"
+      - "../bin/"
+    vars:
+      DECK_DIR: "/home/deck/homebrew/plugins"
+      PLUGINNAME: "sentinel"
+      DECK_USER: "deck"
     cmds:
-     # - task: build:docker
-      - npm run build
+      - pkill -f /home/deck/homebrew/plugins/sentinel/bin/sentinel || true
       - mkdir -p out/bin
       - mkdir -p out/dist/
       - cp -r ./dist ./out/
       - cp ../bin/{{.APP_NAME}} out/bin/
       - cp ./plugin.json ./package.json ./main.py ./out/
       - chmod +x out/bin/{{.APP_NAME}}
-      - |
-        source .vscode/settings.json
-        echo "Deploying to $deckip..."
-        ssh "$deckuser@$deckip" -p "$deckport" $deckkey "rm -rf $deckdir/Documents/sentinel-dev"
-        rsync -avz out/ -e "ssh -p $deckport" "$deckuser@$deckip:$deckdir/Documents/sentinel-dev/"
-        echo ""
-        echo "Verifying deployment..."
-        ssh "$deckuser@$deckip" -p "$deckport" $deckkey "ls -la $deckdir/homebrew/plugins/sentinel-dev"
-        echo "Done! Restart Decky to load the plugin."
-        rm -rf ./out
+      - sudo mkdir -p {{.DECK_DIR}}/{{.PLUGINNAME}}
+      - sudo chown -R {{.DECK_USER}} {{.DECK_DIR}}/{{.PLUGINNAME}}
+      - sudo cp -R out/* {{.DECK_DIR}}/{{.PLUGINNAME}}
+     # - sudo touch {{.DECK_DIR}}/{{.PLUGINNAME}}/main.py
+     # - sudo touch {{.DECK_DIR}}/{{.PLUGINNAME}}/dist/index.js
+
+  decky:build:deploy:ssh:
+    summary: Builds and deploys the plugin to Decky Loader via SSH
+    dir: decky-plugin
+    sources:
+      - "./dist/*"
+    deps:
+      - decky:build
+    vars:
+      DECK_IP: "192.168.4.64"
+      DECK_PORT: "22"
+      DECK_USER: "deck"
+      DECK_PASS: "1234"
+      DECK_KEY: "-i \"${HOME}/.ssh/id_ed25519\""
+      DECK_DIR: "/home/deck/homebrew/plugins"
+      PLUGINNAME: "sentinel"
+    cmds:
+      # - task: build:docker
+      # - npm run build
+      - mkdir -p out/bin
+      - mkdir -p out/dist/
+      - cp -r ./dist ./out/
+      - cp ../bin/{{.APP_NAME}} out/bin/
+      - cp ./plugin.json ./package.json ./main.py ./out/
+      - chmod +x out/bin/{{.APP_NAME}}
+      - echo "Deploying to {{.DECK_IP}}..."
+      - ssh {{.DECK_USER}}@{{.DECK_IP}} -p {{.DECK_PORT}} {{.DECK_KEY}} "sudo mkdir -p {{.DECK_DIR}}/{{.PLUGINNAME}}"
+      - ssh {{.DECK_USER}}@{{.DECK_IP}} -p {{.DECK_PORT}} {{.DECK_KEY}} "sudo chown -R {{.DECK_USER}} {{.DECK_DIR}}/{{.PLUGINNAME}}"
+      - rsync -avz out/ -e "ssh -p {{.DECK_PORT}}" "{{.DECK_USER}}@{{.DECK_IP}}:{{.DECK_DIR}}/{{.PLUGINNAME}}"
+      - echo "Verifying deployment..."
+      - ssh {{.DECK_USER}}@{{.DECK_IP}} -p {{.DECK_PORT}} {{.DECK_KEY}} "ls -la {{.DECK_DIR}}/{{.PLUGINNAME}}"
+      - echo "Done! Restart Decky to load the plugin."
+      #- rm -rf ./out
 
 
   sign:deb:

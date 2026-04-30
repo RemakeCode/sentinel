@@ -14,9 +14,11 @@ import (
 	"sentinel/backend"
 	"sentinel/backend/ach"
 	"sentinel/backend/config"
+	"sentinel/backend/decky"
 	"sentinel/backend/steam"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -42,6 +44,8 @@ type Service struct {
 	ctx               context.Context
 	cancel            context.CancelFunc
 	Config            *config.File
+	clients           map[string]chan string
+	mu                sync.RWMutex
 }
 
 var queueCap = 100
@@ -85,6 +89,7 @@ func (s *Service) ServiceStartup(ctx context.Context, options application.Servic
 
 	s.notificationQueue = make(chan *NotificationPayload, queueCap)
 	s.ctx, s.cancel = context.WithCancel(context.Background())
+	s.clients = make(map[string]chan string)
 
 	go s.notificationWorker()
 
@@ -101,7 +106,11 @@ func (s *Service) notificationWorker() {
 			return
 		case payload := <-s.notificationQueue:
 			slog.Info("Worker received payload", "title", payload.Title, "game", payload.GameName, "isProgress", payload.IsProgress)
-			s.sendNotificationSync(payload)
+			if decky.IsGamescopeSession() || decky.IsDeckyInstalled() {
+				s.sendNotificationSSE(payload)
+			} else {
+				s.sendNotificationSync(payload)
+			}
 			time.Sleep(backend.NotificationDelay)
 		}
 	}
@@ -344,6 +353,37 @@ func (s *Service) PlaySound(filename string) error {
 
 func (s *Service) GetNotificationExpireTime() int {
 	return int(backend.NotificationExpireTime / time.Millisecond)
+}
+
+// RegisterClient registers a new SSE client
+func (s *Service) RegisterClient(clientID string, notifications chan string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.clients[clientID] = notifications
+}
+
+// UnregisterClient removes a client from the notifier service
+func (s *Service) UnregisterClient(clientID string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.clients, clientID)
+}
+
+// sendNotificationSSE sends a notification to all connected SSE clients
+func (s *Service) sendNotificationSSE(payload *NotificationPayload) {
+	slog.Info("SSE Notification called")
+	jsonData, _ := json.Marshal(payload)
+
+	// Send to all clients
+	s.mu.RLock()
+	for _, ch := range s.clients {
+		select {
+		case ch <- string(jsonData):
+		default:
+			// Skip if channel is full
+		}
+	}
+	s.mu.RUnlock()
 }
 
 //wails:internal

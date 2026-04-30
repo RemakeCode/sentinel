@@ -32,6 +32,14 @@ tasks:
     cmds:
       - wails3 dev -config ./build/config.yml -port {{.VITE_PORT}}
 
+  dev:decky:
+    summary: Runs the application in development mode for decky development
+    env:
+      DECKY_PORT: 40000
+      DECKY_MODE: true
+    cmds:
+      - wails3 dev -config ./build/config.yml -port {{.VITE_PORT}}
+
   setup:docker:
     summary: Builds Docker image for cross-compilation (~800MB download)
     cmds:
