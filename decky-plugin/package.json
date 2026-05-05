@@ -4,7 +4,7 @@
   "description": "A template to quickly create decky plugins from scratch, based on TypeScript and webpack",
   "type": "module",
   "scripts": {
-    "dev": "rollup -c -w",
+    "dev": "tsc && rollup -c -w",
     "build": "rollup -c"
   },
   "repository": {

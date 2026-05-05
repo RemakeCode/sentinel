@@ -6,11 +6,15 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
+	"path/filepath"
+	"sentinel/backend"
 	"sentinel/backend/config"
 	"sentinel/backend/notifier"
 	"sentinel/backend/steam"
 	"sentinel/backend/watcher"
 	"strconv"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -124,6 +128,9 @@ func (r *Router) Handler() http.Handler {
 		api.Post("/notifier/test", Wrap(r.handleTestNotification))
 		api.Post("/notifier/test-progress", Wrap(r.handleTestNotificationProgress))
 		api.Get("/notifications", Wrap(r.handleNotifications))
+
+		// Serve media files (game images, achievement icons, sounds)
+		api.Get(fmt.Sprintf("/media/*"), http.HandlerFunc(r.handleServeMedia))
 	})
 
 	return router
@@ -344,4 +351,51 @@ func (r *Router) handleNotifications(w http.ResponseWriter, req *http.Request) e
 	}
 
 	return nil
+}
+
+// handleServeMedia serves local media files (game images, achievement icons, sounds)
+func (r *Router) handleServeMedia(w http.ResponseWriter, req *http.Request) {
+	// Get the wildcard path from chi
+	relPath := chi.URLParam(req, "*")
+
+	// Sanitize: clean the path to remove any ./ or ../ components
+	relPath = filepath.Clean(relPath)
+
+	// Prevent directory traversal attacks
+	if strings.Contains(relPath, "..") {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
+	// Prevent directory listing
+	if strings.HasSuffix(relPath, "/") || relPath == "" || relPath == "." {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
+	// Construct full path
+	fullPath := filepath.Join(backend.DataDir, relPath)
+
+	// Double-check the resolved path is within DataDir (defense in depth)
+	absDataDir, _ := filepath.Abs(backend.DataDir)
+	absFullPath, _ := filepath.Abs(fullPath)
+
+	if !strings.HasPrefix(absFullPath, absDataDir) {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
+	// Check if file exists and is not a directory
+	info, err := os.Stat(fullPath)
+	if os.IsNotExist(err) {
+		http.Error(w, "Not Found", http.StatusNotFound)
+		return
+	}
+	if info.IsDir() {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
+	// Serve the file
+	http.ServeFile(w, req, fullPath)
 }

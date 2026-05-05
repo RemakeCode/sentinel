@@ -1,9 +1,20 @@
-const BASE_URL = 'http://localhost:40000/api';
+import { fetchNoCors } from '@decky/api';
+
+export const BASE_URL = 'http://localhost:40000/api';
+
+export const IMG_URL = BASE_URL.replace('/api', '');
+
 export const NOTIFICATION_SSE_URL = `${BASE_URL}/notifications`;
 
 export class Fetcher {
+  private baseUrl: string;
+
+  constructor(baseUrl?: string) {
+    this.baseUrl = baseUrl ? baseUrl : '';
+  }
+
   async get<Type>(url: string): Promise<Type> {
-    return fetch(`${BASE_URL}${url}`, {
+    return fetchNoCors(`${this.baseUrl}${url}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json'
@@ -12,7 +23,7 @@ export class Fetcher {
   }
 
   async post<Type>(url: string, body: any): Promise<Type> {
-    return fetch(`${BASE_URL}${url}`, {
+    return fetchNoCors(`${this.baseUrl}${url}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -22,14 +33,14 @@ export class Fetcher {
   }
 
   async delete(url: string): Promise<Response> {
-    return fetch(`${BASE_URL}${url}`, {
+    return fetchNoCors(`${this.baseUrl}${url}`, {
       method: 'DELETE',
       headers: {}
     }).then(Fetcher.processResponse);
   }
 
   async put<Type>(url: string, body: any): Promise<Type> {
-    return fetch(url, {
+    return fetchNoCors(url, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json'
@@ -37,7 +48,6 @@ export class Fetcher {
       body: JSON.stringify(body)
     }).then(Fetcher.processResponse);
   }
-
 
   private static async processResponse(response: Response) {
     if (response.ok) {

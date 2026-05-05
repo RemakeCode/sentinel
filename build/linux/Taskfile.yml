@@ -281,6 +281,7 @@ tasks:
       DECK_USER: "deck"
     cmds:
       - pkill -f /home/deck/homebrew/plugins/sentinel/bin/sentinel || true
+      - sleep 1
       - mkdir -p out/bin
       - mkdir -p out/dist/
       - cp -r ./dist ./out/

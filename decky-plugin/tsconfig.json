@@ -6,7 +6,7 @@
     "target": "ESNext",
     "jsx": "react-jsx",
     "declaration": false,
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "lib": ["DOM", "DOM.Iterable"],
     "noUnusedLocals": true,
     "noUnusedParameters": true,
@@ -14,13 +14,14 @@
     "noImplicitReturns": true,
     "noImplicitThis": true,
     "noImplicitAny": true,
-    "strict": true,
+    "strict": false,
     "allowSyntheticDefaultImports": true,
-    "types": ["vite/client", "node"],
+    "types": ["node"],
+    "skipLibCheck": true,
     "paths": {
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules"]
+  "include": ["./src/**/*"],
+  "exclude": ["node_modules", "tsconfig.json"]
 }

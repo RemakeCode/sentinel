@@ -53,3 +53,7 @@ func IsGamescopeSession() bool {
 	cmd := exec.Command("pgrep", "gamescope")
 	return cmd.Run() == nil
 }
+
+func IsDecky() bool {
+	return IsSteamInBPM() && IsDeckyInstalled() || IsGamescopeSession() && IsDeckyInstalled()
+}

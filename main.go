@@ -19,7 +19,6 @@ import (
 	"sentinel/backend/steam"
 	"sentinel/backend/watcher"
 
-	"net/http"
 	"path/filepath"
 	"strings"
 
@@ -119,7 +118,7 @@ func main() {
 			port := decky.GetPort()
 			slog.Info(fmt.Sprintf("Decky API Server on 127.0.0.1:%d", port))
 
-			slog.Info(fmt.Sprintf("-----isDeckyInstalled:%t IsSteamInBPM:%t, isGameScope:%t  -------", decky.IsDeckyInstalled(), decky.IsSteamInBPM(), decky.IsGamescopeSession()))
+			slog.Info(fmt.Sprintf("-----isDecky:%t", decky.IsDecky()))
 
 			if err := http.ListenAndServe(fmt.Sprintf("127.0.0.1:%d", port), router.Handler()); err != nil {
 				slog.Error("Decky API Server failed", "error", err)
@@ -171,18 +170,6 @@ func main() {
 
 	app := application.New(options)
 
-	window = app.Window.NewWithOptions(application.WebviewWindowOptions{
-		Title:                      "Sentinel",
-		MinWidth:                   1280,
-		MinHeight:                  720,
-		Width:                      1920,
-		Height:                     1080,
-		URL:                        "/",
-		Hidden:                     startMinimized,
-		UseApplicationMenu:         false,
-		DefaultContextMenuDisabled: false,
-		BackgroundColour:           application.NewRGB(18, 18, 18),
-	})
 	if !deckyMode {
 		window = app.Window.NewWithOptions(application.WebviewWindowOptions{
 			Title:                      "Sentinel",
