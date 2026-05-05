@@ -106,7 +106,7 @@ func (s *Service) notificationWorker() {
 			return
 		case payload := <-s.notificationQueue:
 			slog.Info("Worker received payload", "title", payload.Title, "game", payload.GameName, "isProgress", payload.IsProgress)
-			if decky.IsGamescopeSession() || decky.IsDeckyInstalled() {
+			if decky.IsDecky() {
 				s.sendNotificationSSE(payload)
 			} else {
 				s.sendNotificationSync(payload)
@@ -182,15 +182,15 @@ func (s *Service) SendNotification(appId string, achievements map[string]ach.Ach
 
 			var title string
 			if strings.EqualFold(achievement.Name, id) {
-				icon := strings.Split(strings.Replace(achievement.Icon, "https://", "", 1), "/")
-
+				iconPath := filepath.Join(backend.ACHCacheIconDir, appId, filepath.Base(achievement.Icon))
 				title = achievement.DisplayName
 				message := achievement.Description
-				imagePath := filepath.Join(backend.ACHCacheIconDir, appId, icon[len(icon)-1])
 
 				if isProgress && a.MaxProgress > 0 {
-					title = achievement.Description
-					message = progressBar(a.Progress, a.MaxProgress, 22)
+					if !decky.IsDecky() {
+						title = achievement.Description
+						message = progressBar(a.Progress, a.MaxProgress, 22)
+					}
 				}
 
 				var soundFile string
@@ -206,7 +206,7 @@ func (s *Service) SendNotification(appId string, achievements map[string]ach.Ach
 				payload := &NotificationPayload{
 					Title:       title,
 					Message:     message,
-					IconPath:    imagePath,
+					IconPath:    iconPath,
 					SoundFile:   soundFile,
 					GameName:    gameName,
 					Progress:    a.Progress,
@@ -372,6 +372,14 @@ func (s *Service) UnregisterClient(clientID string) {
 // sendNotificationSSE sends a notification to all connected SSE clients
 func (s *Service) sendNotificationSSE(payload *NotificationPayload) {
 	slog.Info("SSE Notification called")
+
+	// Convert local icon path to virtual path for Decky frontend
+	if payload.IconPath != "" && filepath.IsAbs(payload.IconPath) {
+		if relPath, err := filepath.Rel(backend.DataDir, payload.IconPath); err == nil {
+			payload.IconPath = "/api/media/" + filepath.ToSlash(relPath)
+		}
+	}
+
 	jsonData, _ := json.Marshal(payload)
 
 	// Send to all clients
