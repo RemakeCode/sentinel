@@ -14,7 +14,7 @@ const toasterContentClassName = `sentinel-toaster-content`;
 // language=css
 const toasterStyles = `
   .${toasterClassName} {
-    height: 100%;
+    height: 90%;
     padding: 2px;
     border: 1px solid #3d4450;
 
@@ -22,7 +22,7 @@ const toasterStyles = `
       display: flex;
       gap: 2px;
       align-items: center;
-      margin-top:4px;
+      margin-top: 4px;
     }
     .sentinel-toaster-progress-meta {
       font-weight: bold;
@@ -53,8 +53,6 @@ const toasterStyles = `
       width: 60px;
       height: 60px;
     }
-
-
   }
 
   .${toasterContentClassName} {
@@ -62,11 +60,17 @@ const toasterStyles = `
   }
 `;
 
+SteamClient.Apps.ScanForInstalledNonSteamApps();
+//
+// SteamClient.Apps.ScanForInstalledNonSteamApps();
+// check if any of them is running
+// it true, change view of QAM -sentinel to show list of achievements
+
 //todo: start listening if game is running
 sse.addEventListener('message', async (ev) => {
   const message: Notification = JSON.parse(ev.data);
 
-  const duration = 30000;
+  const duration = 7000;
 
   if (Object.keys(message).length > 0) {
     const notificationTab = (await getNotificationTab()) ?? '';
@@ -78,7 +82,9 @@ sse.addEventListener('message', async (ev) => {
         title: message.Title,
         body: message.Message,
         logo: <ImgIcon src={message.IconPath} />,
-        // eType: 3,
+        playSound: false,
+        eType: 3,
+        expiration: 0,
         className: toasterClassName,
         contentClassName: toasterContentClassName,
         duration
