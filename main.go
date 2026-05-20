@@ -8,7 +8,6 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
-	"runtime"
 	"sentinel/backend"
 	"sentinel/backend/ach"
 	"sentinel/backend/api"
@@ -44,9 +43,6 @@ func init() {
 }
 
 func main() {
-	if runtime.GOOS == "linux" {
-		os.Setenv("WEBKIT_DISABLE_DMABUF_RENDERER", "1")
-	}
 
 	flag.Parse()
 	var window *application.WebviewWindow
