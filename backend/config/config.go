@@ -14,7 +14,6 @@ import (
 	"os"
 	"path/filepath"
 	"sentinel/backend"
-	"sentinel/backend/autostart"
 	"sentinel/backend/logger"
 	"sentinel/backend/migrate"
 	"sentinel/backend/steam/types"
@@ -187,9 +186,23 @@ func (c *File) ServiceStartup(ctx context.Context, options application.ServiceOp
 		slog.Error("Failed to load config into service", "error", err)
 	}
 
-	// Sync autostart file state with config preference
-	if err := autostart.SetAutostartEnabled(c.StartOnLogin); err != nil {
-		slog.Error("Failed to sync autostart state", "error", err)
+	// Sync autostart state with config preference using Wails built-in manager
+	if c.app != nil {
+		if c.StartOnLogin {
+			if err := c.app.Autostart.EnableWithOptions(application.AutostartOptions{
+				Arguments: []string{"--startminimized"},
+			}); err != nil {
+				if !errors.Is(err, application.ErrAutostartNotSupported) {
+					slog.Error("Failed to enable autostart", "error", err)
+				}
+			}
+		} else {
+			if err := c.app.Autostart.Disable(); err != nil {
+				if !errors.Is(err, application.ErrAutostartNotSupported) {
+					slog.Error("Failed to disable autostart", "error", err)
+				}
+			}
+		}
 	}
 
 	slog.Info("Config initialization complete")
@@ -535,5 +548,18 @@ func (c *File) SetStartOnLogin(enabled bool) error {
 	if err := c.SaveConfig(); err != nil {
 		return err
 	}
-	return autostart.SetAutostartEnabled(enabled)
+	if c.app != nil {
+		if enabled {
+			if err := c.app.Autostart.EnableWithOptions(application.AutostartOptions{
+				Arguments: []string{"--startminimized"},
+			}); err != nil && !errors.Is(err, application.ErrAutostartNotSupported) {
+				return err
+			}
+		} else {
+			if err := c.app.Autostart.Disable(); err != nil && !errors.Is(err, application.ErrAutostartNotSupported) {
+				return err
+			}
+		}
+	}
+	return nil
 }
