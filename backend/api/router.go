@@ -128,13 +128,12 @@ func (r *Router) Handler() http.Handler {
 		api.Get("/steam/games/{id}/global-achievement-percentages", Wrap(r.handleGetGlobalAchievementPercentages))
 
 		// Notifier service endpoints
-		api.Post("/notifier/play-sound", Wrap(r.handlePlaySound))
 		api.Post("/notifier/test", Wrap(r.handleTestNotification))
 		api.Post("/notifier/test-progress", Wrap(r.handleTestNotificationProgress))
 		api.Get("/notifications", Wrap(r.handleNotifications))
 
 		// Serve media files (game images, achievement icons, sounds)
-		api.Get(fmt.Sprintf("/media/*"), http.HandlerFunc(r.handleServeMedia))
+		api.Get(fmt.Sprintf("/sentinel-assets/*"), http.HandlerFunc(r.handleServeMedia))
 	})
 
 	return router

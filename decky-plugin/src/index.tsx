@@ -1,7 +1,7 @@
 import { staticClasses } from '@decky/ui';
 import { definePlugin, executeInTab, injectCssIntoTab, removeCssFromTab, routerHook, toaster } from '@decky/api';
 import { FaMedal } from 'react-icons/fa6';
-import { NOTIFICATION_SSE_URL } from './shared/utils/fetcher';
+import { BASE_URL, NOTIFICATION_SSE_URL } from './shared/utils/fetcher';
 import type { Notification } from '@/shared/types/Notification';
 import { getNotificationTab } from '@/shared/utils/utils';
 import { ImgIcon } from '@/shared/components/img-icon';
@@ -77,8 +77,6 @@ async function connectSSE() {
 
     cssId = cssId ? cssId : await injectCssIntoTab(notificationTab, toasterStyles);
 
-    console.log({ cssId });
-
     if (Object.keys(message).length > 0) {
       const showProgressToast = async () => {
         toaster.toast({
@@ -123,6 +121,12 @@ async function connectSSE() {
       };
 
       await showProgressToast();
+
+      if (message.SoundFile) {
+        const audio = new Audio(`${BASE_URL}/sentinel-assets/media/${message.SoundFile}`);
+        audio.volume = 0.5;
+        audio.play().catch(() => {});
+      }
 
       //setTimeout(() => removeCssFromTab(notificationTab, cssId), duration + 500);
     }

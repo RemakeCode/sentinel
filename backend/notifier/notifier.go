@@ -334,17 +334,22 @@ func (s *Service) PlaySound(filename string) error {
 
 	go func() {
 		var cmd *exec.Cmd
-		if _, err := exec.LookPath("paplay"); err == nil {
+		if _, err := exec.LookPath("pw-play"); err == nil {
+			cmd = exec.Command("pw-play", soundPath)
+		} else if _, err := exec.LookPath("paplay"); err == nil {
 			cmd = exec.Command("paplay", soundPath)
 		} else if _, err := exec.LookPath("aplay"); err == nil {
 			cmd = exec.Command("aplay", soundPath)
 		} else {
-			slog.Warn("No audio playback utility available (paplay/aplay)")
+			slog.Warn("No audio playback utility available (pw-play/paplay/aplay)")
 			return
 		}
 
+		var stderr bytes.Buffer
+		cmd.Stderr = &stderr
+
 		if err := cmd.Run(); err != nil {
-			slog.Warn("Failed to play sound", "filename", filename, "error", err)
+			slog.Warn("Failed to play sound", "filename", filename, "soundPath", soundPath, "error", err, "stderr", stderr.String())
 		}
 	}()
 
@@ -376,7 +381,7 @@ func (s *Service) sendNotificationSSE(payload *NotificationPayload) {
 	// Convert local icon path to virtual path for Decky frontend
 	if payload.IconPath != "" && filepath.IsAbs(payload.IconPath) {
 		if relPath, err := filepath.Rel(backend.DataDir, payload.IconPath); err == nil {
-			payload.IconPath = "/api/media/" + filepath.ToSlash(relPath)
+			payload.IconPath = "/api/sentinel-assets/" + filepath.ToSlash(relPath)
 		}
 	}
 

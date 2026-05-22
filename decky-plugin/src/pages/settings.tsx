@@ -13,6 +13,7 @@ import {
 } from '@decky/ui';
 import { openFilePicker, toaster } from '@decky/api';
 import { BASE_URL, Fetcher } from '@/shared/utils/fetcher';
+import { usePlayAudio } from '@/shared/utils/usePlayAudio';
 import { BsTrash } from 'react-icons/bs';
 import { FaVolumeHigh, FaVolumeOff } from 'react-icons/fa6';
 import { FaSave } from 'react-icons/fa';
@@ -51,6 +52,8 @@ const SettingsPage: FC = () => {
   const [testNotificationDisabled, setTestNotificationDisabled] = useState(false);
   const steamAPIKeyTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const testNotificationTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const { play } = usePlayAudio();
 
   const loadConfig = async () => {
     try {
@@ -145,7 +148,7 @@ const SettingsPage: FC = () => {
     try {
       await fetcher.post(`${BASE_URL}/config/notification-sound`, { sound: value });
       if (value) {
-        await fetcher.post(`${BASE_URL}/notifier/play-sound`, { filename: value });
+        play(value);
       }
     } catch {
       // failed to set sound
