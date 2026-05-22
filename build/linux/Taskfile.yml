@@ -257,11 +257,10 @@ tasks:
       - "./dist/index.js"
       - "../bin/"
     vars:
-      DECK_DIR: "/home/deck/homebrew/plugins"
+      DECK_DIR: "~/homebrew/plugins"
       PLUGINNAME: "sentinel"
-      DECK_USER: "deck"
     cmds:
-      - pkill -f /home/deck/homebrew/plugins/sentinel/bin/sentinel || true
+      - pkill -f ~/homebrew/plugins/sentinel/bin/sentinel || true
       - sleep 1
       - mkdir -p out/bin
       - mkdir -p out/dist/
@@ -270,7 +269,7 @@ tasks:
       - cp ./plugin.json ./package.json ./main.py ./out/
       - chmod +x out/bin/{{.APP_NAME}}
       - sudo mkdir -p {{.DECK_DIR}}/{{.PLUGINNAME}}
-      - sudo chown -R {{.DECK_USER}} {{.DECK_DIR}}/{{.PLUGINNAME}}
+      - sudo chown -R $(whoami) {{.DECK_DIR}}/{{.PLUGINNAME}}
       - sudo cp -R out/* {{.DECK_DIR}}/{{.PLUGINNAME}}
      # - sudo touch {{.DECK_DIR}}/{{.PLUGINNAME}}/main.py
      # - sudo touch {{.DECK_DIR}}/{{.PLUGINNAME}}/dist/index.js
@@ -292,7 +291,6 @@ tasks:
       PLUGINNAME: "sentinel"
     cmds:
       # - task: build:docker
-      # - npm run build
       - mkdir -p out/bin
       - mkdir -p out/dist/
       - cp -r ./dist ./out/

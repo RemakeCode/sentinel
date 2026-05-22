@@ -257,7 +257,7 @@ func (s *Service) TestNotificationProgress() error {
 
 	payload := &NotificationPayload{
 		Title:       "For those who come after",
-		Message:     progressBar(7, 10, 22),
+		Message:     "Play 10 games",
 		IconPath:    filepath.Join(backend.MediaDir, "sentinel.png"),
 		SoundFile:   s.Config.NotificationSound,
 		GameName:    "Sentinel",
@@ -371,7 +371,7 @@ func (s *Service) UnregisterClient(clientID string) {
 
 // sendNotificationSSE sends a notification to all connected SSE clients
 func (s *Service) sendNotificationSSE(payload *NotificationPayload) {
-	slog.Info("SSE Notification called")
+	slog.Info("SSE Notification sent")
 
 	// Convert local icon path to virtual path for Decky frontend
 	if payload.IconPath != "" && filepath.IsAbs(payload.IconPath) {

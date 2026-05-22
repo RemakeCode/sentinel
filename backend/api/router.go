@@ -15,6 +15,7 @@ import (
 	"sentinel/backend/watcher"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -95,7 +96,9 @@ func (r *Router) Handler() http.Handler {
 
 	// 1. Setup CORS (Essential for Decky Loader plugins)
 	router.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{"*"},
+		AllowOriginFunc: func(r *http.Request, origin string) bool {
+			return true
+		},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Content-Type", "Authorization"},
 		AllowCredentials: true,
@@ -109,6 +112,7 @@ func (r *Router) Handler() http.Handler {
 	// 3. Define Routes
 	router.Route("/api", func(api chi.Router) {
 		// Config endpoints
+		api.Get("/ready", Wrap(r.handleReady))
 		api.Get("/config", Wrap(r.handleGetConfig))
 		api.Get("/config/available-sounds", Wrap(r.handleGetAvailableSounds))
 		api.Put("/config/steam-api-key", Wrap(r.handleSetSteamAPIKey))
@@ -134,6 +138,10 @@ func (r *Router) Handler() http.Handler {
 	})
 
 	return router
+}
+
+func (r *Router) handleReady(w http.ResponseWriter, req *http.Request) error {
+	return JSON(w, http.StatusOK, map[string]string{"status": "success"})
 }
 
 func (r *Router) handleSetSound(w http.ResponseWriter, req *http.Request) error {
@@ -325,9 +333,7 @@ func (r *Router) handleNotifications(w http.ResponseWriter, req *http.Request) e
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
 
-	// Create a channel for this client
-	//clientID := fmt.Sprintf("%d", time.Now().UnixNano())
-	clientID := "sentinel-decky-client"
+	clientID := fmt.Sprintf("sse-client-%d", time.Now().UnixNano())
 
 	notifications := make(chan string, 100)
 

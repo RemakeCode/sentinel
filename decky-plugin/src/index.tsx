@@ -1,17 +1,21 @@
-import { ButtonItem, PanelSection, PanelSectionRow, ProgressBarWithInfo, staticClasses } from '@decky/ui';
-import { definePlugin, executeInTab, injectCssIntoTab, removeCssFromTab, toaster } from '@decky/api';
+import { staticClasses } from '@decky/ui';
+import { definePlugin, executeInTab, injectCssIntoTab, removeCssFromTab, routerHook, toaster } from '@decky/api';
 import { FaMedal } from 'react-icons/fa6';
 import { NOTIFICATION_SSE_URL } from './shared/utils/fetcher';
-import type { Notification } from '@/types/Notification';
+import type { Notification } from '@/shared/types/Notification';
 import { getNotificationTab } from '@/shared/utils/utils';
-import { ImgIcon } from '@/common/components/img-icon';
+import { ImgIcon } from '@/shared/components/img-icon';
+//import { initNonSteamGameTracker } from '@/shared/utils/non-steam-game-tracker';
+import MainPage from '@/pages/main';
+import SettingsPage from '@/pages/settings';
 
-const sse = new EventSource(NOTIFICATION_SSE_URL);
+let sse: EventSource | null = null;
+
+//initNonSteamGameTracker();
 
 const toasterClassName = `sentinel-toaster`;
 const toasterContentClassName = `sentinel-toaster-content`;
 
-// language=css
 const toasterStyles = `
   .${toasterClassName} {
     height: 90%;
@@ -48,7 +52,6 @@ const toasterStyles = `
       }
     }
 
-    /*override image container*/
     & div:has(img[data-name="ach"]) {
       width: 60px;
       height: 60px;
@@ -59,101 +62,93 @@ const toasterStyles = `
     width: 100%;
   }
 `;
+// const fetcher = new Fetcher();
 
-SteamClient.Apps.ScanForInstalledNonSteamApps();
-//
-// SteamClient.Apps.ScanForInstalledNonSteamApps();
-// check if any of them is running
-// it true, change view of QAM -sentinel to show list of achievements
+let cssId: string | undefined;
 
-//todo: start listening if game is running
-sse.addEventListener('message', async (ev) => {
-  const message: Notification = JSON.parse(ev.data);
+async function connectSSE() {
+  sse = new EventSource(NOTIFICATION_SSE_URL);
 
   const duration = 7000;
 
-  if (Object.keys(message).length > 0) {
+  sse.addEventListener('message', async (ev) => {
+    const message: Notification = JSON?.parse(ev?.data);
     const notificationTab = (await getNotificationTab()) ?? '';
-    //Note, injectCSSIntoTab returns a Promise
-    const cssId = await injectCssIntoTab(notificationTab, toasterStyles);
 
-    const showProgressToast = async () => {
-      toaster.toast({
-        title: message.Title,
-        body: message.Message,
-        logo: <ImgIcon src={message.IconPath} />,
-        playSound: false,
-        eType: 3,
-        expiration: 0,
-        className: toasterClassName,
-        contentClassName: toasterContentClassName,
-        duration
-      });
+    cssId = cssId ? cssId : await injectCssIntoTab(notificationTab, toasterStyles);
 
-      if (message.IsProgress) {
-        const value = (message.Progress / message.MaxProgress) * 100;
+    console.log({ cssId });
 
-        //language=javascript
-        const progressEl = `
-          (function() {
-            const toastEl = document.querySelector(' .${toasterContentClassName}');
+    if (Object.keys(message).length > 0) {
+      const showProgressToast = async () => {
+        toaster.toast({
+          title: message.Title,
+          body: message.Message,
+          logo: <ImgIcon src={message.IconPath} />,
+          playSound: false,
+          eType: 3,
+          expiration: 0,
+          className: toasterClassName,
+          contentClassName: toasterContentClassName,
+          duration
+        });
 
-            if (toastEl) {
-              const progressContainer = document.createElement('div');
-              progressContainer.className = 'sentinel-toaster-progress-container';
+        if (message.IsProgress) {
+          const value = (message.Progress / message.MaxProgress) * 100;
 
-              const progressBar = document.createElement('progress');
-              progressBar.value = '${value}';
-              progressBar.max = 100;
+          //language=javascript
+          const progressEl = `
+            (function() {
+              const toastEl = document.querySelector(' .${toasterContentClassName}');
 
-              const progressMeta = document.createElement('div');
-              progressMeta.className = 'sentinel-toaster-progress-meta';
-              progressMeta.textContent = '${message.Progress}/${message.MaxProgress}' 
-              
-              progressContainer.append(...[progressBar, progressMeta])
-              toastEl.appendChild(progressContainer);
-            }
-          })();
-      `;
-        await executeInTab(notificationTab, false, progressEl);
-      }
-    };
+              if (toastEl) {
+                const progressContainer = document.createElement('div');
+                progressContainer.className = 'sentinel-toaster-progress-container';
 
-    await showProgressToast();
+                const progressBar = document.createElement('progress');
+                progressBar.value = '${value}';
+                progressBar.max = 100;
 
-    setTimeout(() => removeCssFromTab(notificationTab, cssId), duration);
-  }
-});
+                const progressMeta = document.createElement('div');
+                progressMeta.className = 'sentinel-toaster-progress-meta';
+                progressMeta.textContent = '${message.Progress}/${message.MaxProgress}' 
+                
+                progressContainer.append(...[progressBar, progressMeta])
+                toastEl.appendChild(progressContainer);
+              }
+            })();
+        `;
+          await executeInTab(notificationTab, false, progressEl);
+        }
+      };
 
-function Content() {
-  return (
-    <>
-      <PanelSection title='Settings'>
-        <PanelSectionRow>
-          <ButtonItem layout='below' onClick={() => {}}>
-            sssss
-          </ButtonItem>
-          <ProgressBarWithInfo nProgress={20} nTransitionSec={0.3} sTimeRemaining={'smm'} sOperationText={'ope'} />
-        </PanelSectionRow>
-      </PanelSection>
-    </>
-  );
+      await showProgressToast();
+
+      //setTimeout(() => removeCssFromTab(notificationTab, cssId), duration + 500);
+    }
+  });
+
+  sse.addEventListener('error', (error) => {
+    console.log('Sentinel SSE error', error);
+  });
 }
 
 export default definePlugin(() => {
-  console.log('in define plugin');
+  connectSSE().then(() => console.log('Connecting to SSE'));
+
+  routerHook.addRoute('/sentinel/settings', () => <SettingsPage />);
+
   return {
-    // The name shown in various decky menus
     name: 'Sentinel',
-    // The element displayed at the top of your plugin's menu
     titleView: <div className={staticClasses.Title}>Sentinel</div>,
-    // The content of your plugin's menu
-    content: <Content />,
-    // The icon displayed in the plugin list
+    content: <MainPage />,
     icon: <FaMedal />,
-    // The function triggered when your plugin unloads
-    onDismount() {
-      console.log('unmounting');
+    async onDismount() {
+      const notificationTab = await getNotificationTab();
+      console.log('unmounting sentinel');
+      removeCssFromTab(notificationTab!, cssId!);
+      if (sse) sse.close();
+      routerHook.removeRoute('/sentinel/settings');
     }
   };
 });

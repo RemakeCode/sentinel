@@ -43,10 +43,8 @@ func IsSteamInBPM() bool {
 }
 
 func IsDeckyInstalled() bool {
-	cmd := exec.Command("systemctl", "is-active", "plugin_loader.service")
-	output, _ := cmd.Output()
-	status := strings.TrimSpace(string(output))
-	return status == "active"
+	_, err := os.Stat("/etc/systemd/system/plugin_loader.service")
+	return err == nil
 }
 
 func IsGamescopeSession() bool {

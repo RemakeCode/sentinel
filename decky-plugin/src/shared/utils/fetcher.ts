@@ -1,6 +1,5 @@
-import { fetchNoCors } from '@decky/api';
 
-export const BASE_URL = 'http://localhost:40000/api';
+export const BASE_URL = 'http://localhost:48211/api';
 
 export const IMG_URL = BASE_URL.replace('/api', '');
 
@@ -14,7 +13,7 @@ export class Fetcher {
   }
 
   async get<Type>(url: string): Promise<Type> {
-    return fetchNoCors(`${this.baseUrl}${url}`, {
+    return fetch(`${this.baseUrl}${url}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json'
@@ -23,7 +22,7 @@ export class Fetcher {
   }
 
   async post<Type>(url: string, body: any): Promise<Type> {
-    return fetchNoCors(`${this.baseUrl}${url}`, {
+    return fetch(`${this.baseUrl}${url}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -33,20 +32,33 @@ export class Fetcher {
   }
 
   async delete(url: string): Promise<Response> {
-    return fetchNoCors(`${this.baseUrl}${url}`, {
+    return fetch(`${this.baseUrl}${url}`, {
       method: 'DELETE',
       headers: {}
     }).then(Fetcher.processResponse);
   }
 
   async put<Type>(url: string, body: any): Promise<Type> {
-    return fetchNoCors(url, {
+    return fetch(url, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(body)
     }).then(Fetcher.processResponse);
+  }
+
+  async patch<Type>(url: string, body?: any): Promise<Type> {
+    const options: RequestInit = {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    };
+    if (body !== undefined) {
+      options.body = JSON.stringify(body);
+    }
+    return fetch(url, options).then(Fetcher.processResponse);
   }
 
   private static async processResponse(response: Response) {
