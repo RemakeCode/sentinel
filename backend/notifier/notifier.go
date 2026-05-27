@@ -381,7 +381,7 @@ func (s *Service) sendNotificationSSE(payload *NotificationPayload) {
 	// Convert local icon path to virtual path for Decky frontend
 	if payload.IconPath != "" && filepath.IsAbs(payload.IconPath) {
 		if relPath, err := filepath.Rel(backend.DataDir, payload.IconPath); err == nil {
-			payload.IconPath = "/api/sentinel-assets/" + filepath.ToSlash(relPath)
+			payload.IconPath = "/api/media/" + filepath.ToSlash(relPath)
 		}
 	}
 
