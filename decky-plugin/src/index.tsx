@@ -5,20 +5,22 @@ import { BASE_URL, NOTIFICATION_SSE_URL } from './shared/utils/fetcher';
 import type { Notification } from '@/shared/types/Notification';
 import { getNotificationTab } from '@/shared/utils/utils';
 import { ImgIcon } from '@/shared/components/img-icon';
-//import { initNonSteamGameTracker } from '@/shared/utils/non-steam-game-tracker';
+import { initNonSteamGameTracker } from '@/shared/utils/non-steam-game-tracker';
 import MainPage from '@/pages/main';
 import SettingsPage from '@/pages/settings';
+import LibraryPage from '@/pages/library';
+import AchievementsPage from '@/pages/achievements';
 
 let sse: EventSource | null = null;
 
-//initNonSteamGameTracker();
+initNonSteamGameTracker();
 
 const toasterClassName = `sentinel-toaster`;
 const toasterContentClassName = `sentinel-toaster-content`;
 
 const toasterStyles = `
   .${toasterClassName} {
-    height: 90%;
+    height: 70%;
     padding: 2px;
     border: 1px solid #3d4450;
 
@@ -36,7 +38,7 @@ const toasterStyles = `
 
     & progress {
       width: 100%;
-      height: 8px;
+      height: 7px;
       background: #3d4450;
       border-radius: 10px;
 
@@ -52,10 +54,10 @@ const toasterStyles = `
       }
     }
 
-    & div:has(img[data-name="ach"]) {
-      width: 60px;
-      height: 60px;
-    }
+    // & div:has(img[data-name="ach"]) {
+    //   width: 60px;
+    //   height: 60px;
+    // }
   }
 
   .${toasterContentClassName} {
@@ -141,6 +143,8 @@ export default definePlugin(() => {
   connectSSE().then(() => console.log('Connecting to SSE'));
 
   routerHook.addRoute('/sentinel/settings', () => <SettingsPage />);
+  routerHook.addRoute('/sentinel/library', () => <LibraryPage />);
+  routerHook.addRoute('/sentinel/game/:appId', () => <AchievementsPage />);
 
   return {
     name: 'Sentinel',
@@ -153,6 +157,8 @@ export default definePlugin(() => {
       removeCssFromTab(notificationTab!, cssId!);
       if (sse) sse.close();
       routerHook.removeRoute('/sentinel/settings');
+      routerHook.removeRoute('/sentinel/library');
+      routerHook.removeRoute('/sentinel/game/:appId');
     }
   };
 });
