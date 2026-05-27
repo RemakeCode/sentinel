@@ -6,6 +6,6 @@ export type Notification = {
   GameName: string;
   Progress: number;
   MaxProgress: number;
-  IsProgress: boolean; // true, skip Message
+  IsProgress: boolean;
 };
 

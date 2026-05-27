@@ -32,7 +32,7 @@ const LibraryPage: FC = () => {
   useEffect(() => {
     const load = async () => {
       try {
-        const data = await fetcher.get<GameBasics[]>(`${BASE_URL}/steam/games`);
+        const data = await fetcher.get<GameBasics[]>(`${BASE_URL}/games`);
         setGames(data);
         setGames([...games, ...data]);
       } catch {

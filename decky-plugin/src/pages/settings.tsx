@@ -6,7 +6,6 @@ import {
   DialogControlsSectionHeader,
   Dropdown,
   Field,
-  Navigation,
   SidebarNavigation,
   TextField,
   Toggle
@@ -16,7 +15,7 @@ import { BASE_URL, Fetcher } from '@/shared/utils/fetcher';
 import { usePlayAudio } from '@/shared/utils/usePlayAudio';
 import { BsTrash } from 'react-icons/bs';
 import { FaVolumeHigh, FaVolumeOff } from 'react-icons/fa6';
-import { FaSave } from 'react-icons/fa';
+import { FaBook, FaCog, FaSave } from 'react-icons/fa';
 
 const fetcher = new Fetcher();
 
@@ -159,7 +158,7 @@ const SettingsPage: FC = () => {
     setTestNotificationDisabled(true);
     if (testNotificationTimeout.current) clearTimeout(testNotificationTimeout.current);
     try {
-      await fetcher.post(`${BASE_URL}/notifier/test`, {});
+      await fetcher.post(`${BASE_URL}/notifications/test`, {});
       testNotificationTimeout.current = setTimeout(() => setTestNotificationDisabled(false), 7000);
     } catch {
       setTestNotificationDisabled(false);
@@ -171,7 +170,7 @@ const SettingsPage: FC = () => {
     setTestNotificationDisabled(true);
     if (testNotificationTimeout.current) clearTimeout(testNotificationTimeout.current);
     try {
-      await fetcher.post(`${BASE_URL}/notifier/test-progress`, {});
+      await fetcher.post(`${BASE_URL}/notifications/test-progress`, {});
       testNotificationTimeout.current = setTimeout(() => setTestNotificationDisabled(false), 7000);
     } catch {
       setTestNotificationDisabled(false);
@@ -194,13 +193,11 @@ const SettingsPage: FC = () => {
   return (
     <SidebarNavigation
       title='Settings'
-      // @ts-expect-error - sidebarWidth and onClose are real props on Steam's native SidebarNavigation
-      sidebarWidth='280px'
-      onClose={() => Navigation.NavigateBack()}
       pages={[
         {
           title: 'Settings',
           identifier: 'settings',
+          icon: <FaCog />,
           content: (
             <DialogBody>
               <DialogControlsSection>
@@ -307,6 +304,7 @@ const SettingsPage: FC = () => {
         {
           title: 'Logging',
           identifier: 'logging',
+          icon: <FaBook />,
           content: (
             <DialogBody>
               <DialogControlsSection>

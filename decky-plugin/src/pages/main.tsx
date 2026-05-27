@@ -67,7 +67,7 @@ const MainPage: FC = () => {
 
   const loadGames = async () => {
     try {
-      const data = await fetcher.get<GameBasics[]>(`${BASE_URL}/steam/games`);
+      const data = await fetcher.get<GameBasics[]>(`${BASE_URL}/games`);
       setGames(data);
       matchRunningGame(data);
     } catch {
