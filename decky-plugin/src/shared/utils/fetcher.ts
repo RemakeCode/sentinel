@@ -1,7 +1,8 @@
 
-export const BASE_URL = 'http://localhost:48211/api';
+export const BASE_URL = 'http://localhost:48211/decky-backend';
+//export const BASE_URL = 'http://localhost:40000/decky-backend';
 
-export const IMG_URL = BASE_URL.replace('/api', '');
+export const IMG_URL = BASE_URL.replace('/decky-backend', '');
 
 export const NOTIFICATION_SSE_URL = `${BASE_URL}/notifications`;
 
