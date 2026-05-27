@@ -4,10 +4,10 @@ import { BASE_URL } from '@/shared/utils/fetcher';
 export const usePlayAudio = () => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const play = useCallback((filename: string) => {
+  const play = useCallback(async (filename: string) => {
     audioRef.current?.pause();
     audioRef.current = new Audio(`${BASE_URL}/sentinel-assets/media/${filename}`);
-    audioRef.current.play();
+    await audioRef.current.play();
   }, []);
 
   useEffect(() => {

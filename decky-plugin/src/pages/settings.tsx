@@ -147,7 +147,7 @@ const SettingsPage: FC = () => {
     try {
       await fetcher.post(`${BASE_URL}/config/notification-sound`, { sound: value });
       if (value) {
-        play(value);
+        await play(value);
       }
     } catch {
       // failed to set sound
