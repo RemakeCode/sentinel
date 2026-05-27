@@ -123,13 +123,13 @@ func (r *Router) Handler() http.Handler {
 		api.Post("/config/prefix", Wrap(r.handleAddPrefix))
 		api.Delete("/config/prefix/{index}", Wrap(r.handleRemovePrefix))
 
-		// Steam service endpoints
-		api.Get("/steam/games", Wrap(r.handleGetAllGames))
-		api.Get("/steam/games/{id}/global-achievement-percentages", Wrap(r.handleGetGlobalAchievementPercentages))
+		// Games service endpoints
+		api.Get("/games", Wrap(r.handleGetAllGames))
+		api.Get("/games/{id}/global-achievement-percentages", Wrap(r.handleGetGlobalAchievementPercentages))
 
 		// Notifier service endpoints
-		api.Post("/notifier/test", Wrap(r.handleTestNotification))
-		api.Post("/notifier/test-progress", Wrap(r.handleTestNotificationProgress))
+		api.Post("/notifications/test", Wrap(r.handleTestNotification))
+		api.Post("/notifications/test-progress", Wrap(r.handleTestNotificationProgress))
 		api.Get("/notifications", Wrap(r.handleNotifications))
 	})
 

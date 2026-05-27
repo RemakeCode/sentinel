@@ -10,6 +10,7 @@ const styles: Record<string, CSSProperties> = {
     position: 'absolute',
     width: '80%',
     bottom: '10px',
+    left: '50%',
     transform: 'translateX(-50%)',
     zIndex: 2,
     opacity: 0.8
