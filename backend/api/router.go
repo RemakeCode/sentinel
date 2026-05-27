@@ -110,7 +110,7 @@ func (r *Router) Handler() http.Handler {
 	router.Use(middleware.Recoverer) // Prevents app from crashing on API panics
 
 	// 3. Define Routes
-	router.Route("/api", func(api chi.Router) {
+	router.Route("/decky-backend", func(api chi.Router) {
 		// Config endpoints
 		api.Get("/ready", Wrap(r.handleReady))
 		api.Get("/config", Wrap(r.handleGetConfig))
@@ -131,10 +131,11 @@ func (r *Router) Handler() http.Handler {
 		api.Post("/notifier/test", Wrap(r.handleTestNotification))
 		api.Post("/notifier/test-progress", Wrap(r.handleTestNotificationProgress))
 		api.Get("/notifications", Wrap(r.handleNotifications))
-
-		// Serve media files (game images, achievement icons, sounds)
-		api.Get(fmt.Sprintf("/sentinel-assets/*"), http.HandlerFunc(r.handleServeMedia))
 	})
+
+	// Serve media files under /api to keep asset paths clean and avoid
+	// confusion with the backend API routes
+	router.Get("/api/media/*", http.HandlerFunc(r.handleServeMedia))
 
 	return router
 }
