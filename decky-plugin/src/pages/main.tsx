@@ -1,17 +1,9 @@
 import type { FC } from 'react';
 import { useEffect, useState } from 'react';
-import {
-  ButtonItem,
-  focusRingClasses,
-  gamepadLibraryClasses,
-  libraryAssetImageClasses,
-  Navigation,
-  PanelSection,
-  PanelSectionRow
-} from '@decky/ui';
-import LibraryImage from '@/shared/components/library-image';
+import { ButtonItem, Navigation, PanelSection, PanelSectionRow } from '@decky/ui';
+import { LibraryImage } from '@/shared/components/library-image';
 import { BASE_URL, Fetcher } from '@/shared/utils/fetcher';
-import { getRunningNonSteamGames } from '@/shared/utils/non-steam-game-tracker';
+import { getRunningNonSteamGames, subscribeToNonSteamGameChanges } from '@/shared/utils/non-steam-game-tracker';
 import { getMapping, setMapping } from '@/shared/utils/game-mappings';
 import { matchGameByName } from '@/shared/utils/game-matcher';
 import type { AchievementInfo, GameBasics } from '@/shared/types/GameBasics';
@@ -30,8 +22,6 @@ const MainPage: FC = () => {
   const [loading, setLoading] = useState(true);
   const [screen, setScreen] = useState<'loading' | 'matched' | 'unmatched' | 'empty'>('loading');
   const [runningName, setRunningName] = useState('');
-
-  console.log({ gamepadLibraryClasses, libraryAssetImageClasses, focusRingClasses });
 
   const matchRunningGame = (gamesList: GameBasics[]) => {
     const running = getRunningNonSteamGames();
@@ -69,7 +59,6 @@ const MainPage: FC = () => {
     try {
       const data = await fetcher.get<GameBasics[]>(`${BASE_URL}/games`);
       setGames(data);
-      matchRunningGame(data);
     } catch {
       setScreen('empty');
     } finally {
@@ -79,9 +68,15 @@ const MainPage: FC = () => {
 
   useEffect(() => {
     loadGames();
-    const interval = setInterval(loadGames, 5000);
-    return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    matchRunningGame(games);
+    const unsubscribe = subscribeToNonSteamGameChanges(() => {
+      matchRunningGame(games);
+    });
+    return unsubscribe;
+  }, [games]);
 
   if (loading) {
     return (
@@ -102,7 +97,7 @@ const MainPage: FC = () => {
         <PanelSectionRow>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
             <div style={{ width: '64px', height: '96px', flexShrink: 0 }}>
-              <LibraryImage src={matchedGame.PortraitImage} alt={matchedGame.Name} neverShowTitle />
+              <LibraryImage src={matchedGame.PortraitImage} alt={matchedGame.Name} />
             </div>
             <div style={{ flex: 1 }}>
               <div style={{ fontWeight: 'bold', fontSize: '14px', marginBottom: '4px' }}>{matchedGame.Name}</div>
