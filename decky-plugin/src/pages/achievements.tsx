@@ -90,7 +90,7 @@ const achievementStyles = `
   }
 
   .sentinel-achievement-stat-label {
-    font-size: 11px;
+    font-size: 12px;
     color: #8b929a;
     display: block;
     margin-block-start: 2px;

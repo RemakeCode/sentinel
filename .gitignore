@@ -12,7 +12,6 @@ dist/
 openspec/
 .serena/
 
-.serena
 /build/frontend/
 /build/.task/
 /build/bin/
@@ -21,5 +20,5 @@ node_modules
 
 */**/.DS_Store
 .DS_Store
-
+AGENTS.md
 /decky-plugin/out/
