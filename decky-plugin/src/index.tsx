@@ -18,6 +18,7 @@ initNonSteamGameTracker();
 const toasterClassName = `sentinel-toaster`;
 const toasterContentClassName = `sentinel-toaster-content`;
 
+//language=css
 const toasterStyles = `
   .${toasterClassName} {
     height: 70%;
