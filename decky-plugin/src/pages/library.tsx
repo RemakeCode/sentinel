@@ -1,18 +1,46 @@
-import type { CSSProperties, FC } from 'react';
-import { useEffect, useState } from 'react';
-import { DialogBody, Focusable, Navigation, PanelSection } from '@decky/ui';
+import { FC, useEffect, useState } from 'react';
+import { DialogBody, DialogLabel, Focusable, Navigation, PanelSection } from '@decky/ui';
 import { LibraryImage } from '@/shared/components/library-image';
 import { BASE_URL, Fetcher } from '@/shared/utils/fetcher';
 import type { AchievementInfo, GameBasics } from '@/shared/types/GameBasics';
 import { styles } from '@/shared/styles';
+import { PiGameController } from 'react-icons/pi';
 
-const libraryStyles = {
-  container: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
-    gap: '24px'
+//language=css
+const libraryStyles = `
+  .sentinel-library-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 24px;
   }
-} as const satisfies Record<string, CSSProperties>;
+
+  .sentinel-library-empty {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 4px;
+    height: 100%
+  }
+
+  .sentinel-library-empty-label {
+    font-size: 32px;
+  }
+
+  @keyframes sentinel-wobble {
+    0%, 100% { transform: rotate(0deg); }
+    25% { transform: rotate(15deg); }
+    50% { transform: rotate(0deg); }
+    75% { transform: rotate(-15deg); }
+  }
+  
+  .sentinel-library-empty-icon {
+    width: 80px;
+    height: 80px;
+    fill: #acb2b8;
+    animation: sentinel-wobble 1s ease-in-out 1;
+  }
+`;
 
 const fetcher = new Fetcher();
 
@@ -31,7 +59,6 @@ const LibraryPage: FC = () => {
       try {
         const data = await fetcher.get<GameBasics[]>(`${BASE_URL}/games`);
         setGames(data);
-        setGames([...games, ...data]);
       } catch {
         setGames([]);
       } finally {
@@ -43,17 +70,21 @@ const LibraryPage: FC = () => {
 
   return (
     <DialogBody style={styles.wrapper}>
+      <style>{libraryStyles}</style>
       {loading ? (
-        <div style={libraryStyles.container}>
+        <div className='sentinel-library-grid'>
           {Array.from({ length: 12 }).map((_, i) => (
             <div key={i} style={{ aspectRatio: '2/3', background: 'rgba(255,255,255,0.05)', borderRadius: '4px' }} />
           ))}
         </div>
       ) : games.length === 0 ? (
-        <div style={{ textAlign: 'center', color: '#8b929a', padding: '48px 16px' }}>No games found</div>
+        <div className='sentinel-library-empty'>
+          <DialogLabel className='sentinel-library-empty-label'>No games found</DialogLabel>
+          <PiGameController className='sentinel-library-empty-icon' />
+        </div>
       ) : (
         <PanelSection title={'Games'}>
-          <Focusable style={libraryStyles.container}>
+          <Focusable className='library-grid'>
             {games.map((game) => {
               const progress = computeProgress(game.Achievement.List);
               return (
