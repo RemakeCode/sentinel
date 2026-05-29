@@ -9,7 +9,6 @@ import {
   joinClassNames,
   Marquee,
   ProgressBar,
-  ProgressBarWithInfo,
   ScrollPanel,
   staticClasses
 } from '@decky/ui';
@@ -108,7 +107,7 @@ const achievementStyles = `
     z-index: 5;
     padding: 16px;
     width: 100%;
-    background: #000; 
+    background: #000;
     box-sizing: border-box;
     border-radius: 4px;
     font-size: 24px;
@@ -129,7 +128,11 @@ const achievementStyles = `
   }
 
   .sentinel-achievement-sort-button--active, .sentinel-achievement-sort-button--focus {
-    background: hsla(0, 0%, 100%, .5);
+    background: var(--virtualmenu-accent);
+    
+    & svg {
+      fill: #1b1b1b;
+    }
   }
 
 
@@ -162,8 +165,11 @@ const achievementStyles = `
     display: flex;
     flex-direction: column;
     gap: 4px;
-  }
 
+    & [role="progressbar"], progress {
+      width: 180px;
+    }
+  }
 `;
 
 const AchievementsPage: FC = () => {
@@ -407,7 +413,9 @@ const AchievementsPage: FC = () => {
 
               {sortedLocked.length > 0 && (
                 <>
-                  <DialogHeader className='sentinel-achievement-subheader'>
+                  <DialogHeader
+                    className={joinClassNames(staticClasses.PanelSectionTitle, 'sentinel-achievement-subheader')}
+                  >
                     Locked Achievements({sortedLocked.length})
                   </DialogHeader>
                   {sortedLocked.map((ach, i) => {
@@ -457,20 +465,20 @@ const AchievementsPage: FC = () => {
 
                         <div className='sentinel-achievement-state'>
                           {hasProgress && (
-                            <ProgressBarWithInfo
-                              nProgress={Math.round(
-                                ((currentAch?.earned && progress !== maxProgress ? progress + 1 : progress) /
-                                  maxProgress) *
-                                  100
-                              )}
-                              sOperationText={
-                                <div className={achievementListClasses.ProgressCount}>
-                                  {currentAch?.earned && progress !== maxProgress ? progress + 1 : progress} /
-                                  {maxProgress}
-                                </div>
-                              }
-                              focusable={false}
-                            />
+                            <>
+                              <div className={achievementListClasses.ProgressCount}>
+                                {currentAch?.earned && progress !== maxProgress ? progress + 1 : progress} /
+                                {maxProgress}
+                              </div>
+                              <ProgressBar
+                                nProgress={Math.round(
+                                  ((currentAch?.earned && progress !== maxProgress ? progress + 1 : progress) /
+                                    maxProgress) *
+                                    100
+                                )}
+                                focusable={false}
+                              />
+                            </>
                           )}
                         </div>
                       </Focusable>
