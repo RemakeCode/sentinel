@@ -1,5 +1,5 @@
 import { FC, useEffect, useState } from 'react';
-import { DialogBody, DialogLabel, Focusable, Navigation, PanelSection } from '@decky/ui';
+import { DialogBody, DialogHeader, DialogLabel, Focusable, Navigation } from '@decky/ui';
 import { LibraryImage } from '@/shared/components/library-image';
 import { BASE_URL, Fetcher } from '@/shared/utils/fetcher';
 import type { AchievementInfo, GameBasics } from '@/shared/types/GameBasics';
@@ -25,20 +25,33 @@ const libraryStyles = `
 
   .sentinel-library-empty-label {
     font-size: 32px;
+    font-weight: 700;
+  }
+
+  .sentinel-library-header {
+    font-size: 24px;
   }
 
   @keyframes sentinel-wobble {
-    0%, 100% { transform: rotate(0deg); }
-    25% { transform: rotate(15deg); }
-    50% { transform: rotate(0deg); }
-    75% { transform: rotate(-15deg); }
+    0%, 100% {
+      transform: rotate(0deg);
+    }
+    25% {
+      transform: rotate(15deg);
+    }
+    50% {
+      transform: rotate(0deg);
+    }
+    75% {
+      transform: rotate(-15deg);
+    }
   }
-  
+
   .sentinel-library-empty-icon {
     width: 80px;
     height: 80px;
     fill: #acb2b8;
-    animation: sentinel-wobble 1s ease-in-out 1;
+    animation: sentinel-wobble 1s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
 `;
 
@@ -83,8 +96,9 @@ const LibraryPage: FC = () => {
           <PiGameController className='sentinel-library-empty-icon' />
         </div>
       ) : (
-        <PanelSection title={'Games'}>
-          <Focusable className='library-grid'>
+        <>
+          <DialogHeader className={'sentinel-library-header'}>Games</DialogHeader>
+          <Focusable className='sentinel-library-grid'>
             {games.map((game) => {
               const progress = computeProgress(game.Achievement.List);
               return (
@@ -94,12 +108,12 @@ const LibraryPage: FC = () => {
                   alt={game.Name}
                   name={game.Name}
                   progress={progress}
-                  onActivate={() => Navigation.Navigate(`/sentinel/game/${game.AppID}`)}
+                  onActivate={() => Navigation.Navigate(`/sentinel/games/${game.AppID}`)}
                 />
               );
             })}
           </Focusable>
-        </PanelSection>
+        </>
       )}
     </DialogBody>
   );
