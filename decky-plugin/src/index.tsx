@@ -54,11 +54,6 @@ const toasterStyles = `
         transition: width 200ms cubic-bezier(0.4, 0, 0.2, 1);
       }
     }
-
-    // & div:has(img[data-name="ach"]) {
-    //   width: 60px;
-    //   height: 60px;
-    // }
   }
 
   .${toasterContentClassName} {
@@ -145,21 +140,25 @@ export default definePlugin(() => {
 
   routerHook.addRoute('/sentinel/settings', () => <SettingsPage />);
   routerHook.addRoute('/sentinel/library', () => <LibraryPage />);
-  routerHook.addRoute('/sentinel/game/:appId', () => <AchievementsPage />);
+  routerHook.addRoute('/sentinel/games/:appId', () => <AchievementsPage />);
 
   return {
     name: 'Sentinel',
     titleView: <div className={staticClasses.Title}>Sentinel</div>,
     content: <MainPage />,
-    icon: <FaMedal />,
+    icon: <FaMedal fill={'orange'} />,
     async onDismount() {
       const notificationTab = await getNotificationTab();
       console.log('unmounting sentinel');
-      removeCssFromTab(notificationTab!, cssId!);
-      if (sse) sse.close();
+      if (cssId) {
+        removeCssFromTab(notificationTab!, cssId);
+      }
+      if (sse) {
+        sse.close();
+      }
       routerHook.removeRoute('/sentinel/settings');
       routerHook.removeRoute('/sentinel/library');
-      routerHook.removeRoute('/sentinel/game/:appId');
+      routerHook.removeRoute('/sentinel/games/:appId');
     }
   };
 });

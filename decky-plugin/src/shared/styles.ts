@@ -4,6 +4,9 @@ const styles = {
   wrapper: {
     marginBlock: 'calc(var(--basicui-header-height) + 24px) calc(var(--gamepadui-current-footer-height) + 16px)',
     marginInline: '24px'
+  },
+  achList: {
+    height: 'calc(100vh - var(--gamepadui-current-footer-height) - 60px)'
   }
 } as const satisfies Record<string, CSSProperties>;
 

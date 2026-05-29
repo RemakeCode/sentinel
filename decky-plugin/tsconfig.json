@@ -17,6 +17,7 @@
     "allowSyntheticDefaultImports": true,
     "types": ["node"],
     "skipLibCheck": true,
+    "strict": false,
     "paths": {
       "@/*": ["./src/*"]
     }
