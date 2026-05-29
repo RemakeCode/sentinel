@@ -1,9 +1,6 @@
 import { FC } from 'react';
-import { findClassByName, Focusable, joinClassNames, libraryAssetImageClasses, ProgressBar } from '@decky/ui';
+import { Focusable, joinClassNames, libraryAssetImageClasses, ProgressBar } from '@decky/ui';
 import { IMG_URL } from '@/shared/utils/fetcher';
-
-const Capsule = findClassByName('Capsule')!;
-const CapsuleVisible = findClassByName('CapsuleVisible')!;
 
 //language=css
 const libraryImageStyles = `
@@ -41,8 +38,6 @@ const LibraryImage: FC<LibraryImageProps> = ({ src, alt = '', progress, onActiva
           libraryAssetImageClasses.Container,
           libraryAssetImageClasses.GreyBackground,
           libraryAssetImageClasses.PortraitImage,
-          Capsule,
-          CapsuleVisible,
           'sentinel-library-image-wrapper'
         )}
       >
