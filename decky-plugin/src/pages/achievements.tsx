@@ -15,13 +15,14 @@ import {
 
 import { LibraryImage } from '@/shared/components/library-image';
 import { BASE_URL, Fetcher, IMG_URL } from '@/shared/utils/fetcher';
-import type { AchievementInfo, GameBasics } from '@/shared/types/GameBasics';
+import type { GameBasics } from '@/shared/types/GameBasics';
+import { computeProgress } from '@/shared/utils/utils';
 import { styles } from '@/shared/styles';
 import { FaArrowDown, FaArrowUp, FaClock, FaHistory } from 'react-icons/fa';
 
-const fetcher = new Fetcher();
-
 type SortOption = 'name-asc' | 'name-desc' | 'time-newest' | 'time-oldest';
+
+const fetcher = new Fetcher();
 
 const SORT_OPTIONS: { value: SortOption; icon: ReactNode }[] = [
   { value: 'name-asc', icon: <FaArrowUp size={20} /> },
@@ -29,12 +30,6 @@ const SORT_OPTIONS: { value: SortOption; icon: ReactNode }[] = [
   { value: 'time-newest', icon: <FaClock size={20} /> },
   { value: 'time-oldest', icon: <FaHistory size={20} /> }
 ];
-
-function computeProgress(list: AchievementInfo[]): number {
-  if (!list || list.length === 0) return 0;
-  const earned = list.filter((a) => a.CurrentAch?.earned).length;
-  return Math.round((earned / list.length) * 100);
-}
 
 function formatUnlockTime(timestamp: number | undefined): string {
   if (!timestamp) return 'Locked';
@@ -141,6 +136,7 @@ const achievementStyles = `
     top: 60px;
     background: inherit;
     width: 100%;
+    margin-block-start: 16px;
   }
 
   .sentinel-achievement-item {
