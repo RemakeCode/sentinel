@@ -2,7 +2,7 @@ import { findModuleExport } from '@decky/ui';
 
 const EAppType_Shortcut = 1 << 30; // 1073741824 // 2^30
 
-const EDisplayStatus_Running = 5;
+const EDisplayStatus_Running = 4;
 
 interface NonSteamGame {
   appId: number;
@@ -47,7 +47,9 @@ export async function initTracker() {
       if (change.app_overview) {
         for (const app of change.app_overview) {
           if (app.app_type === EAppType_Shortcut) {
-            const isRunning = app.local_per_client_data?.display_status === EDisplayStatus_Running;
+            const isRunning =
+              app.per_client_data?.find((client: any) => client.is_available_on_current_platform)?.display_status ===
+              EDisplayStatus_Running;
 
             cache.set(app.appid, {
               appId: app.appid,
