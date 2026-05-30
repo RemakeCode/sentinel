@@ -1,6 +1,6 @@
 import { findModuleExport } from '@decky/ui';
 
-const EAppType_Shortcut = 1 << 30; // 1073741824
+const EAppType_Shortcut = 1 << 30; // 1073741824 // 2^30
 
 const EDisplayStatus_Running = 5;
 
@@ -10,14 +10,15 @@ interface NonSteamGame {
   isRunning: boolean;
 }
 
-let cachedNonSteamGames: Map<number, NonSteamGame> = new Map();
+let cache: Map<number, NonSteamGame> = new Map();
+
 let changeListeners: Set<() => void> = new Set();
 
 function notifyListeners() {
   changeListeners.forEach((listener) => listener());
 }
 
-export function subscribeToNonSteamGameChanges(callback: () => void): () => void {
+export function subscribeToGameChanges(callback: () => void): () => void {
   changeListeners.add(callback);
   return () => {
     changeListeners.delete(callback);
@@ -28,7 +29,7 @@ const CAppOverviewChange = findModuleExport(
   (e: any) => typeof e?.deserializeBinary === 'function' && typeof e?.prototype?.app_overview === 'function'
 ) as { deserializeBinary(data: ArrayBuffer): { toObject(): any } };
 
-export async function initNonSteamGameTracker() {
+export async function initTracker() {
   if (!CAppOverviewChange) {
     console.error('Failed to find CAppOverviewChange protobuf class');
     return;
@@ -40,7 +41,7 @@ export async function initNonSteamGameTracker() {
       console.log({ change });
 
       if (change.full_update) {
-        cachedNonSteamGames.clear();
+        cache.clear();
       }
 
       if (change.app_overview) {
@@ -48,7 +49,7 @@ export async function initNonSteamGameTracker() {
           if (app.app_type === EAppType_Shortcut) {
             const isRunning = app.local_per_client_data?.display_status === EDisplayStatus_Running;
 
-            cachedNonSteamGames.set(app.appid, {
+            cache.set(app.appid, {
               appId: app.appid,
               name: app.display_name,
               isRunning
@@ -59,7 +60,7 @@ export async function initNonSteamGameTracker() {
 
       if (change.removed_appid) {
         for (const appId of change.removed_appid) {
-          cachedNonSteamGames.delete(appId);
+          cache.delete(appId);
         }
       }
 
@@ -70,6 +71,6 @@ export async function initNonSteamGameTracker() {
   });
 }
 
-export function getRunningNonSteamGames(): NonSteamGame[] {
-  return Array.from(cachedNonSteamGames.values()).filter((game) => game.isRunning);
+export function runningGames(): NonSteamGame[] {
+  return Array.from(cache.values()).filter((game) => game.isRunning);
 }
