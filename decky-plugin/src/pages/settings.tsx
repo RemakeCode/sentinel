@@ -15,7 +15,7 @@ import { BASE_URL, Fetcher } from '@/shared/utils/fetcher';
 import { usePlayAudio } from '@/shared/utils/usePlayAudio';
 import { BsTrash } from 'react-icons/bs';
 import { FaVolumeHigh, FaVolumeOff } from 'react-icons/fa6';
-import { FaBook, FaCog, FaSave } from 'react-icons/fa';
+import { FaBook, FaCircle, FaCog, FaSave } from 'react-icons/fa';
 
 const fetcher = new Fetcher();
 
@@ -49,6 +49,7 @@ const SettingsPage: FC = () => {
   const [steamAPIKeyHasError, setSteamAPIKeyHasError] = useState(false);
   const [stmSrc, setStmSrc] = useState<string>('');
   const [testNotificationDisabled, setTestNotificationDisabled] = useState(false);
+  const [serviceStatus, setServiceStatus] = useState<'loading' | 'online' | 'offline'>('loading');
   const steamAPIKeyTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const testNotificationTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -73,8 +74,17 @@ const SettingsPage: FC = () => {
     }
   };
 
+  const checkServiceStatus = async () => {
+    try {
+      await fetcher.get(`${BASE_URL}/ready`);
+      setServiceStatus('online');
+    } catch {
+      setServiceStatus('offline');
+    }
+  };
+
   useEffect(() => {
-    Promise.all([loadConfig(), loadAvailableSounds()]);
+    Promise.all([loadConfig(), loadAvailableSounds(), checkServiceStatus()]);
   }, []);
 
   const handleSteamDataSourceChange = async (source: string) => {
@@ -296,6 +306,21 @@ const SettingsPage: FC = () => {
                   <DialogButton disabled={testNotificationDisabled} onClick={handleTestNotificationProgress}>
                     Test
                   </DialogButton>
+                </Field>
+              </DialogControlsSection>
+              <DialogControlsSection>
+                <DialogControlsSectionHeader>Service Status</DialogControlsSectionHeader>
+                <Field
+                  label='Backend'
+                  icon={
+                    <FaCircle
+                      fill={
+                        serviceStatus === 'online' ? '#22c55e' : serviceStatus === 'offline' ? '#ef4444' : '#6b7280'
+                      }
+                    />
+                  }
+                >
+                  <div style={{ textTransform: 'capitalize' }}>{serviceStatus}</div>
                 </Field>
               </DialogControlsSection>
             </DialogBody>
