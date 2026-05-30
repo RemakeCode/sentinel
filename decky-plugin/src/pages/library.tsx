@@ -1,8 +1,9 @@
 import { FC, useEffect, useState } from 'react';
-import { DialogBody, DialogHeader, DialogLabel, Focusable, Navigation } from '@decky/ui';
+import { DialogBody, DialogButton, DialogHeader, DialogLabel, Focusable, Navigation } from '@decky/ui';
 import { LibraryImage } from '@/shared/components/library-image';
 import { BASE_URL, Fetcher } from '@/shared/utils/fetcher';
-import type { AchievementInfo, GameBasics } from '@/shared/types/GameBasics';
+import { computeProgress } from '@/shared/utils/utils';
+import type { GameBasics } from '@/shared/types/GameBasics';
 import { styles } from '@/shared/styles';
 import { PiGameController } from 'react-icons/pi';
 
@@ -31,6 +32,17 @@ const libraryStyles = `
   .sentinel-library-header {
     font-size: 24px;
   }
+  .sentinel-library-empty-icon {
+    width: 80px;
+    height: 80px;
+    fill: #acb2b8;
+    animation: sentinel-wobble 1s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .sentinel-library-empty-button {
+    margin-block-start: 16px;
+  }
+  
 
   @keyframes sentinel-wobble {
     0%, 100% {
@@ -47,21 +59,10 @@ const libraryStyles = `
     }
   }
 
-  .sentinel-library-empty-icon {
-    width: 80px;
-    height: 80px;
-    fill: #acb2b8;
-    animation: sentinel-wobble 1s cubic-bezier(0.34, 1.56, 0.64, 1);
-  }
+
 `;
 
 const fetcher = new Fetcher();
-
-function computeProgress(list: AchievementInfo[]): number {
-  if (!list || list.length === 0) return 0;
-  const earned = list.filter((a) => a.CurrentAch?.earned).length;
-  return Math.round((earned / list.length) * 100);
-}
 
 const LibraryPage: FC = () => {
   const [games, setGames] = useState<GameBasics[]>([]);
@@ -94,6 +95,13 @@ const LibraryPage: FC = () => {
         <div className='sentinel-library-empty'>
           <DialogLabel className='sentinel-library-empty-label'>No games found</DialogLabel>
           <PiGameController className='sentinel-library-empty-icon' />
+
+          <DialogButton
+            className='sentinel-library-empty-button'
+            onClick={() => Navigation.Navigate('/sentinel/settings')}
+          >
+            Go to Settings
+          </DialogButton>
         </div>
       ) : (
         <>
