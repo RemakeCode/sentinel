@@ -260,8 +260,8 @@ tasks:
       DECK_DIR: "~/homebrew/plugins"
       PLUGINNAME: "sentinel"
     cmds:
-      - pkill -f ~/homebrew/plugins/sentinel/bin/sentinel || true
-      - sleep 1
+    #  - pkill -f ~/homebrew/plugins/sentinel/bin/sentinel || true
+     # - sleep 1
       - mkdir -p out/bin
       - mkdir -p out/dist/
       - cp -r ./dist ./out/

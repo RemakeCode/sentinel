@@ -29,6 +29,36 @@ const CAppOverviewChange = findModuleExport(
   (e: any) => typeof e?.deserializeBinary === 'function' && typeof e?.prototype?.app_overview === 'function'
 ) as { deserializeBinary(data: ArrayBuffer): { toObject(): any } };
 
+export function processAppOverviewChange(change: any) {
+  if (change.full_update) {
+    cache.clear();
+  }
+
+  if (change.app_overview) {
+    for (const app of change.app_overview) {
+      if (app.app_type === EAppType_Shortcut) {
+        const isRunning =
+          app.per_client_data?.find((client: any) => client.is_available_on_current_platform)?.display_status ===
+          EDisplayStatus_Running;
+
+        cache.set(app.appid, {
+          appId: app.appid,
+          name: app.display_name,
+          isRunning
+        });
+      }
+    }
+  }
+
+  if (change.removed_appid) {
+    for (const appId of change.removed_appid) {
+      cache.delete(appId);
+    }
+  }
+
+  notifyListeners();
+}
+
 export async function initTracker() {
   if (!CAppOverviewChange) {
     console.error('Failed to find CAppOverviewChange protobuf class');
@@ -38,35 +68,7 @@ export async function initTracker() {
   SteamClient.Apps.RegisterForAppOverviewChanges((data: ArrayBuffer) => {
     try {
       const change = CAppOverviewChange.deserializeBinary(data).toObject();
-      console.log({ change });
-
-      if (change.full_update) {
-        cache.clear();
-      }
-
-      if (change.app_overview) {
-        for (const app of change.app_overview) {
-          if (app.app_type === EAppType_Shortcut) {
-            const isRunning =
-              app.per_client_data?.find((client: any) => client.is_available_on_current_platform)?.display_status ===
-              EDisplayStatus_Running;
-
-            cache.set(app.appid, {
-              appId: app.appid,
-              name: app.display_name,
-              isRunning
-            });
-          }
-        }
-      }
-
-      if (change.removed_appid) {
-        for (const appId of change.removed_appid) {
-          cache.delete(appId);
-        }
-      }
-
-      notifyListeners();
+      processAppOverviewChange(change);
     } catch (e) {
       console.error('Failed to process overview change:', e);
     }
