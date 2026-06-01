@@ -1,11 +1,11 @@
 import { FC, useEffect, useState } from 'react';
-import { DialogBody, DialogButton, DialogHeader, DialogLabel, Focusable, Navigation } from '@decky/ui';
+import { DialogBody, DialogHeader, Focusable, Navigation } from '@decky/ui';
 import { LibraryImage } from '@/shared/components/library-image';
+import { EmptyState } from '@/shared/components/empty-state';
 import { BASE_URL, Fetcher } from '@/shared/utils/fetcher';
 import { computeProgress } from '@/shared/utils/utils';
 import type { GameBasics } from '@/shared/types/GameBasics';
 import { styles } from '@/shared/styles';
-import { PiGameController } from 'react-icons/pi';
 
 //language=css
 const libraryStyles = `
@@ -15,52 +15,9 @@ const libraryStyles = `
     gap: 24px;
   }
 
-  .sentinel-library-empty {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    gap: 4px;
-    height: 100%
-  }
-
-  .sentinel-library-empty-label {
-    font-size: 32px;
-    font-weight: 700;
-  }
-
   .sentinel-library-header {
     font-size: 24px;
   }
-
-  .sentinel-library-empty-icon {
-    width: 80px;
-    height: 80px;
-    fill: #acb2b8;
-    animation: sentinel-wobble 1s cubic-bezier(0.34, 1.56, 0.64, 1);
-  }
-
-  .sentinel-library-empty-button {
-    margin-block-start: 16px;
-  }
-  
-
-  @keyframes sentinel-wobble {
-    0%, 100% {
-      transform: rotate(0deg);
-    }
-    25% {
-      transform: rotate(15deg);
-    }
-    50% {
-      transform: rotate(0deg);
-    }
-    75% {
-      transform: rotate(-15deg);
-    }
-  }
-
-
 `;
 
 const fetcher = new Fetcher();
@@ -93,17 +50,12 @@ const LibraryPage: FC = () => {
           ))}
         </div>
       ) : games.length === 0 ? (
-        <div className='sentinel-library-empty'>
-          <DialogLabel className='sentinel-library-empty-label'>No games found</DialogLabel>
-          <PiGameController className='sentinel-library-empty-icon' />
-
-          <DialogButton
-            className='sentinel-library-empty-button'
-            onClick={() => Navigation.Navigate('/sentinel/settings')}
-          >
-            Go to Settings
-          </DialogButton>
-        </div>
+        <EmptyState
+          variant='library'
+          label='No games found'
+          buttonText='Go to Settings'
+          buttonClick={() => Navigation.Navigate('/sentinel/settings')}
+        />
       ) : (
         <>
           <DialogHeader className={'sentinel-library-header'}>Games</DialogHeader>
