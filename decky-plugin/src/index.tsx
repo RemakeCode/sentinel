@@ -1,11 +1,11 @@
-import { staticClasses } from '@decky/ui';
+import { DialogButton, Navigation } from '@decky/ui';
 import { definePlugin, executeInTab, injectCssIntoTab, removeCssFromTab, routerHook, toaster } from '@decky/api';
-import { FaMedal } from 'react-icons/fa6';
+import { FaBook, FaGear, FaMedal } from 'react-icons/fa6';
 import { BASE_URL, NOTIFICATION_SSE_URL } from './shared/utils/fetcher';
 import type { Notification } from '@/shared/types/Notification';
 import { getNotificationTab } from '@/shared/utils/utils';
 import { ImgIcon } from '@/shared/components/img-icon';
-import { initNonSteamGameTracker } from '@/shared/utils/non-steam-game-tracker';
+import { initTracker } from '@/shared/utils/non-steam-game-tracker';
 import MainPage from '@/pages/main';
 import SettingsPage from '@/pages/settings';
 import LibraryPage from '@/pages/library';
@@ -13,7 +13,7 @@ import AchievementsPage from '@/pages/achievements';
 
 let sse: EventSource | null = null;
 
-initNonSteamGameTracker();
+initTracker();
 
 const toasterClassName = `sentinel-toaster`;
 const toasterContentClassName = `sentinel-toaster-content`;
@@ -31,6 +31,7 @@ const toasterStyles = `
       align-items: center;
       margin-top: 4px;
     }
+
     .sentinel-toaster-progress-meta {
       font-weight: bold;
       font-size: small;
@@ -54,13 +55,16 @@ const toasterStyles = `
         transition: width 200ms cubic-bezier(0.4, 0, 0.2, 1);
       }
     }
+
+    img[data-name="ach"] {
+      margin-left: 4px;
+    }
   }
 
   .${toasterContentClassName} {
     width: 100%;
   }
 `;
-// const fetcher = new Fetcher();
 
 let cssId: string | undefined;
 
@@ -125,11 +129,14 @@ async function connectSSE() {
         audio.volume = 0.5;
         audio.play().catch(() => {});
       }
-
+      //TODO: Investigate how non-removal here might affect other users of toaster
       //setTimeout(() => removeCssFromTab(notificationTab, cssId), duration + 500);
     }
   });
 
+  sse.addEventListener('open', async () => {
+    console.log('Sentinel SSE is open for business');
+  });
   sse.addEventListener('error', (error) => {
     console.log('Sentinel SSE error', error);
   });
@@ -144,7 +151,25 @@ export default definePlugin(() => {
 
   return {
     name: 'Sentinel',
-    titleView: <div className={staticClasses.Title}>Sentinel</div>,
+    titleView: (
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+        <span>Sentinel</span>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <DialogButton
+            onClick={() => Navigation.Navigate('/sentinel/library')}
+            style={{ padding: '8px', minWidth: 'fit-content' }}
+          >
+            <FaBook />
+          </DialogButton>
+          <DialogButton
+            onClick={() => Navigation.Navigate('/sentinel/settings')}
+            style={{ padding: '8px', minWidth: 'fit-content' }}
+          >
+            <FaGear />
+          </DialogButton>
+        </div>
+      </div>
+    ),
     content: <MainPage />,
     icon: <FaMedal fill={'orange'} />,
     async onDismount() {
