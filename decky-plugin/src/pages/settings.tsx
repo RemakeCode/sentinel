@@ -13,9 +13,11 @@ import {
 import { openFilePicker, toaster } from '@decky/api';
 import { BASE_URL, Fetcher } from '@/shared/utils/fetcher';
 import { usePlayAudio } from '@/shared/utils/usePlayAudio';
+import { clearMapping, type GameMapping, getAllMappings } from '@/shared/utils/game-mappings';
+import { showConfirmModal } from '@/shared/utils/confirm';
 import { BsTrash } from 'react-icons/bs';
 import { FaVolumeHigh, FaVolumeOff } from 'react-icons/fa6';
-import { FaBook, FaCircle, FaCog, FaSave } from 'react-icons/fa';
+import { FaBook, FaCircle, FaCog, FaLink, FaSave } from 'react-icons/fa';
 
 const fetcher = new Fetcher();
 
@@ -41,6 +43,55 @@ interface SoundOption {
   name: string;
   value: string;
 }
+
+const MappingsContent: FC = () => {
+  const [mappings, setMappings] = useState<Record<number, GameMapping>>({});
+
+  const loadMappings = () => {
+    setMappings(getAllMappings());
+  };
+
+  useEffect(() => {
+    loadMappings();
+  }, []);
+
+  const handleDelete = async (nonSteamAppId: number, sentinelName: string) => {
+    const confirmed = await showConfirmModal({
+      title: 'Delete Mapping',
+      description: `Are you sure you want to delete the mapping for ${sentinelName}?`,
+      okText: "Yes, I'm sure",
+      cancelText: 'Cancel',
+      destructive: true
+    });
+    if (!confirmed) return;
+    clearMapping(nonSteamAppId);
+    loadMappings();
+  };
+
+  const entries = Object.entries(mappings).sort(([, a], [, b]) => b.createdAt - a.createdAt);
+
+  return (
+    <DialogBody>
+      <DialogControlsSection>
+        <DialogControlsSectionHeader>Game Mappings</DialogControlsSectionHeader>
+        {entries.length === 0 ? (
+          <Field label='No mappings saved yet.' />
+        ) : (
+          entries.map(([appIdStr, mapping]) => {
+            const nonSteamAppId = Number(appIdStr);
+            return (
+              <Field key={nonSteamAppId} label={mapping.shortcutName} description={mapping.sentinelName}>
+                <DialogButton onClick={() => handleDelete(nonSteamAppId, mapping.sentinelName)} style={{ minWidth: 0 }}>
+                  <BsTrash />
+                </DialogButton>
+              </Field>
+            );
+          })
+        )}
+      </DialogControlsSection>
+    </DialogBody>
+  );
+};
 
 const SettingsPage: FC = () => {
   const [config, setConfig] = useState<AppConfig | null>(null);
@@ -326,6 +377,14 @@ const SettingsPage: FC = () => {
             </DialogBody>
           )
         },
+
+        {
+          title: 'Game Mappings',
+          identifier: 'mappings',
+          icon: <FaLink />,
+          content: <MappingsContent />
+        },
+
         {
           title: 'Logging',
           identifier: 'logging',

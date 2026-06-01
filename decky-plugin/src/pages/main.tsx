@@ -17,6 +17,7 @@ import { BASE_URL, Fetcher } from '@/shared/utils/fetcher';
 import { processAppOverviewChange, runningGames, subscribeToGameChanges } from '@/shared/utils/non-steam-game-tracker';
 import { getMapping, setMapping } from '@/shared/utils/game-mappings';
 import { matchGameByName } from '@/shared/utils/game-matcher';
+import { showConfirmModal } from '@/shared/utils/confirm';
 import { computeProgress } from '@/shared/utils/utils';
 import type { GameBasics } from '@/shared/types/GameBasics';
 import { ImgIcon } from '@/shared/components/img-icon';
@@ -41,7 +42,7 @@ const mainStyles = `
     display: flex;
     flex-direction: column;
     position: fixed;
-    max-width: calc(300px - 32px);
+    min-width: calc(300px - 32px);
     gap: 4px;
     margin-block-start: -10px;
     background: #0D1218;
@@ -173,6 +174,22 @@ const MainPage: FC = () => {
     setPlayingKey((prev) => (play ? key : prev === key ? null : prev));
   };
 
+  const selectGame = async (game: GameBasics) => {
+    const confirmed = await showConfirmModal({
+      title: 'Confirm Mapping',
+      description: `Are you sure the game title is ${game.Name}?`,
+      okText: "Yes, I'm sure",
+      cancelText: 'Cancel'
+    });
+    if (!confirmed) return;
+    try {
+      const running = runningGames()[0];
+      if (running) setMapping(running.appId, game.AppID, game.Name, running.name);
+    } catch {}
+    setMatchedGame(game);
+    setScreen('matched');
+  };
+
   const matchRunningGame = (gamesList: GameBasics[]) => {
     const running = runningGames();
     const current = running[0] ?? null;
@@ -195,8 +212,9 @@ const MainPage: FC = () => {
     }
 
     const match = matchGameByName(current.name, gamesList);
+
     if (match) {
-      setMapping(current.appId, match.AppID);
+      setMapping(current.appId, match.AppID, match.Name, current.name);
       setMatchedGame(match);
       setScreen('matched');
       return;
@@ -221,7 +239,7 @@ const MainPage: FC = () => {
   }, []);
 
   useEffect(() => {
-    matchRunningGame(games);
+    //matchRunningGame(games);
     const unsubscribe = subscribeToGameChanges(() => {
       matchRunningGame(games);
     });
@@ -260,7 +278,6 @@ const MainPage: FC = () => {
     return (
       <PanelSection>
         <style>{mainStyles}</style>
-
         <div className='sentinel-qam-wrapper'>
           <div className='sentinel-qam-fixed-header'>
             <div className='sentinel-qam-header'>Now Playing</div>
@@ -340,35 +357,23 @@ const MainPage: FC = () => {
     const candidates = matchGameByName(runningName, games) ? games : games.slice(0, 10);
 
     return (
-      <PanelSection>
-        <PanelSectionRow>
-          <span style={{ color: '#8b929a', fontSize: '12px' }}>Pick the matching game from your library</span>
-        </PanelSectionRow>
+      <PanelSection title={'Pick matching game title'}>
         {candidates.map((game) => {
-          const progress = computeProgress(game.Achievement.List);
+          const gameKey = `game-${game.AppID}`;
           return (
             <PanelSectionRow key={game.AppID}>
-              <ButtonItem
-                layout='below'
-                onClick={() => {
-                  try {
-                    const running = runningGames()[0];
-                    if (running) setMapping(running.appId, game.AppID);
-                  } catch {}
-                  setMatchedGame(game);
-                  setScreen('matched');
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-                  <span>{game.Name}</span>
-                  <span style={{ color: '#8b929a', fontSize: '12px' }}>{progress}%</span>
-                </div>
-              </ButtonItem>
+              <div onFocus={() => playMarquee(gameKey, true)} onBlur={() => playMarquee(gameKey, false)}>
+                <ButtonItem layout='below' onClick={() => selectGame(game)}>
+                  <Marquee play={playingKey === gameKey} resetOnPause={true} delay={1}>
+                    {game.Name}
+                  </Marquee>
+                </ButtonItem>
+              </div>
             </PanelSectionRow>
           );
         })}
         <PanelSectionRow>
-          <ButtonItem layout='below' onClick={() => Navigation.Navigate('/sentinel/library')}>
+          <ButtonItem layout={'below'} onClick={() => Navigation.Navigate('/sentinel/library')}>
             Browse All Games
           </ButtonItem>
         </PanelSectionRow>
