@@ -14,7 +14,7 @@ import {
 import { FaUnlock } from 'react-icons/fa';
 import { LibraryImage } from '@/shared/components/library-image';
 import { BASE_URL, Fetcher } from '@/shared/utils/fetcher';
-import { processAppOverviewChange, runningGames, subscribeToGameChanges } from '@/shared/utils/non-steam-game-tracker';
+import { runningGames, subscribeToGameChanges } from '@/shared/utils/non-steam-game-tracker';
 import { getMapping, setMapping } from '@/shared/utils/game-mappings';
 import { matchGameByName } from '@/shared/utils/game-matcher';
 import { showConfirmModal } from '@/shared/utils/confirm';
@@ -26,30 +26,19 @@ const fetcher = new Fetcher();
 
 //language=css
 const mainStyles = `
-  .sentinel-qam-wrapper {
-    display: flex;
-    flex-direction: column;
-  }
-
   .sentinel-qam-scroll-area {
-    margin-block-start: 104px;
     display: flex;
     flex-direction: column;
     gap: 6px;
   }
 
-  .sentinel-qam-fixed-header {
+  .sentinel-qam-header-card {
     display: flex;
     flex-direction: column;
-    position: fixed;
-    min-width: calc(300px - 32px);
     gap: 4px;
-    margin-block-start: -10px;
-    background: #0D1218;
-    padding: 0 4px;
-    box-sizing: border-box;
+    padding-bottom: 6px;
+    margin-bottom: 6px;
     border-bottom: 1px solid hsla(0, 0%, 100%, .1);
-    z-index: 2;
   }
 
   .sentinel-qam-header {
@@ -239,7 +228,7 @@ const MainPage: FC = () => {
   }, []);
 
   useEffect(() => {
-    //matchRunningGame(games);
+    matchRunningGame(games);
     const unsubscribe = subscribeToGameChanges(() => {
       matchRunningGame(games);
     });
@@ -247,19 +236,19 @@ const MainPage: FC = () => {
   }, [games]);
 
   // DEV: seed a fake running game for testing without Steam
-  useEffect(() => {
-    processAppOverviewChange({
-      app_overview: [
-        {
-          appid: 3009130864,
-          display_name: 'Shadow of Mordor',
-          app_type: 1073741824,
-          per_client_data: [{ display_status: 4, is_available_on_current_platform: true }]
-        }
-      ],
-      removed_appid: []
-    });
-  }, []);
+  // useEffect(() => {
+  //   processAppOverviewChange({
+  //     app_overview: [
+  //       {
+  //         appid: 3009130864,
+  //         display_name: 'Shadow of Mordor',
+  //         app_type: 1073741824,
+  //         per_client_data: [{ display_status: 4, is_available_on_current_platform: true }]
+  //       }
+  //     ],
+  //     removed_appid: []
+  //   });
+  // }, []);
 
   if (loading) {
     return (
@@ -278,8 +267,8 @@ const MainPage: FC = () => {
     return (
       <PanelSection>
         <style>{mainStyles}</style>
-        <div className='sentinel-qam-wrapper'>
-          <div className='sentinel-qam-fixed-header'>
+        <div className='sentinel-qam-scroll-area'>
+          <div className='sentinel-qam-header-card'>
             <div className='sentinel-qam-header'>Now Playing</div>
             <div style={{ display: 'flex', gap: '8px' }}>
               <div className='sentinel-qam-game-image'>
@@ -295,59 +284,47 @@ const MainPage: FC = () => {
             </div>
           </div>
 
-          {achievements.length > 0 && (
-            <div className='sentinel-qam-scroll-area'>
-              {achievements.map((ach, i) => {
-                const key = `${ach.Name}#${i}`;
-                const earnedAch = ach.CurrentAch?.earned;
-                const hasProgress = (ach.CurrentAch?.max_progress || 0) > 1;
-                const currentProgress = ach.CurrentAch?.progress || 0;
-                const maxProgress = ach.CurrentAch?.max_progress || 1;
-                const isPlaying = playingKey === key;
+          {achievements.map((ach, i) => {
+            const key = `${ach.Name}#${i}`;
+            const earnedAch = ach.CurrentAch?.earned;
+            const hasProgress = (ach.CurrentAch?.max_progress || 0) > 1;
+            const currentProgress = ach.CurrentAch?.progress || 0;
+            const maxProgress = ach.CurrentAch?.max_progress || 1;
+            const isPlaying = playingKey === key;
 
-                return (
-                  <Focusable
-                    key={key}
-                    onActivate={() => {}}
-                    onFocus={() => playMarquee(key, true)}
-                    onBlur={() => playMarquee(key, false)}
-                    focusClassName='sentinel-qam-ach-item--focus'
-                    className={joinClassNames('sentinel-qam-ach-item')}
-                  >
-                    <div className={'sentinel-qam-ach-image'}>
-                      <ImgIcon src={ach.Icon} />
+            return (
+              <Focusable
+                key={key}
+                onActivate={() => {}}
+                onFocus={() => playMarquee(key, true)}
+                onBlur={() => playMarquee(key, false)}
+                focusClassName='sentinel-qam-ach-item--focus'
+                className={joinClassNames('sentinel-qam-ach-item')}
+              >
+                <div className={'sentinel-qam-ach-image'}>
+                  <ImgIcon src={ach.Icon} />
+                </div>
+                <div className='sentinel-qam-ach-content'>
+                  <div className='sentinel-qam-ach-row'>
+                    <div className='sentinel-qam-ach-name'>{ach.DisplayName}</div>
+                    {earnedAch && <FaUnlock className='sentinel-qam-ach-icon-unlocked' size={12} />}
+                  </div>
+                  {!earnedAch && hasProgress ? (
+                    <div className='sentinel-qam-ach-progress'>
+                      <span className='sentinel-qam-ach-progress-text'>
+                        {currentProgress}/{maxProgress}
+                      </span>
+                      <ProgressBar nProgress={Math.round((currentProgress / maxProgress) * 100)} focusable={false} />
                     </div>
-                    <div className='sentinel-qam-ach-content'>
-                      <div className='sentinel-qam-ach-row'>
-                        <div className='sentinel-qam-ach-name'>{ach.DisplayName}</div>
-                        {earnedAch && <FaUnlock className='sentinel-qam-ach-icon-unlocked' size={12} />}
-                      </div>
-                      {!earnedAch && hasProgress ? (
-                        <div className='sentinel-qam-ach-progress'>
-                          <span className='sentinel-qam-ach-progress-text'>
-                            {currentProgress}/{maxProgress}
-                          </span>
-                          <ProgressBar
-                            nProgress={Math.round((currentProgress / maxProgress) * 100)}
-                            focusable={false}
-                          />
-                        </div>
-                      ) : (
-                        <Marquee
-                          className='sentinel-qam-ach-description'
-                          play={isPlaying}
-                          delay={1}
-                          resetOnPause={true}
-                        >
-                          {ach.Description || ''}
-                        </Marquee>
-                      )}
-                    </div>
-                  </Focusable>
-                );
-              })}
-            </div>
-          )}
+                  ) : (
+                    <Marquee className='sentinel-qam-ach-description' play={isPlaying} delay={1} resetOnPause={true}>
+                      {ach.Description || ''}
+                    </Marquee>
+                  )}
+                </div>
+              </Focusable>
+            );
+          })}
         </div>
       </PanelSection>
     );

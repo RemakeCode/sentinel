@@ -132,8 +132,6 @@ const achievementStyles = `
 
 
   .sentinel-achievement-subheader {
-    position: sticky;
-    top: 60px;
     background: inherit;
     width: 100%;
     margin-block-start: 16px;
@@ -145,6 +143,7 @@ const achievementStyles = `
     align-items: center;
     padding-inline: 8px;
     gap: 8px;
+    scroll-margin-top: 70px;
   }
 
   .sentinel-achievement-icon {
@@ -312,91 +311,161 @@ const AchievementsPage: FC = () => {
           </div>
         </div>
 
-        <Focusable>
-          {/*//@ts-ignore-check*/}
-          <ScrollPanel style={styles.achList}>
-            <Focusable
-              className={joinClassNames(staticClasses.PanelSectionTitle, 'sentinel-achievement-header')}
-              onActivate={() => {}}
-              noFocusRing={true}
-            >
-              <Marquee>{game.Name}</Marquee>
-              <div className='sentinel-achievement-sort-buttons'>
-                {SORT_OPTIONS.map((opt) => (
-                  <Focusable
-                    noFocusRing={true}
-                    key={opt.value}
-                    focusClassName={'sentinel-achievement-sort-button--focus'}
-                    className={joinClassNames(
-                      'sentinel-achievement-sort-button',
-                      sortBy === opt.value ? 'sentinel-achievement-sort-button--active' : ''
-                    )}
-                    onActivate={() => handleSortChange(opt.value)}
-                    title={opt.value.replace('-', ' ')}
+        {/*//@ts-ignore-check*/}
+        <ScrollPanel style={styles.achList}>
+          <div className={joinClassNames(staticClasses.PanelSectionTitle, 'sentinel-achievement-header')}>
+            <Marquee>{game.Name}</Marquee>
+            <div className='sentinel-achievement-sort-buttons'>
+              {SORT_OPTIONS.map((opt) => (
+                <Focusable
+                  noFocusRing={true}
+                  key={opt.value}
+                  focusClassName={'sentinel-achievement-sort-button--focus'}
+                  className={joinClassNames(
+                    'sentinel-achievement-sort-button',
+                    sortBy === opt.value ? 'sentinel-achievement-sort-button--active' : ''
+                  )}
+                  onActivate={() => handleSortChange(opt.value)}
+                  title={opt.value.replace('-', ' ')}
+                >
+                  {opt.icon}
+                </Focusable>
+              ))}
+            </div>
+          </div>
+          <div className={achievementPageClasses.AchievementTabs} style={{ height: 'auto' }}>
+            <div className={joinClassNames(achievementListClasses.AchievementList)}>
+              {sortedUnlocked.length > 0 && (
+                <>
+                  <DialogHeader
+                    className={joinClassNames(staticClasses.PanelSectionTitle, 'sentinel-achievement-subheader')}
                   >
-                    {opt.icon}
-                  </Focusable>
-                ))}
-              </div>
-            </Focusable>
-            <div className={achievementPageClasses.AchievementTabs} style={{ height: 'auto' }}>
-              <div className={joinClassNames(achievementListClasses.AchievementList)}>
-                {sortedUnlocked.length > 0 && (
-                  <>
-                    <DialogHeader
-                      className={joinClassNames(staticClasses.PanelSectionTitle, 'sentinel-achievement-subheader')}
-                    >
-                      Unlocked Achievements({sortedUnlocked.length})
-                    </DialogHeader>
-                    {sortedUnlocked.map((ach, i) => {
-                      const currentAch = ach.CurrentAch;
-                      const hasProgress = (currentAch?.max_progress || 0) > 1;
-                      const progress = currentAch?.progress || 0;
-                      const maxProgress = currentAch?.max_progress || 1;
+                    Unlocked Achievements({sortedUnlocked.length})
+                  </DialogHeader>
+                  {sortedUnlocked.map((ach, i) => {
+                    const currentAch = ach.CurrentAch;
+                    const hasProgress = (currentAch?.max_progress || 0) > 1;
+                    const progress = currentAch?.progress || 0;
+                    const maxProgress = currentAch?.max_progress || 1;
 
-                      return (
-                        <Focusable
-                          key={`${ach.Name}#${i}`}
-                          className={joinClassNames(
-                            achievementListClasses.AchievementListItemBase,
-                            'sentinel-achievement-item'
+                    return (
+                      <Focusable
+                        key={`${ach.Name}#${i}`}
+                        className={joinClassNames(
+                          achievementListClasses.AchievementListItemBase,
+                          'sentinel-achievement-item'
+                        )}
+                        onActivate={() => {}}
+                      >
+                        <img
+                          src={`${IMG_URL}${ach.Icon}`}
+                          alt={ach.DisplayName}
+                          className='sentinel-achievement-icon'
+                        />
+
+                        <div className='sentinel-achievement-meta'>
+                          <div className={achievementListClasses.AchievementTitle}>{ach.DisplayName}</div>
+                          <div
+                            className={joinClassNames(
+                              achievementListClasses.AchievementDescription,
+                              ach.Hidden === 1 ? achievementListClasses.Hidden : ''
+                            )}
+                          >
+                            {ach.Description || ''}
+                          </div>
+                          {!isLoading && globalPercentages.has(ach.Name) && (
+                            <div
+                              className={joinClassNames(
+                                achievementListClasses.AchievementGlobalPercentage,
+                                achievementListClasses.InBody
+                              )}
+                            >
+                              {globalPercentages.get(ach.Name)}% of players have this
+                            </div>
                           )}
-                          onActivate={() => {}}
-                        >
+                        </div>
+
+                        <div className='sentinel-achievement-state'>
+                          <div className={achievementListClasses.UnlockDate}>
+                            Unlocked {formatUnlockTime(currentAch.earned_time)}
+                          </div>
+
+                          {hasProgress && (
+                            <ProgressBar
+                              nProgress={Math.round(
+                                ((currentAch?.earned && progress !== maxProgress ? progress + 1 : progress) /
+                                  maxProgress) *
+                                  100
+                              )}
+                              focusable={false}
+                            />
+                          )}
+                        </div>
+                      </Focusable>
+                    );
+                  })}
+                </>
+              )}
+
+              {sortedLocked.length > 0 && (
+                <>
+                  <DialogHeader
+                    className={joinClassNames(staticClasses.PanelSectionTitle, 'sentinel-achievement-subheader')}
+                  >
+                    Locked Achievements({sortedLocked.length})
+                  </DialogHeader>
+                  {sortedLocked.map((ach, i) => {
+                    const currentAch = ach.CurrentAch;
+                    const hasProgress = (currentAch?.max_progress || 0) > 1;
+                    const progress = currentAch?.progress || 0;
+                    const maxProgress = currentAch?.max_progress || 1;
+
+                    return (
+                      <Focusable
+                        key={`${ach.Name}#${i}`}
+                        className={joinClassNames(
+                          achievementListClasses.AchievementListItemBase,
+                          'sentinel-achievement-item'
+                        )}
+                        onActivate={() => {}}
+                      >
+                        {ach.Icon ? (
                           <img
                             src={`${IMG_URL}${ach.Icon}`}
                             alt={ach.DisplayName}
-                            className='sentinel-achievement-icon'
+                            className='sentinel-achievement-icon sentinel-achievement-icon--locked'
                           />
+                        ) : null}
 
-                          <div className='sentinel-achievement-meta'>
-                            <div className={achievementListClasses.AchievementTitle}>{ach.DisplayName}</div>
+                        <div className='sentinel-achievement-meta'>
+                          <div className={achievementListClasses.AchievementTitle}>{ach.DisplayName}</div>
+                          <div
+                            className={joinClassNames(
+                              achievementListClasses.AchievementDescription,
+                              ach.Hidden === 1 ? achievementListClasses.Hidden : ''
+                            )}
+                          >
+                            {ach.Description || ''}
+                          </div>
+                          {!isLoading && globalPercentages.has(ach.Name) && (
                             <div
                               className={joinClassNames(
-                                achievementListClasses.AchievementDescription,
-                                ach.Hidden === 1 ? achievementListClasses.Hidden : ''
+                                achievementListClasses.AchievementGlobalPercentage,
+                                achievementListClasses.InBody
                               )}
                             >
-                              {ach.Description || ''}
+                              {globalPercentages.get(ach.Name)}% of players have this
                             </div>
-                            {!isLoading && globalPercentages.has(ach.Name) && (
-                              <div
-                                className={joinClassNames(
-                                  achievementListClasses.AchievementGlobalPercentage,
-                                  achievementListClasses.InBody
-                                )}
-                              >
-                                {globalPercentages.get(ach.Name)}% of players have this
+                          )}
+                        </div>
+
+                        <div className='sentinel-achievement-state'>
+                          {hasProgress && (
+                            <>
+                              <div className={achievementListClasses.ProgressCount}>
+                                {currentAch?.earned && progress !== maxProgress ? progress + 1 : progress} /
+                                {maxProgress}
                               </div>
-                            )}
-                          </div>
-
-                          <div className='sentinel-achievement-state'>
-                            <div className={achievementListClasses.UnlockDate}>
-                              Unlocked {formatUnlockTime(currentAch.earned_time)}
-                            </div>
-
-                            {hasProgress && (
                               <ProgressBar
                                 nProgress={Math.round(
                                   ((currentAch?.earned && progress !== maxProgress ? progress + 1 : progress) /
@@ -405,93 +474,17 @@ const AchievementsPage: FC = () => {
                                 )}
                                 focusable={false}
                               />
-                            )}
-                          </div>
-                        </Focusable>
-                      );
-                    })}
-                  </>
-                )}
-
-                {sortedLocked.length > 0 && (
-                  <>
-                    <DialogHeader
-                      className={joinClassNames(staticClasses.PanelSectionTitle, 'sentinel-achievement-subheader')}
-                    >
-                      Locked Achievements({sortedLocked.length})
-                    </DialogHeader>
-                    {sortedLocked.map((ach, i) => {
-                      const currentAch = ach.CurrentAch;
-                      const hasProgress = (currentAch?.max_progress || 0) > 1;
-                      const progress = currentAch?.progress || 0;
-                      const maxProgress = currentAch?.max_progress || 1;
-
-                      return (
-                        <Focusable
-                          key={`${ach.Name}#${i}`}
-                          className={joinClassNames(
-                            achievementListClasses.AchievementListItemBase,
-                            'sentinel-achievement-item'
+                            </>
                           )}
-                          onActivate={() => {}}
-                        >
-                          {ach.Icon ? (
-                            <img
-                              src={`${IMG_URL}${ach.Icon}`}
-                              alt={ach.DisplayName}
-                              className='sentinel-achievement-icon sentinel-achievement-icon--locked'
-                            />
-                          ) : null}
-
-                          <div className='sentinel-achievement-meta'>
-                            <div className={achievementListClasses.AchievementTitle}>{ach.DisplayName}</div>
-                            <div
-                              className={joinClassNames(
-                                achievementListClasses.AchievementDescription,
-                                ach.Hidden === 1 ? achievementListClasses.Hidden : ''
-                              )}
-                            >
-                              {ach.Description || ''}
-                            </div>
-                            {!isLoading && globalPercentages.has(ach.Name) && (
-                              <div
-                                className={joinClassNames(
-                                  achievementListClasses.AchievementGlobalPercentage,
-                                  achievementListClasses.InBody
-                                )}
-                              >
-                                {globalPercentages.get(ach.Name)}% of players have this
-                              </div>
-                            )}
-                          </div>
-
-                          <div className='sentinel-achievement-state'>
-                            {hasProgress && (
-                              <>
-                                <div className={achievementListClasses.ProgressCount}>
-                                  {currentAch?.earned && progress !== maxProgress ? progress + 1 : progress} /
-                                  {maxProgress}
-                                </div>
-                                <ProgressBar
-                                  nProgress={Math.round(
-                                    ((currentAch?.earned && progress !== maxProgress ? progress + 1 : progress) /
-                                      maxProgress) *
-                                      100
-                                  )}
-                                  focusable={false}
-                                />
-                              </>
-                            )}
-                          </div>
-                        </Focusable>
-                      );
-                    })}
-                  </>
-                )}
-              </div>
+                        </div>
+                      </Focusable>
+                    );
+                  })}
+                </>
+              )}
             </div>
-          </ScrollPanel>
-        </Focusable>
+          </div>
+        </ScrollPanel>
       </div>
     </div>
   );

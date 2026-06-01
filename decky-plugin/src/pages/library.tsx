@@ -32,6 +32,7 @@ const libraryStyles = `
   .sentinel-library-header {
     font-size: 24px;
   }
+
   .sentinel-library-empty-icon {
     width: 80px;
     height: 80px;
