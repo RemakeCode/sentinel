@@ -13,6 +13,7 @@ import {
 } from '@decky/ui';
 import { FaUnlock } from 'react-icons/fa';
 import { LibraryImage } from '@/shared/components/library-image';
+import { EmptyState } from '@/shared/components/empty-state';
 import { BASE_URL, Fetcher } from '@/shared/utils/fetcher';
 import { runningGames, subscribeToGameChanges } from '@/shared/utils/non-steam-game-tracker';
 import { getMapping, setMapping } from '@/shared/utils/game-mappings';
@@ -88,7 +89,7 @@ const mainStyles = `
     border-radius: 4px;
   }
 
-  .sentinel-qam-ach-item--focus {
+  .sentinel-qam-ach-item--focus, .sentinel-qam-header-card--focus {
     background: hsla(0, 0%, 10%, 0.15);
   }
 
@@ -268,7 +269,11 @@ const MainPage: FC = () => {
       <PanelSection>
         <style>{mainStyles}</style>
         <div className='sentinel-qam-scroll-area'>
-          <div className='sentinel-qam-header-card'>
+          <Focusable
+            className='sentinel-qam-header-card'
+            onActivate={() => {}}
+            focusClassName='sentinel-qam-header-card--focus'
+          >
             <div className='sentinel-qam-header'>Now Playing</div>
             <div style={{ display: 'flex', gap: '8px' }}>
               <div className='sentinel-qam-game-image'>
@@ -282,7 +287,7 @@ const MainPage: FC = () => {
                 </div>
               </div>
             </div>
-          </div>
+          </Focusable>
 
           {achievements.map((ach, i) => {
             const key = `${ach.Name}#${i}`;
@@ -360,9 +365,12 @@ const MainPage: FC = () => {
 
   return (
     <PanelSection>
-      <PanelSectionRow>
-        <div style={{ textAlign: 'center', padding: '16px 0', color: '#8b929a' }}>No game running</div>
-      </PanelSectionRow>
+      <EmptyState
+        variant='main'
+        label='No game running'
+        buttonText='Browse Library'
+        buttonClick={() => Navigation.Navigate('/sentinel/library')}
+      />
     </PanelSection>
   );
 };
