@@ -4,6 +4,7 @@ import {
   DialogButton,
   DialogControlsSection,
   DialogControlsSectionHeader,
+  DialogLabel,
   Dropdown,
   Field,
   SidebarNavigation,
@@ -71,25 +72,23 @@ const MappingsContent: FC = () => {
   const entries = Object.entries(mappings).sort(([, a], [, b]) => b.createdAt - a.createdAt);
 
   return (
-    <DialogBody>
-      <DialogControlsSection>
-        <DialogControlsSectionHeader>Game Mappings</DialogControlsSectionHeader>
-        {entries.length === 0 ? (
-          <Field label='No mappings saved yet.' />
-        ) : (
-          entries.map(([appIdStr, mapping]) => {
-            const nonSteamAppId = Number(appIdStr);
-            return (
-              <Field key={nonSteamAppId} label={mapping.shortcutName} description={mapping.sentinelName}>
-                <DialogButton onClick={() => handleDelete(nonSteamAppId, mapping.sentinelName)} style={{ minWidth: 0 }}>
-                  <BsTrash />
-                </DialogButton>
-              </Field>
-            );
-          })
-        )}
-      </DialogControlsSection>
-    </DialogBody>
+    <DialogControlsSection>
+      <DialogControlsSectionHeader>Game Mappings</DialogControlsSectionHeader>
+      {entries.length === 0 ? (
+        <Field label='No mappings saved yet.' />
+      ) : (
+        entries.map(([appIdStr, mapping]) => {
+          const nonSteamAppId = Number(appIdStr);
+          return (
+            <Field key={nonSteamAppId} label={mapping.shortcutName} description={mapping.sentinelName}>
+              <DialogButton onClick={() => handleDelete(nonSteamAppId, mapping.sentinelName)} style={{ minWidth: 0 }}>
+                <BsTrash />
+              </DialogButton>
+            </Field>
+          );
+        })
+      )}
+    </DialogControlsSection>
   );
 };
 
@@ -371,7 +370,7 @@ const SettingsPage: FC = () => {
                     />
                   }
                 >
-                  <div style={{ textTransform: 'capitalize' }}>{serviceStatus}</div>
+                  <DialogLabel>{serviceStatus}</DialogLabel>
                 </Field>
               </DialogControlsSection>
             </DialogBody>

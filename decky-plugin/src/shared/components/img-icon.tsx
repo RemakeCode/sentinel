@@ -1,4 +1,4 @@
-import { IMG_URL } from '@/shared/utils/fetcher';
+import { ASSET_URL } from '@/shared/utils/fetcher';
 import { CSSProperties } from 'react';
 
 const style: CSSProperties = {
@@ -8,5 +8,5 @@ const style: CSSProperties = {
   borderRadius: '4px'
 };
 export const ImgIcon = ({ src }: { src: string }) => {
-  return <img style={style} src={`${IMG_URL}${src}`} alt='' data-name='ach' />;
+  return <img style={style} src={`${ASSET_URL}${src}`} alt='' data-name='ach' />;
 };

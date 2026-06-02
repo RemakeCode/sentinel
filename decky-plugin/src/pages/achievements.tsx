@@ -14,7 +14,7 @@ import {
 } from '@decky/ui';
 
 import { LibraryImage } from '@/shared/components/library-image';
-import { BASE_URL, Fetcher, IMG_URL } from '@/shared/utils/fetcher';
+import { ASSET_URL, BASE_URL, Fetcher } from '@/shared/utils/fetcher';
 import type { GameBasics } from '@/shared/types/GameBasics';
 import { computeProgress } from '@/shared/utils/utils';
 import { styles } from '@/shared/styles';
@@ -358,7 +358,7 @@ const AchievementsPage: FC = () => {
                         onActivate={() => {}}
                       >
                         <img
-                          src={`${IMG_URL}${ach.Icon}`}
+                          src={`${ASSET_URL}${ach.Icon}`}
                           alt={ach.DisplayName}
                           className='sentinel-achievement-icon'
                         />
@@ -431,7 +431,7 @@ const AchievementsPage: FC = () => {
                       >
                         {ach.Icon ? (
                           <img
-                            src={`${IMG_URL}${ach.Icon}`}
+                            src={`${ASSET_URL}${ach.Icon}`}
                             alt={ach.DisplayName}
                             className='sentinel-achievement-icon sentinel-achievement-icon--locked'
                           />

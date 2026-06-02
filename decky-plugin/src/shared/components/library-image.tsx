@@ -1,6 +1,6 @@
 import { FC } from 'react';
 import { Focusable, joinClassNames, libraryAssetImageClasses, ProgressBar } from '@decky/ui';
-import { IMG_URL } from '@/shared/utils/fetcher';
+import { ASSET_URL } from '@/shared/utils/fetcher';
 
 //language=css
 const libraryImageStyles = `
@@ -42,7 +42,7 @@ const LibraryImage: FC<LibraryImageProps> = ({ src, alt = '', progress, onActiva
         )}
       >
         <img
-          src={`${IMG_URL}${src}`}
+          src={`${ASSET_URL}${src}`}
           alt={alt}
           className={joinClassNames(
             libraryAssetImageClasses.Image,
