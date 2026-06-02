@@ -1,6 +1,6 @@
 import { DialogButton, Navigation } from '@decky/ui';
 import { definePlugin, executeInTab, injectCssIntoTab, removeCssFromTab, routerHook, toaster } from '@decky/api';
-import { FaBook, FaGear, FaMedal } from 'react-icons/fa6';
+import { FaBook, FaGear } from 'react-icons/fa6';
 import { BASE_URL, NOTIFICATION_SSE_URL } from './shared/utils/fetcher';
 import type { Notification } from '@/shared/types/Notification';
 import { getNotificationTab } from '@/shared/utils/utils';
@@ -10,10 +10,13 @@ import MainPage from '@/pages/main';
 import SettingsPage from '@/pages/settings';
 import LibraryPage from '@/pages/library';
 import AchievementsPage from '@/pages/achievements';
+import { PiTrophy } from 'react-icons/pi';
 
 let sse: EventSource | null = null;
 
-initTracker();
+initTracker().catch((error) => {
+  console.error(error);
+});
 
 const toasterClassName = `sentinel-toaster`;
 const toasterContentClassName = `sentinel-toaster-content`;
@@ -171,7 +174,7 @@ export default definePlugin(() => {
       </div>
     ),
     content: <MainPage />,
-    icon: <FaMedal fill={'orange'} />,
+    icon: <PiTrophy />,
     async onDismount() {
       const notificationTab = await getNotificationTab();
       console.log('unmounting sentinel');

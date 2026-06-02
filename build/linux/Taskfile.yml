@@ -225,7 +225,6 @@ tasks:
           npm install
         fi
 
-
   decky:dev:
     summary: Build and watch decky
     dir: decky-plugin
@@ -248,6 +247,22 @@ tasks:
     cmds:
        - npm run build
 
+  decky:package:
+    summary: Bundles the Decky plugin (dist + binary + manifest) and zips it for distribution
+    dir: decky-plugin
+    deps:
+      - task: decky:build
+      - task: linux:build
+    cmds:
+      - mkdir -p out/bin
+      - mkdir -p out/dist/
+      - cp -r ./dist ./out/
+      - cp ../bin/{{.APP_NAME}} out/bin/{{.APP_NAME}}-dev
+      - cp ./plugin.json ./package.json ./main.py ./out/
+      - chmod +x out/bin/{{.APP_NAME}}-dev
+      - mkdir -p {{.ROOT_DIR}}/bin
+      - cd out && zip -r {{.ROOT_DIR}}/bin/{{.APP_NAME}}-decky-plugin.zip .
+
    # add to visudo
    # deck ALL=(root) NOPASSWD: /bin/chown -R deck /home/deck/homebrew/plugins/sentinel, /bin/mkdir -p /home/deck/homebrew/plugins/sentinel, /bin/mv /home/deck/homebrew/plugins/sentinel/bin/sentinel /home/deck/homebrew/plugins/sentinel/bin/sentinel.old, /bin/cp -R * /home/deck/homebrew/plugins/sentinel, /bin/rm -f /home/deck/homebrew/plugins/sentinel/bin/sentinel.old, /bin/touch /home/deck/homebrew/plugins/sentinel/main.py
   decky:deploy:local:
@@ -260,52 +275,19 @@ tasks:
       DECK_DIR: "~/homebrew/plugins"
       PLUGINNAME: "sentinel"
     cmds:
-    #  - pkill -f ~/homebrew/plugins/sentinel/bin/sentinel || true
-     # - sleep 1
+      - pkill -f ~/homebrew/plugins/sentinel/bin/sentinel-dev || true
+      - sleep 1
       - mkdir -p out/bin
       - mkdir -p out/dist/
       - cp -r ./dist ./out/
-      - cp ../bin/{{.APP_NAME}} out/bin/
+      - cp ../bin/{{.APP_NAME}} out/bin/{{.APP_NAME}}-dev
       - cp ./plugin.json ./package.json ./main.py ./out/
-      - chmod +x out/bin/{{.APP_NAME}}
+      - chmod +x out/bin/{{.APP_NAME}}-dev
       - sudo mkdir -p {{.DECK_DIR}}/{{.PLUGINNAME}}
       - sudo chown -R $(whoami) {{.DECK_DIR}}/{{.PLUGINNAME}}
       - sudo cp -R out/* {{.DECK_DIR}}/{{.PLUGINNAME}}
      # - sudo touch {{.DECK_DIR}}/{{.PLUGINNAME}}/main.py
      # - sudo touch {{.DECK_DIR}}/{{.PLUGINNAME}}/dist/index.js
-
-  decky:build:deploy:ssh:
-    summary: Builds and deploys the plugin to Decky Loader via SSH
-    dir: decky-plugin
-    sources:
-      - "./dist/*"
-    deps:
-      - decky:build
-    vars:
-      DECK_IP: "192.168.4.64"
-      DECK_PORT: "22"
-      DECK_USER: "deck"
-      DECK_PASS: "1234"
-      DECK_KEY: "-i \"${HOME}/.ssh/id_ed25519\""
-      DECK_DIR: "/home/deck/homebrew/plugins"
-      PLUGINNAME: "sentinel"
-    cmds:
-      # - task: build:docker
-      - mkdir -p out/bin
-      - mkdir -p out/dist/
-      - cp -r ./dist ./out/
-      - cp ../bin/{{.APP_NAME}} out/bin/
-      - cp ./plugin.json ./package.json ./main.py ./out/
-      - chmod +x out/bin/{{.APP_NAME}}
-      - echo "Deploying to {{.DECK_IP}}..."
-      - ssh {{.DECK_USER}}@{{.DECK_IP}} -p {{.DECK_PORT}} {{.DECK_KEY}} "sudo mkdir -p {{.DECK_DIR}}/{{.PLUGINNAME}}"
-      - ssh {{.DECK_USER}}@{{.DECK_IP}} -p {{.DECK_PORT}} {{.DECK_KEY}} "sudo chown -R {{.DECK_USER}} {{.DECK_DIR}}/{{.PLUGINNAME}}"
-      - rsync -avz out/ -e "ssh -p {{.DECK_PORT}}" "{{.DECK_USER}}@{{.DECK_IP}}:{{.DECK_DIR}}/{{.PLUGINNAME}}"
-      - echo "Verifying deployment..."
-      - ssh {{.DECK_USER}}@{{.DECK_IP}} -p {{.DECK_PORT}} {{.DECK_KEY}} "ls -la {{.DECK_DIR}}/{{.PLUGINNAME}}"
-      - echo "Done! Restart Decky to load the plugin."
-      #- rm -rf ./out
-
 
   sign:deb:
     summary: Signs the DEB package
