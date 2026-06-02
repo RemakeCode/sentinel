@@ -40,6 +40,7 @@ const emptyStateStyles = `
 
   .sentinel-empty-state-button {
     margin-block-start: 24px;
+    width: auto;
   }
 
   .sentinel-empty-state--library .sentinel-empty-state-label {
