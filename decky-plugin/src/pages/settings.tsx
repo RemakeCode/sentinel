@@ -4,7 +4,6 @@ import {
   DialogButton,
   DialogControlsSection,
   DialogControlsSectionHeader,
-  DialogLabel,
   Dropdown,
   Field,
   SidebarNavigation,
@@ -358,21 +357,6 @@ const SettingsPage: FC = () => {
                   </DialogButton>
                 </Field>
               </DialogControlsSection>
-              <DialogControlsSection>
-                <DialogControlsSectionHeader>Service Status</DialogControlsSectionHeader>
-                <Field
-                  label='Backend'
-                  icon={
-                    <FaCircle
-                      fill={
-                        serviceStatus === 'online' ? '#22c55e' : serviceStatus === 'offline' ? '#ef4444' : '#6b7280'
-                      }
-                    />
-                  }
-                >
-                  <DialogLabel>{serviceStatus}</DialogLabel>
-                </Field>
-              </DialogControlsSection>
             </DialogBody>
           )
         },
@@ -385,11 +369,19 @@ const SettingsPage: FC = () => {
         },
 
         {
-          title: 'Logging',
-          identifier: 'logging',
+          title: 'Others',
+          identifier: 'others',
           icon: <FaBook />,
           content: (
             <DialogBody>
+              <DialogControlsSection>
+                <DialogControlsSectionHeader>Service Status</DialogControlsSectionHeader>
+                <Field label={`Backend Status - ${serviceStatus}`}>
+                  <FaCircle
+                    fill={serviceStatus === 'online' ? '#22c55e' : serviceStatus === 'offline' ? '#ef4444' : '#6b7280'}
+                  />
+                </Field>
+              </DialogControlsSection>
               <DialogControlsSection>
                 <DialogControlsSectionHeader>Logging</DialogControlsSectionHeader>
                 <Field label='Enable logging'>
