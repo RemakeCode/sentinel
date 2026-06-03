@@ -1,7 +1,7 @@
 import { DialogButton, Navigation } from '@decky/ui';
 import { definePlugin, executeInTab, injectCssIntoTab, removeCssFromTab, routerHook, toaster } from '@decky/api';
 import { FaBook, FaGear } from 'react-icons/fa6';
-import { BASE_URL, NOTIFICATION_SSE_URL } from './shared/utils/fetcher';
+import { BASE_URL, getNotificationSSEUrl } from './shared/utils/fetcher';
 import type { Notification } from '@/shared/types/Notification';
 import { getNotificationTab } from '@/shared/utils/utils';
 import { ImgIcon } from '@/shared/components/img-icon';
@@ -72,7 +72,7 @@ const toasterStyles = `
 let cssId: string | undefined;
 
 async function connectSSE() {
-  sse = new EventSource(NOTIFICATION_SSE_URL);
+  sse = new EventSource(await getNotificationSSEUrl());
 
   const duration = 7000;
 
