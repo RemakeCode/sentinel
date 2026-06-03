@@ -3,63 +3,96 @@ import logging
 import os
 import signal
 
+AUTH_TOKEN_PREFIX = "SENTINEL_DECKY_AUTH_TOKEN="
+AUTH_TOKEN_TIMEOUT_SECONDS = 10
+
+
+def parse_auth_token_line(line: str):
+    line = line.strip()
+    if line.startswith(AUTH_TOKEN_PREFIX):
+        token = line[len(AUTH_TOKEN_PREFIX):].strip()
+        return token if token else None
+    return None
+
 
 class Plugin:
     def __init__(self):
         self.process = None
-
+        self.auth_token = None
+        self.stdout_task = None
 
     async def _main(self):
-        # Use a local executable for the beta.
-        # Full release would use the same executable as the Desktop App
         bin_path = os.path.join(os.environ['DECKY_PLUGIN_DIR'], "bin", "sentinel-dev")
         os.chmod(bin_path, 0o755)
-
-        # 1. Prevent duplicates: Kill any lingering instances from hard crashes
-        # where _unload() was bypassed.
-        try:
-            pkill_proc = await asyncio.create_subprocess_exec(
-                "pkill", "-f", bin_path,
-                stdout=asyncio.subprocess.DEVNULL,
-                stderr=asyncio.subprocess.DEVNULL
-            )
-            await pkill_proc.wait()
-        except Exception as e:
-            logging.debug(f"Pre-launch cleanup skipped or failed: {e}")
 
         logging.info(f"Starting binary at {bin_path}")
 
         try:
             self.process = await asyncio.create_subprocess_exec(
                 bin_path, '--decky',
-                stdout=asyncio.subprocess.DEVNULL,
+                stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.DEVNULL,
-                start_new_session=True  # Becomes the leader of a new process group
+                start_new_session=True
             )
+            self.auth_token = await self._capture_auth_token()
+            self.stdout_task = asyncio.create_task(self._drain_stdout())
         except Exception as e:
             logging.error(f"Failed to start binary: {e}")
+            await self._stop_process()
+
+    async def _capture_auth_token(self):
+        if self.process is None or self.process.stdout is None:
+            raise RuntimeError("Sentinel process stdout is unavailable")
+
+        while True:
+            line = await asyncio.wait_for(self.process.stdout.readline(), timeout=AUTH_TOKEN_TIMEOUT_SECONDS)
+            if not line:
+                raise RuntimeError("Sentinel process exited before emitting Decky auth token")
+
+            token = parse_auth_token_line(line.decode(errors='replace'))
+            if token:
+                logging.info("Captured Decky auth token from Sentinel startup")
+                return token
+
+    async def _drain_stdout(self):
+        if self.process is None or self.process.stdout is None:
+            return
+
+        while await self.process.stdout.readline():
+            pass
+
+    async def get_decky_auth_token(self):
+        if not self.auth_token:
+            raise RuntimeError("Decky auth token is not available")
+        return self.auth_token
+
+    async def _stop_process(self):
+        if self.stdout_task is not None:
+            self.stdout_task.cancel()
+            self.stdout_task = None
+
+        if self.process is None:
+            self.auth_token = None
+            return
+
+        logging.info("Stopping binary...")
+        try:
+            pgid = os.getpgid(self.process.pid)
+            os.killpg(pgid, signal.SIGTERM)
+
+            try:
+                await asyncio.wait_for(self.process.wait(), timeout=5)
+            except asyncio.TimeoutError:
+                logging.warning("Process group did not terminate gracefully, sending SIGKILL")
+                os.killpg(pgid, signal.SIGKILL)
+                await asyncio.wait_for(self.process.wait(), timeout=3)
+        except ProcessLookupError:
+            pass
+        except Exception as e:
+            logging.error(f"Error during cleanup: {e}")
+        finally:
+            self.process = None
+            self.auth_token = None
 
     async def _unload(self):
-        if self.process is not None:
-            logging.info("Stopping binary...")
-            try:
-                # 2. Prevent zombies: Get the Process Group ID (PGID) and kill the whole group.
-                # This ensures any child processes spawned by your binary are also terminated.
-                pgid = os.getpgid(self.process.pid)
-                os.killpg(pgid, signal.SIGTERM)
-
-                try:
-                    await asyncio.wait_for(self.process.wait(), timeout=5)
-                except asyncio.TimeoutError:
-                    logging.warning("Process group did not terminate gracefully, sending SIGKILL")
-                    os.killpg(pgid, signal.SIGKILL)
-                    await asyncio.wait_for(self.process.wait(), timeout=3)
-
-            except ProcessLookupError:
-                # Process has already exited on its own
-                logging.info("Binary process already exited.")
-            except Exception as e:
-                logging.error(f"Error during cleanup: {e}")
-            finally:
-                # 3. Always clear the reference
-                self.process = None
+        await self._stop_process()
