@@ -14,7 +14,7 @@ import { openFilePicker, toaster } from '@decky/api';
 import { BASE_URL, Fetcher } from '@/shared/utils/fetcher';
 import { usePlayAudio } from '@/shared/utils/usePlayAudio';
 import { clearMapping, type GameMapping, getAllMappings } from '@/shared/utils/game-mappings';
-import { showConfirmModal } from '@/shared/utils/confirm';
+import { showConfirmModal } from '@/shared/components/confirm';
 import { BsTrash } from 'react-icons/bs';
 import { FaVolumeHigh, FaVolumeOff } from 'react-icons/fa6';
 import { FaBook, FaCircle, FaCog, FaLink, FaSave } from 'react-icons/fa';

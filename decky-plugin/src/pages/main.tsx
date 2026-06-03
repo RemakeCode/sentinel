@@ -18,7 +18,7 @@ import { BASE_URL, Fetcher } from '@/shared/utils/fetcher';
 import { runningGames, subscribeToGameChanges } from '@/shared/utils/non-steam-game-tracker';
 import { getMapping, setMapping } from '@/shared/utils/game-mappings';
 import { matchGameByName } from '@/shared/utils/game-matcher';
-import { showConfirmModal } from '@/shared/utils/confirm';
+import { showConfirmModal } from '@/shared/components/confirm';
 import { computeProgress } from '@/shared/utils/utils';
 import type { GameBasics } from '@/shared/types/GameBasics';
 import { ImgIcon } from '@/shared/components/img-icon';
