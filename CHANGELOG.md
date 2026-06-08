@@ -1,3 +1,9 @@
+## [1.1.0-beta.1](https://github.com/RemakeCode/sentinel/compare/v1.0.7...v1.1.0-beta.1) (2026-06-08)
+
+### 🚀 New Features
+
+* Sentinel decky plugin Implementation  ([7b7c3e7](https://github.com/RemakeCode/sentinel/commit/7b7c3e7e5514c6924d32556e91d5b4b75450f676))
+
 ## [1.0.7](https://github.com/RemakeCode/sentinel/compare/v1.0.6...v1.0.7) (2026-04-18)
 
 ### 🐛 Bug Fixes
