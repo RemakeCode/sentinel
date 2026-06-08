@@ -1,21 +1,23 @@
 package main
 
 import (
+	"context"
 	"embed"
 	"flag"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"os"
-	"runtime"
 	"sentinel/backend"
 	"sentinel/backend/ach"
+	"sentinel/backend/api"
 	"sentinel/backend/config"
+	"sentinel/backend/decky"
 	"sentinel/backend/logger"
 	"sentinel/backend/notifier"
 	"sentinel/backend/steam"
 	"sentinel/backend/watcher"
 
-	"net/http"
 	"path/filepath"
 	"strings"
 
@@ -30,25 +32,24 @@ var assets embed.FS
 var trayIcon []byte
 
 var startMinimized bool
+var deckyMode bool
 
 func init() {
 	flag.BoolVar(&startMinimized, "startminimized", false, "Start with window minimized (systray only)")
+	flag.BoolVar(&deckyMode, "decky", false, "Run in Decky plugin mode (headless with API server)")
 	application.RegisterEvent[application.Void]("sentinel::ready")
 	application.RegisterEvent[backend.FetchStatusEvt](backend.EventFetchStatus)
 	application.RegisterEvent[application.Void](backend.EventDataUpdated)
 }
 
 func main() {
-	if runtime.GOOS == "linux" {
-		os.Setenv("WEBKIT_DISABLE_DMABUF_RENDERER", "1")
-	}
 
+	flag.Parse()
 	var window *application.WebviewWindow
 
 	appLogger := logger.New()
-	// Load config early to check logging preferences
 	cfg, err := config.Get()
-	logLevel := "info" // default
+	logLevel := "info"
 	if err == nil && cfg != nil {
 		logLevel = cfg.LogLevel
 		logger.SetLevel(logger.ParseLevel(logLevel))
@@ -56,8 +57,8 @@ func main() {
 
 	slog.SetDefault(appLogger)
 
-	// Initialize services
 	configService := &config.File{}
+
 	achService := &ach.Service{}
 
 	steamService := &steam.Service{
@@ -73,6 +74,63 @@ func main() {
 		Ach:      achService,
 		Config:   configService,
 		Notifier: notifierService,
+	}
+
+	if deckyMode || os.Getenv("DECKY_MODE") == "true" {
+		deckyAuthToken, err := decky.GenerateAuthToken()
+		if err != nil {
+			slog.Error("Failed to generate Decky API auth token", "error", err)
+			os.Exit(1)
+		}
+		if err := decky.WriteAuthToken(os.Stdout, deckyAuthToken); err != nil {
+			slog.Error("Failed to write Decky API auth token", "error", err)
+			os.Exit(1)
+		}
+
+		// Initialize services in the correct order for decky mode
+		ctx := context.Background()
+		options := application.DefaultServiceOptions
+
+		slog.Info("slogger")
+		// Initialize config service first
+		if err := configService.ServiceStartup(ctx, options); err != nil {
+			slog.Error("Failed to initialize config service", "error", err)
+		}
+
+		// Initialize steam service (depends on config)
+		if err := steamService.ServiceStartup(ctx, options); err != nil {
+			slog.Error("Failed to initialize steam service", "error", err)
+
+		}
+
+		// Initialize ach service
+		if err := achService.ServiceStartup(ctx, options); err != nil {
+			slog.Error("Failed to initialize ach service", "error", err)
+
+		}
+
+		// Initialize watcher service (depends on config)
+		if err := watcherService.ServiceStartup(ctx, options); err != nil {
+			slog.Error("Failed to initialize watcher service", "error", err)
+		}
+
+		// Initialize notifier service (depends on config)
+		if err := notifierService.ServiceStartup(ctx, options); err != nil {
+			slog.Error("Failed to initialize notifier service", "error", err)
+		}
+
+		go func() {
+			router := api.NewRouter(configService, steamService, watcherService, notifierService, deckyAuthToken)
+			port := decky.GetPort()
+			slog.Info(fmt.Sprintf("Decky API Server on 127.0.0.1:%d", port))
+
+			slog.Info(fmt.Sprintf("isDecky:%t", decky.IsDecky()))
+
+			if err := http.ListenAndServe(fmt.Sprintf("127.0.0.1:%d", port), router.Handler()); err != nil {
+				slog.Error("Decky API Server failed", "error", err)
+			}
+		}()
+		select {}
 	}
 
 	options := application.Options{
@@ -102,10 +160,10 @@ func main() {
 		Mac: application.MacOptions{
 			ApplicationShouldTerminateAfterLastWindowClosed: false,
 		},
+		Linux: application.LinuxOptions{},
 		SingleInstance: &application.SingleInstanceOptions{
 			UniqueID: "dev.sentinel.app",
 			OnSecondInstanceLaunch: func(data application.SecondInstanceData) {
-				// Bring the existing instance to front when second instance is launched
 				if window != nil {
 					window.Show()
 					window.Focus()
@@ -114,56 +172,57 @@ func main() {
 		},
 	}
 
-	// Sync slog level with Wails LogLevel option
 	logger.SetLevel(options.LogLevel)
-
-	flag.Parse()
 
 	app := application.New(options)
 
-	window = app.Window.NewWithOptions(application.WebviewWindowOptions{
-		Title:                      "Sentinel",
-		MinWidth:                   1280,
-		MinHeight:                  720,
-		Width:                      1920,
-		Height:                     1080,
-		URL:                        "/",
-		Hidden:                     startMinimized,
-		UseApplicationMenu:         false,
-		DefaultContextMenuDisabled: false,
-		BackgroundColour:           application.NewRGB(18, 18, 18),
-	})
+	if !deckyMode {
+		window = app.Window.NewWithOptions(application.WebviewWindowOptions{
+			Title:                      "Sentinel",
+			MinWidth:                   1280,
+			MinHeight:                  720,
+			Width:                      1920,
+			Height:                     1080,
+			URL:                        "/",
+			Hidden:                     startMinimized,
+			UseApplicationMenu:         false,
+			DefaultContextMenuDisabled: false,
+			BackgroundColour:           application.NewRGB(18, 18, 18),
+			Linux: application.LinuxWindow{
+				WebviewGpuPolicy: application.WebviewGpuPolicyOnDemand,
+			},
+		})
 
-	window.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
-		window.Hide()
-		e.Cancel()
-	})
+		window.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
+			window.Hide()
+			e.Cancel()
+		})
 
-	tray := app.SystemTray.New()
-	tray.SetIcon(trayIcon)
-	tray.SetTooltip("Sentinel")
+		tray := app.SystemTray.New()
+		tray.SetIcon(trayIcon)
+		tray.SetTooltip("Sentinel")
 
-	menu := application.NewMenu()
-	showItem := menu.Add("Show")
-	showItem.OnClick(func(_ *application.Context) {
-		window.Show()
-		window.Focus()
-	})
+		menu := application.NewMenu()
+		showItem := menu.Add("Show")
+		showItem.OnClick(func(_ *application.Context) {
+			window.Show()
+			window.Focus()
+		})
 
-	menu.AddSeparator()
-	exitItem := menu.Add("Exit")
-	exitItem.OnClick(func(_ *application.Context) {
-		app.Quit()
-	})
-	tray.SetMenu(menu)
+		menu.AddSeparator()
+		exitItem := menu.Add("Exit")
+		exitItem.OnClick(func(_ *application.Context) {
+			app.Quit()
+		})
+		tray.SetMenu(menu)
 
-	window.OnWindowEvent(events.Common.WindowRuntimeReady, func(e *application.WindowEvent) {
-		app.Event.Emit("sentinel::ready")
+		window.OnWindowEvent(events.Common.WindowRuntimeReady, func(e *application.WindowEvent) {
+			app.Event.Emit("sentinel::ready")
+			slog.Info(fmt.Sprintf("%s %s is running", backend.AppName, backend.Version))
+		})
 
-		slog.Info(fmt.Sprintf("%s %s is running", backend.AppName, backend.Version))
-	})
-
-	if err := app.Run(); err != nil {
-		slog.Error("Application failed", "error", err)
+		if err := app.Run(); err != nil {
+			slog.Error("Application failed", "error", err)
+		}
 	}
 }

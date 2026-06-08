@@ -14,9 +14,11 @@ import (
 	"sentinel/backend"
 	"sentinel/backend/ach"
 	"sentinel/backend/config"
+	"sentinel/backend/decky"
 	"sentinel/backend/steam"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -42,6 +44,8 @@ type Service struct {
 	ctx               context.Context
 	cancel            context.CancelFunc
 	Config            *config.File
+	clients           map[string]chan string
+	mu                sync.RWMutex
 }
 
 var queueCap = 100
@@ -85,6 +89,7 @@ func (s *Service) ServiceStartup(ctx context.Context, options application.Servic
 
 	s.notificationQueue = make(chan *NotificationPayload, queueCap)
 	s.ctx, s.cancel = context.WithCancel(context.Background())
+	s.clients = make(map[string]chan string)
 
 	go s.notificationWorker()
 
@@ -101,7 +106,11 @@ func (s *Service) notificationWorker() {
 			return
 		case payload := <-s.notificationQueue:
 			slog.Info("Worker received payload", "title", payload.Title, "game", payload.GameName, "isProgress", payload.IsProgress)
-			s.sendNotificationSync(payload)
+			if decky.IsDecky() {
+				s.sendNotificationSSE(payload)
+			} else {
+				s.sendNotificationSync(payload)
+			}
 			time.Sleep(backend.NotificationDelay)
 		}
 	}
@@ -173,15 +182,15 @@ func (s *Service) SendNotification(appId string, achievements map[string]ach.Ach
 
 			var title string
 			if strings.EqualFold(achievement.Name, id) {
-				icon := strings.Split(strings.Replace(achievement.Icon, "https://", "", 1), "/")
-
+				iconPath := filepath.Join(backend.ACHCacheIconDir, appId, filepath.Base(achievement.Icon))
 				title = achievement.DisplayName
 				message := achievement.Description
-				imagePath := filepath.Join(backend.ACHCacheIconDir, appId, icon[len(icon)-1])
 
 				if isProgress && a.MaxProgress > 0 {
-					title = achievement.Description
-					message = progressBar(a.Progress, a.MaxProgress, 22)
+					if !decky.IsDecky() {
+						title = achievement.Description
+						message = progressBar(a.Progress, a.MaxProgress, 22)
+					}
 				}
 
 				var soundFile string
@@ -197,7 +206,7 @@ func (s *Service) SendNotification(appId string, achievements map[string]ach.Ach
 				payload := &NotificationPayload{
 					Title:       title,
 					Message:     message,
-					IconPath:    imagePath,
+					IconPath:    iconPath,
 					SoundFile:   soundFile,
 					GameName:    gameName,
 					Progress:    a.Progress,
@@ -248,7 +257,7 @@ func (s *Service) TestNotificationProgress() error {
 
 	payload := &NotificationPayload{
 		Title:       "For those who come after",
-		Message:     progressBar(7, 10, 22),
+		Message:     "Play 10 games",
 		IconPath:    filepath.Join(backend.MediaDir, "sentinel.png"),
 		SoundFile:   s.Config.NotificationSound,
 		GameName:    "Sentinel",
@@ -325,17 +334,22 @@ func (s *Service) PlaySound(filename string) error {
 
 	go func() {
 		var cmd *exec.Cmd
-		if _, err := exec.LookPath("paplay"); err == nil {
+		if _, err := exec.LookPath("pw-play"); err == nil {
+			cmd = exec.Command("pw-play", soundPath)
+		} else if _, err := exec.LookPath("paplay"); err == nil {
 			cmd = exec.Command("paplay", soundPath)
 		} else if _, err := exec.LookPath("aplay"); err == nil {
 			cmd = exec.Command("aplay", soundPath)
 		} else {
-			slog.Warn("No audio playback utility available (paplay/aplay)")
+			slog.Warn("No audio playback utility available (pw-play/paplay/aplay)")
 			return
 		}
 
+		var stderr bytes.Buffer
+		cmd.Stderr = &stderr
+
 		if err := cmd.Run(); err != nil {
-			slog.Warn("Failed to play sound", "filename", filename, "error", err)
+			slog.Warn("Failed to play sound", "filename", filename, "soundPath", soundPath, "error", err, "stderr", stderr.String())
 		}
 	}()
 
@@ -344,6 +358,45 @@ func (s *Service) PlaySound(filename string) error {
 
 func (s *Service) GetNotificationExpireTime() int {
 	return int(backend.NotificationExpireTime / time.Millisecond)
+}
+
+// RegisterClient registers a new SSE client
+func (s *Service) RegisterClient(clientID string, notifications chan string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.clients[clientID] = notifications
+}
+
+// UnregisterClient removes a client from the notifier service
+func (s *Service) UnregisterClient(clientID string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.clients, clientID)
+}
+
+// sendNotificationSSE sends a notification to all connected SSE clients
+func (s *Service) sendNotificationSSE(payload *NotificationPayload) {
+	slog.Info("SSE Notification sent")
+
+	// Convert local icon path to virtual path for Decky frontend
+	if payload.IconPath != "" && filepath.IsAbs(payload.IconPath) {
+		if relPath, err := filepath.Rel(backend.DataDir, payload.IconPath); err == nil {
+			payload.IconPath = "/api/media/" + filepath.ToSlash(relPath)
+		}
+	}
+
+	jsonData, _ := json.Marshal(payload)
+
+	// Send to all clients
+	s.mu.RLock()
+	for _, ch := range s.clients {
+		select {
+		case ch <- string(jsonData):
+		default:
+			// Skip if channel is full
+		}
+	}
+	s.mu.RUnlock()
 }
 
 //wails:internal
