@@ -202,6 +202,14 @@ jobs:
       - name: Install Wails CLI
         run: go install github.com/wailsapp/wails/v3/cmd/wails3@latest
 
+      - name: Build Go binary
+        run: task linux:build
+
+      - name: Install decky-plugin dependencies
+        run: task linux:decky:install:deps
+
+      - name: Build decky plugin
+        run: task linux:decky:package
       - name: Semantic Release
         id: semantic
         uses: cycjimmy/semantic-release-action@v4

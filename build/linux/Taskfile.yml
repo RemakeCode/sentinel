@@ -220,6 +220,7 @@ tasks:
     cmds:
       - |
         if [ "$CI" = "true" ]; then
+          rm -rf node_modules
           npm ci
         else
           npm install
