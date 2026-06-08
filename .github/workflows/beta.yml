@@ -1,3 +1,5 @@
+# This should build a beta build of the decky-plugin
+
 name: Beta
 
 on:
@@ -88,13 +90,6 @@ jobs:
 
       - name: Build Check
         run: task linux:build
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: linux-build
-          path: bin/sentinel
-          retention-days: 30
 
       - name: Install decky-plugin dependencies
         run: task decky:install:deps
