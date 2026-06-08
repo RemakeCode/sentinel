@@ -218,10 +218,10 @@ jobs:
           GITHUB_TOKEN: ${{steps.app-token.outputs.token }}
 
       - name: Install decky-plugin dependencies
-        run: task decky:install:deps
+        run: task linux:decky:install:deps
 
       - name: Build decky plugin
-        run: task decky:package
+        run: task linux:decky:package
 
       - name: Upload decky build artifact
         uses: actions/upload-artifact@v4
