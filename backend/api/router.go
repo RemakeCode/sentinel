@@ -34,7 +34,6 @@ func (e AppError) Error() string {
 	return e.Message
 }
 
-// HandlerFunc defines a handler that can return errors
 type HandlerFunc func(http.ResponseWriter, *http.Request) error
 
 // Wrap converts our HandlerFunc into a standard http.HandlerFunc
@@ -101,7 +100,6 @@ func NewRouter(c *config.File, s *steam.Service, w *watcher.Service, n *notifier
 func (r *Router) Handler() http.Handler {
 	router := chi.NewRouter()
 
-	// 1. Setup CORS (Essential for Decky Loader plugins)
 	router.Use(cors.Handler(cors.Options{
 		AllowOriginFunc: func(r *http.Request, origin string) bool {
 			return true
@@ -112,16 +110,14 @@ func (r *Router) Handler() http.Handler {
 		MaxAge:           300,
 	}))
 
-	// 2. Standard Middlewares
 	router.Use(middleware.Logger)    // Logs requests to terminal
 	router.Use(middleware.Recoverer) // Prevents app from crashing on API panics
 
-	// 3. Define Routes
 	router.Route("/decky-backend", func(api chi.Router) {
 		if r.AuthToken != "" {
 			api.Use(r.authMiddleware)
 		}
-		// Config endpoints
+
 		api.Get("/ready", Wrap(r.handleReady))
 		api.Get("/config", Wrap(r.handleGetConfig))
 		api.Get("/config/available-sounds", Wrap(r.handleGetAvailableSounds))
