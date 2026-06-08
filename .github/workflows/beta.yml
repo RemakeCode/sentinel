@@ -202,6 +202,12 @@ jobs:
       - name: Install Wails CLI
         run: go install github.com/wailsapp/wails/v3/cmd/wails3@latest
 
+      - name: Install decky-plugin dependencies
+        run: task linux:decky:install:deps
+
+      - name: Build decky plugin
+        run: task linux:decky:package
+
       - name: Semantic Release
         id: semantic
         uses: cycjimmy/semantic-release-action@v4
@@ -217,14 +223,18 @@ jobs:
         env:
           GITHUB_TOKEN: ${{steps.app-token.outputs.token }}
 
-      - name: Install decky-plugin dependencies
-        run: task linux:decky:install:deps
-
-      - name: Build Go backend
-        run: task build
-
-      - name: Build decky plugin
-        run: task linux:decky:package
+      - name: Remove unwanted release assets
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          TAG=$(gh release list --json tagName --jq '.[0].tagName' --limit 1)
+          gh release view "$TAG" --json assets --jq '.assets[].name' | while read asset; do
+            case "$asset" in
+              *.deb|*.rpm|*.pkg.tar.zst)
+                gh release delete-asset "$TAG" "$asset" --yes
+                ;;
+            esac
+          done
 
       - name: Upload decky build artifact
         uses: actions/upload-artifact@v4

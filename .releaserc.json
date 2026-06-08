@@ -36,6 +36,9 @@
           },
           {
             "path": "bin/*.pkg.tar.zst"
+          },
+          {
+            "path": "bin/*decky-plugin.zip"
           }
         ]
       }
