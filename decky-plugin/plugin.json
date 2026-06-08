@@ -1,7 +1,7 @@
 {
   "name": "Sentinel Beta",
   "author": "afkRightNow",
-  "flags": [""],
+  "flags": ["debug"],
   "api_version": 1,
   "publish": {
     "tags": ["achievements","notifications"],
