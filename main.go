@@ -86,6 +86,7 @@ func main() {
 			slog.Error("Failed to write Decky API auth token", "error", err)
 			os.Exit(1)
 		}
+		os.Stdout.Sync()
 
 		// Initialize services in the correct order for decky mode
 		ctx := context.Background()
