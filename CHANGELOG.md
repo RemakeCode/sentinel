@@ -1,3 +1,10 @@
+## [1.1.0-beta.4](https://github.com/RemakeCode/sentinel/compare/v1.1.0-beta.3...v1.1.0-beta.4) (2026-06-08)
+
+### 🐛 Bug Fixes
+
+* **decky-plugin:** missing flag in plugin config ([#49](https://github.com/RemakeCode/sentinel/issues/49)) ([435eb41](https://github.com/RemakeCode/sentinel/commit/435eb411f79dee042881977fcd46624d0efbe671))
+* fix permission errors ([5d3a39c](https://github.com/RemakeCode/sentinel/commit/5d3a39c97c1db86df5517e171416886c10c13229))
+
 ## [1.1.0-beta.3](https://github.com/RemakeCode/sentinel/compare/v1.1.0-beta.2...v1.1.0-beta.3) (2026-06-08)
 
 ### 🚀 New Features
