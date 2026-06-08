@@ -23,7 +23,10 @@ class Plugin:
 
     async def _main(self):
         bin_path = os.path.join(os.environ['DECKY_PLUGIN_DIR'], "bin", "sentinel-dev")
-        os.chmod(bin_path, 0o755)
+        try:
+            os.chmod(bin_path, 0o755)
+        except PermissionError:
+            logging.warning(f"Could not set executable permission on {bin_path}")
 
         logging.info(f"Starting binary at {bin_path}")
 
