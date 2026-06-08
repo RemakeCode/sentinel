@@ -253,7 +253,6 @@ tasks:
     dir: decky-plugin
     deps:
       - task: decky:build
-      - task: build
     cmds:
       - mkdir -p out/bin
       - mkdir -p out/dist/

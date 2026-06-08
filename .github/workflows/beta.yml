@@ -220,6 +220,9 @@ jobs:
       - name: Install decky-plugin dependencies
         run: task linux:decky:install:deps
 
+      - name: Build Go backend
+        run: task build
+
       - name: Build decky plugin
         run: task linux:decky:package
 
