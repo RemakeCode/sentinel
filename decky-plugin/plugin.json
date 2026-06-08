@@ -1,11 +1,11 @@
 {
-  "name": "Sentinel",
-  "author": "John Doe",
-  "flags": ["debug"],
+  "name": "Sentinel Beta",
+  "author": "afkRightNow",
+  "flags": [""],
   "api_version": 1,
   "publish": {
-    "tags": ["template", "root"],
-    "description": "Decky example plugin.",
-    "image": "https://opengraph.githubassets.com/1/SteamDeckHomebrew/PluginLoader"
+    "tags": ["achievements","notifications"],
+    "description": "An achievement watcher for Steam emulator games on Linux.",
+    "image": ""
   }
 }

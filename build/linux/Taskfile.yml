@@ -225,6 +225,7 @@ tasks:
           npm install
         fi
 
+
   decky:dev:
     summary: Build and watch decky
     dir: decky-plugin
@@ -265,6 +266,7 @@ tasks:
 
    # add to visudo
    # deck ALL=(root) NOPASSWD: /bin/chown -R deck /home/deck/homebrew/plugins/sentinel, /bin/mkdir -p /home/deck/homebrew/plugins/sentinel, /bin/mv /home/deck/homebrew/plugins/sentinel/bin/sentinel /home/deck/homebrew/plugins/sentinel/bin/sentinel.old, /bin/cp -R * /home/deck/homebrew/plugins/sentinel, /bin/rm -f /home/deck/homebrew/plugins/sentinel/bin/sentinel.old, /bin/touch /home/deck/homebrew/plugins/sentinel/main.py
+
   decky:deploy:local:
     summary: Builds and deploys the plugin to Decky Loader via SSH
     dir: decky-plugin
