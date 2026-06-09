@@ -232,6 +232,11 @@ func (s *Service) PathWalker() {
 
 // scanAndWatchPrefix walks a prefix directory and watches any new game directories found
 func (s *Service) scanAndWatchPrefix(prefix string) {
+	if _, err := os.Stat(prefix); err != nil {
+		slog.Warn("Prefix path no longer exists, skipping", "prefix", prefix, "error", err)
+		return
+	}
+
 	watchlist := s.watcher.WatchList()
 
 	err := filepath.WalkDir(prefix, func(path string, d os.DirEntry, err error) error {
@@ -241,11 +246,13 @@ func (s *Service) scanAndWatchPrefix(prefix string) {
 
 		if d.IsDir() && numericRegex.MatchString(d.Name()) {
 			if err := s.watchPath(path); err != nil {
-				return err
+				slog.Warn("Failed to watch path", "path", path, "error", err)
+				return nil
 			}
 
 			if err := s.Ach.SaveAch(path); err != nil {
-				return err
+				slog.Warn("Failed to cache ach from path", "path", path, "error", err)
+				return nil
 			}
 
 			s.triggerMetadataFetch([]string{filepath.Base(path)})
