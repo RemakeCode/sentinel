@@ -1,3 +1,9 @@
+## [1.0.8](https://github.com/RemakeCode/sentinel/compare/v1.0.7...v1.0.8) (2026-06-09)
+
+### 🐛 Bug Fixes
+
+* fix crash when a prefix is suddenly removed by another process  ([6306079](https://github.com/RemakeCode/sentinel/commit/63060797488da69d47d0c71de3f4a56b35ea6d04)), closes [#39](https://github.com/RemakeCode/sentinel/issues/39)
+
 ## [1.0.7](https://github.com/RemakeCode/sentinel/compare/v1.0.6...v1.0.7) (2026-04-18)
 
 ### 🐛 Bug Fixes
