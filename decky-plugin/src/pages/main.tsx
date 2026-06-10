@@ -315,7 +315,7 @@ const MainPage: FC = () => {
                 className={joinClassNames('sentinel-qam-ach-item')}
               >
                 <div className={'sentinel-qam-ach-image'}>
-                  <ImgIcon src={ach.Icon} />
+                  <ImgIcon src={ach.Icon} style={{ bottom: 0, height: '48px' }} />
                 </div>
                 <div className='sentinel-qam-ach-content'>
                   <div className='sentinel-qam-ach-row'>
