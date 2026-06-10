@@ -1,7 +1,7 @@
 {
-  "name": "decky-plugin-template",
+  "name": "sentinel decky plugin",
   "version": "0.0.1",
-  "description": "A template to quickly create decky plugins from scratch, based on TypeScript and webpack",
+  "description": "An achievement watcher for your proton/wine games",
   "type": "module",
   "scripts": {
     "dev": "tsc --noEmit && rollup -c -w",
@@ -9,21 +9,20 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/SteamDeckHomebrew/decky-plugin-template.git"
+    "url": "https://github.com/RemakeCode/sentinel/tree/beta/decky-plugin"
   },
   "keywords": [
-    "decky",
-    "plugin",
-    "plugin-template",
+    "achievement",
+    "trophy",
+    "decky-plugin",
     "steam-deck",
-    "deck"
+    "steamos"
   ],
-  "author": "You <you@you.tld>",
-  "license": "BSD-3-Clause",
+  "author": "afkRightNow 258896796+afk-rightnow@users.noreply.github.com>",
+  "license": "MIT",
   "bugs": {
-    "url": "https://github.com/SteamDeckHomebrew/decky-plugin-template/issues"
+    "url": "https://github.com/RemakeCode/sentinel/tree/beta/decky-plugin"
   },
-  "homepage": "https://github.com/SteamDeckHomebrew/decky-plugin-template#readme",
   "devDependencies": {
     "@decky/api": "^1.1.3",
     "@decky/rollup": "^1.0.2",
