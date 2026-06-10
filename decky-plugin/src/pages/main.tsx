@@ -81,9 +81,9 @@ const mainStyles = `
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    height: 40px;
-    padding: 4px;
+    gap: 6px;
+    height: 50px;
+    padding: 5px;
     border: 1px solid hsla(0, 0%, 100%, .1);
     background: hsla(0, 0%, 100%, .05);
     border-radius: 4px;
@@ -94,8 +94,16 @@ const mainStyles = `
   }
 
   .sentinel-qam-ach-image {
-    width: 38px;
-    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 50px;
+    height: 50px;
+    & > img {
+      position:relative;
+      bottom:0;
+      height:48px;
+    }
   }
 
   .sentinel-qam-ach-content {
@@ -113,7 +121,7 @@ const mainStyles = `
 
   .sentinel-qam-ach-name {
     font-weight: bold;
-    font-size: 11px;
+    font-size: 13px;
     text-overflow: ellipsis;
     overflow: hidden;
     white-space: nowrap;
@@ -125,7 +133,7 @@ const mainStyles = `
   }
 
   .sentinel-qam-ach-description {
-    font-size: 10px;
+    font-size: 12px;
     color: #8b929a;
     text-overflow: ellipsis;
     overflow: hidden;
@@ -142,7 +150,7 @@ const mainStyles = `
   }
 
   .sentinel-qam-ach-progress-text {
-    font-size: 10px;
+    font-size: 11px;
     color: #8b929a;
     text-align: right;
     position: absolute;

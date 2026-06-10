@@ -7,6 +7,7 @@ export const ASSET_URL = BASE_URL.replace('/decky-backend', '');
 export const NOTIFICATION_SSE_URL = `${BASE_URL}/notifications`;
 
 const AUTH_QUERY_PARAM = 'decky_auth_token';
+
 const getDeckyAuthTokenCallable = callable<[], string>('get_decky_auth_token');
 
 let authTokenPromise: Promise<string> | null = null;
