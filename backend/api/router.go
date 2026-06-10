@@ -1,7 +1,6 @@
 package api
 
 import (
-	"crypto/subtle"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,7 +10,6 @@ import (
 	"path/filepath"
 	"sentinel/backend"
 	"sentinel/backend/config"
-	"sentinel/backend/decky"
 	"sentinel/backend/notifier"
 	"sentinel/backend/steam"
 	"sentinel/backend/watcher"
@@ -81,19 +79,14 @@ func JSON(w http.ResponseWriter, status int, v interface{}) error {
 }
 
 type Router struct {
-	Config    *config.File
-	Steam     *steam.Service
-	Watcher   *watcher.Service
-	Notifier  *notifier.Service
-	AuthToken string
+	Config   *config.File
+	Steam    *steam.Service
+	Watcher  *watcher.Service
+	Notifier *notifier.Service
 }
 
-func NewRouter(c *config.File, s *steam.Service, w *watcher.Service, n *notifier.Service, authToken ...string) *Router {
-	r := &Router{Config: c, Steam: s, Watcher: w, Notifier: n}
-	if len(authToken) > 0 {
-		r.AuthToken = authToken[0]
-	}
-	return r
+func NewRouter(c *config.File, s *steam.Service, w *watcher.Service, n *notifier.Service) *Router {
+	return &Router{Config: c, Steam: s, Watcher: w, Notifier: n}
 }
 
 // Handler returns a fully configured chi router as an http.Handler
@@ -105,7 +98,7 @@ func (r *Router) Handler() http.Handler {
 			return true
 		},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Accept", "Content-Type", "Authorization"},
+		AllowedHeaders:   []string{"Accept", "Content-Type"},
 		AllowCredentials: true,
 		MaxAge:           300,
 	}))
@@ -114,10 +107,6 @@ func (r *Router) Handler() http.Handler {
 	router.Use(middleware.Recoverer) // Prevents app from crashing on API panics
 
 	router.Route("/decky-backend", func(api chi.Router) {
-		if r.AuthToken != "" {
-			api.Use(r.authMiddleware)
-		}
-
 		api.Get("/ready", Wrap(r.handleReady))
 		api.Get("/config", Wrap(r.handleGetConfig))
 		api.Get("/config/available-sounds", Wrap(r.handleGetAvailableSounds))
@@ -144,39 +133,6 @@ func (r *Router) Handler() http.Handler {
 	router.Get("/api/media/*", http.HandlerFunc(r.handleServeMedia))
 
 	return router
-}
-
-func (r *Router) authMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		if req.Method == http.MethodOptions {
-			next.ServeHTTP(w, req)
-			return
-		}
-
-		if !r.hasValidAuthToken(req) {
-			_ = JSON(w, http.StatusUnauthorized, map[string]string{
-				"status":  "error",
-				"message": "Unauthorized",
-			})
-			return
-		}
-
-		next.ServeHTTP(w, req)
-	})
-}
-
-func (r *Router) hasValidAuthToken(req *http.Request) bool {
-	presented := strings.TrimSpace(req.Header.Get(decky.AuthHeader))
-	if strings.HasPrefix(strings.ToLower(presented), "bearer ") {
-		presented = strings.TrimSpace(presented[7:])
-	}
-	if presented == "" {
-		presented = strings.TrimSpace(req.URL.Query().Get(decky.AuthQueryParam))
-	}
-	if presented == "" || r.AuthToken == "" || len(presented) != len(r.AuthToken) {
-		return false
-	}
-	return subtle.ConstantTimeCompare([]byte(presented), []byte(r.AuthToken)) == 1
 }
 
 func (r *Router) handleReady(w http.ResponseWriter, req *http.Request) error {

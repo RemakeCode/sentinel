@@ -77,17 +77,6 @@ func main() {
 	}
 
 	if deckyMode || os.Getenv("DECKY_MODE") == "true" {
-		deckyAuthToken, err := decky.GenerateAuthToken()
-		if err != nil {
-			slog.Error("Failed to generate Decky API auth token", "error", err)
-			os.Exit(1)
-		}
-		if err := decky.WriteAuthToken(os.Stdout, deckyAuthToken); err != nil {
-			slog.Error("Failed to write Decky API auth token", "error", err)
-			os.Exit(1)
-		}
-		os.Stdout.Sync()
-
 		// Initialize services in the correct order for decky mode
 		ctx := context.Background()
 		options := application.DefaultServiceOptions
@@ -121,7 +110,7 @@ func main() {
 		}
 
 		go func() {
-			router := api.NewRouter(configService, steamService, watcherService, notifierService, deckyAuthToken)
+			router := api.NewRouter(configService, steamService, watcherService, notifierService)
 			port := decky.GetPort()
 			slog.Info(fmt.Sprintf("Decky API Server on 127.0.0.1:%d", port))
 
