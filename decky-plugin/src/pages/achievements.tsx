@@ -124,7 +124,7 @@ const achievementStyles = `
 
   .sentinel-achievement-sort-button--active, .sentinel-achievement-sort-button--focus {
     background: var(--virtualmenu-accent);
-    
+
     & svg {
       fill: #1b1b1b;
     }
@@ -156,6 +156,16 @@ const achievementStyles = `
     flex: 1;
   }
 
+  .sentinel-achievement-hidden {
+    filter: blur(4px);
+    cursor: pointer;
+    transition: filter 200ms linear;
+
+    > :hover {
+      filter: none
+    }
+  }
+
   .sentinel-achievement-state {
     display: flex;
     flex-direction: column;
@@ -168,6 +178,8 @@ const achievementStyles = `
 `;
 
 const AchievementsPage: FC = () => {
+  console.log({ hidden: achievementListClasses.Hidden, hContent: achievementListClasses.HiddenAchievementContent });
+
   const appId = window.location.pathname.split('/games/')[1];
 
   const [game, setGame] = useState<GameBasics | null>(null);
@@ -176,10 +188,6 @@ const AchievementsPage: FC = () => {
   const [sortBy, setSortBy] = useState<SortOption>('name-asc');
 
   useEffect(() => {
-    const dom = document.querySelectorAll('.sentinel-achievement-section-header');
-
-    console.log({ dom });
-
     const loadData = async () => {
       if (!appId) return;
       try {
@@ -365,12 +373,7 @@ const AchievementsPage: FC = () => {
 
                         <div className='sentinel-achievement-meta'>
                           <div className={achievementListClasses.AchievementTitle}>{ach.DisplayName}</div>
-                          <div
-                            className={joinClassNames(
-                              achievementListClasses.AchievementDescription,
-                              ach.Hidden === 1 ? achievementListClasses.Hidden : ''
-                            )}
-                          >
+                          <div className={joinClassNames(achievementListClasses.AchievementDescription)}>
                             {ach.Description || ''}
                           </div>
                           {!isLoading && globalPercentages.has(ach.Name) && (
@@ -442,7 +445,7 @@ const AchievementsPage: FC = () => {
                           <div
                             className={joinClassNames(
                               achievementListClasses.AchievementDescription,
-                              ach.Hidden === 1 ? achievementListClasses.Hidden : ''
+                              ach.Hidden === 1 ? 'sentinel-achievement-hidden' : ''
                             )}
                           >
                             {ach.Description || ''}

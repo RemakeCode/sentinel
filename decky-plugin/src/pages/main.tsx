@@ -140,6 +140,15 @@ const mainStyles = `
     white-space: nowrap;
     display: block;
   }
+  .sentinel-qam-ach-description-hidden {
+    filter: blur(4px);
+    cursor: pointer;
+    transition: filter 200ms linear;
+
+    > :hover {
+      filter: none
+    }
+  }
 
   .sentinel-qam-ach-progress {
     display: flex;
@@ -328,6 +337,12 @@ const MainPage: FC = () => {
                         {currentProgress}/{maxProgress}
                       </span>
                       <ProgressBar nProgress={Math.round((currentProgress / maxProgress) * 100)} focusable={false} />
+                    </div>
+                  ) : ach.Hidden === 1 ? (
+                    <div
+                      className={joinClassNames('sentinel-qam-ach-description', 'sentinel-qam-ach-description-hidden')}
+                    >
+                      {ach.Description || ''}
                     </div>
                   ) : (
                     <Marquee className='sentinel-qam-ach-description' play={isPlaying} delay={1} resetOnPause={true}>
