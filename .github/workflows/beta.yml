@@ -223,9 +223,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{steps.app-token.outputs.token }}
 
-      - name: Build decky plugin
-        run: APP_VERSION=${{ steps.semantic.outputs.new_release_version }} task linux:decky:package
-
       - name: Upload decky build artifact
         uses: actions/upload-artifact@v4
         with:
