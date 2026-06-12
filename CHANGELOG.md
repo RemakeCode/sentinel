@@ -1,3 +1,9 @@
+## [1.1.0-beta.7](https://github.com/RemakeCode/sentinel/compare/v1.1.0-beta.6...v1.1.0-beta.7) (2026-06-12)
+
+### 🚀 New Features
+
+* blur hidden achievements ([1403895](https://github.com/RemakeCode/sentinel/commit/1403895f31e3b5e810be9d0ec4a0d9f71f004f81))
+
 ## [1.1.0-beta.6](https://github.com/RemakeCode/sentinel/compare/v1.1.0-beta.5...v1.1.0-beta.6) (2026-06-12)
 
 ### 🚀 New Features
