@@ -144,10 +144,6 @@ const mainStyles = `
     filter: blur(4px);
     cursor: pointer;
     transition: filter 200ms linear;
-
-    > :hover {
-      filter: none
-    }
   }
 
   .sentinel-qam-ach-progress {
@@ -176,6 +172,7 @@ const MainPage: FC = () => {
   const [screen, setScreen] = useState<'loading' | 'matched' | 'unmatched' | 'empty'>('loading');
   const [runningName, setRunningName] = useState('');
   const [playingKey, setPlayingKey] = useState<string | null>(null);
+  const [revealedHidden, setRevealedHidden] = useState<Record<string, boolean>>({});
 
   const playMarquee = (key: string, play: boolean) => {
     setPlayingKey((prev) => (play ? key : prev === key ? null : prev));
@@ -317,9 +314,18 @@ const MainPage: FC = () => {
             return (
               <Focusable
                 key={key}
-                onActivate={() => {}}
+                onActivate={() => {
+                  if (ach.Hidden === 1) {
+                    setRevealedHidden((prev) => ({ ...prev, [key]: true }));
+                  }
+                }}
                 onFocus={() => playMarquee(key, true)}
-                onBlur={() => playMarquee(key, false)}
+                onBlur={() => {
+                  playMarquee(key, false);
+                  if (ach.Hidden === 1) {
+                    setRevealedHidden((prev) => ({ ...prev, [key]: false }));
+                  }
+                }}
                 focusClassName='sentinel-qam-ach-item--focus'
                 className={joinClassNames('sentinel-qam-ach-item')}
               >
@@ -340,7 +346,10 @@ const MainPage: FC = () => {
                     </div>
                   ) : ach.Hidden === 1 ? (
                     <div
-                      className={joinClassNames('sentinel-qam-ach-description', 'sentinel-qam-ach-description-hidden')}
+                      className={joinClassNames(
+                        'sentinel-qam-ach-description',
+                        !revealedHidden[key] ? 'sentinel-qam-ach-description-hidden' : ''
+                      )}
                     >
                       {ach.Description || ''}
                     </div>
