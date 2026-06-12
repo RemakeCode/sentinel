@@ -81,9 +81,9 @@ const mainStyles = `
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    height: 40px;
-    padding: 4px;
+    gap: 6px;
+    height: 50px;
+    padding: 5px;
     border: 1px solid hsla(0, 0%, 100%, .1);
     background: hsla(0, 0%, 100%, .05);
     border-radius: 4px;
@@ -94,8 +94,16 @@ const mainStyles = `
   }
 
   .sentinel-qam-ach-image {
-    width: 38px;
-    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 50px;
+    height: 50px;
+    & > img {
+      position:relative;
+      bottom:0;
+      height:48px;
+    }
   }
 
   .sentinel-qam-ach-content {
@@ -113,7 +121,7 @@ const mainStyles = `
 
   .sentinel-qam-ach-name {
     font-weight: bold;
-    font-size: 11px;
+    font-size: 13px;
     text-overflow: ellipsis;
     overflow: hidden;
     white-space: nowrap;
@@ -125,12 +133,17 @@ const mainStyles = `
   }
 
   .sentinel-qam-ach-description {
-    font-size: 10px;
+    font-size: 12px;
     color: #8b929a;
     text-overflow: ellipsis;
     overflow: hidden;
     white-space: nowrap;
     display: block;
+  }
+  .sentinel-qam-ach-description-hidden {
+    filter: blur(4px);
+    cursor: pointer;
+    transition: filter 200ms linear;
   }
 
   .sentinel-qam-ach-progress {
@@ -142,7 +155,7 @@ const mainStyles = `
   }
 
   .sentinel-qam-ach-progress-text {
-    font-size: 10px;
+    font-size: 11px;
     color: #8b929a;
     text-align: right;
     position: absolute;
@@ -159,6 +172,7 @@ const MainPage: FC = () => {
   const [screen, setScreen] = useState<'loading' | 'matched' | 'unmatched' | 'empty'>('loading');
   const [runningName, setRunningName] = useState('');
   const [playingKey, setPlayingKey] = useState<string | null>(null);
+  const [revealedHidden, setRevealedHidden] = useState<Record<string, boolean>>({});
 
   const playMarquee = (key: string, play: boolean) => {
     setPlayingKey((prev) => (play ? key : prev === key ? null : prev));
@@ -300,14 +314,23 @@ const MainPage: FC = () => {
             return (
               <Focusable
                 key={key}
-                onActivate={() => {}}
+                onActivate={() => {
+                  if (ach.Hidden === 1) {
+                    setRevealedHidden((prev) => ({ ...prev, [key]: true }));
+                  }
+                }}
                 onFocus={() => playMarquee(key, true)}
-                onBlur={() => playMarquee(key, false)}
+                onBlur={() => {
+                  playMarquee(key, false);
+                  if (ach.Hidden === 1) {
+                    setRevealedHidden((prev) => ({ ...prev, [key]: false }));
+                  }
+                }}
                 focusClassName='sentinel-qam-ach-item--focus'
                 className={joinClassNames('sentinel-qam-ach-item')}
               >
                 <div className={'sentinel-qam-ach-image'}>
-                  <ImgIcon src={ach.Icon} />
+                  <ImgIcon src={ach.Icon} style={{ bottom: 0, height: '48px' }} />
                 </div>
                 <div className='sentinel-qam-ach-content'>
                   <div className='sentinel-qam-ach-row'>
@@ -320,6 +343,15 @@ const MainPage: FC = () => {
                         {currentProgress}/{maxProgress}
                       </span>
                       <ProgressBar nProgress={Math.round((currentProgress / maxProgress) * 100)} focusable={false} />
+                    </div>
+                  ) : ach.Hidden === 1 ? (
+                    <div
+                      className={joinClassNames(
+                        'sentinel-qam-ach-description',
+                        !revealedHidden[key] ? 'sentinel-qam-ach-description-hidden' : ''
+                      )}
+                    >
+                      {ach.Description || ''}
                     </div>
                   ) : (
                     <Marquee className='sentinel-qam-ach-description' play={isPlaying} delay={1} resetOnPause={true}>

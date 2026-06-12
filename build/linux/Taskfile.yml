@@ -260,6 +260,11 @@ tasks:
       - cp -r ./dist ./out/
       - cp ../bin/{{.APP_NAME}} out/bin/{{.APP_NAME}}-dev
       - cp ./plugin.json ./package.json ./main.py ./out/
+      - |
+        if [ -n "${APP_VERSION}" ]; then
+          jq --arg v "$APP_VERSION" '.version = $v' out/package.json > out/package.json.tmp \
+            && mv out/package.json.tmp out/package.json
+        fi
       - chmod +x out/bin/{{.APP_NAME}}-dev
       - mkdir -p {{.ROOT_DIR}}/bin
       - cd out && zip -r {{.ROOT_DIR}}/bin/{{.APP_NAME}}-decky-plugin.zip .

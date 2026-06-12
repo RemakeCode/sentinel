@@ -63,6 +63,7 @@ const emptyStateStyles = `
 
   .sentinel-empty-state--main .sentinel-empty-state-button {
     margin-block-start: 8px;
+    width: auto;
   }
 
   @keyframes sentinel-empty-state-wobble {

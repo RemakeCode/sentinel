@@ -208,8 +208,6 @@ jobs:
       - name: Install decky-plugin dependencies
         run: task linux:decky:install:deps
 
-      - name: Build decky plugin
-        run: task linux:decky:package
       - name: Semantic Release
         id: semantic
         uses: cycjimmy/semantic-release-action@v4
@@ -225,14 +223,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{steps.app-token.outputs.token }}
 
-      - name: Install decky-plugin dependencies
-        run: task linux:decky:install:deps
-
-      - name: Build Go backend
-        run: task build
-
       - name: Build decky plugin
-        run: task linux:decky:package
+        run: APP_VERSION=${{ steps.semantic.outputs.new_release_version }} task linux:decky:package
 
       - name: Upload decky build artifact
         uses: actions/upload-artifact@v4

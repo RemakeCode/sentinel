@@ -4,7 +4,7 @@
   "flags": ["debug"],
   "api_version": 1,
   "publish": {
-    "tags": ["achievements","notifications"],
+    "tags": ["achievements", "notifications", "trophy"],
     "description": "An achievement watcher for Steam emulator games on Linux.",
     "image": ""
   }
