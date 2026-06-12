@@ -160,10 +160,6 @@ const achievementStyles = `
     filter: blur(4px);
     cursor: pointer;
     transition: filter 200ms linear;
-
-    > :hover {
-      filter: none
-    }
   }
 
   .sentinel-achievement-state {
@@ -186,6 +182,7 @@ const AchievementsPage: FC = () => {
   const [globalPercentages, setGlobalPercentages] = useState<Map<string, number>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
   const [sortBy, setSortBy] = useState<SortOption>('name-asc');
+  const [revealedHidden, setRevealedHidden] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     const loadData = async () => {
@@ -430,7 +427,16 @@ const AchievementsPage: FC = () => {
                           achievementListClasses.AchievementListItemBase,
                           'sentinel-achievement-item'
                         )}
-                        onActivate={() => {}}
+                        onActivate={() => {
+                          if (ach.Hidden === 1) {
+                            setRevealedHidden((prev) => ({ ...prev, [`${ach.Name}#${i}`]: true }));
+                          }
+                        }}
+                        onBlur={() => {
+                          if (ach.Hidden === 1) {
+                            setRevealedHidden((prev) => ({ ...prev, [`${ach.Name}#${i}`]: false }));
+                          }
+                        }}
                       >
                         {ach.Icon ? (
                           <img
@@ -445,7 +451,9 @@ const AchievementsPage: FC = () => {
                           <div
                             className={joinClassNames(
                               achievementListClasses.AchievementDescription,
-                              ach.Hidden === 1 ? 'sentinel-achievement-hidden' : ''
+                              ach.Hidden === 1 && !revealedHidden[`${ach.Name}#${i}`]
+                                ? 'sentinel-achievement-hidden'
+                                : ''
                             )}
                           >
                             {ach.Description || ''}
