@@ -1,3 +1,16 @@
+## [1.1.0-beta.6](https://github.com/RemakeCode/sentinel/compare/v1.1.0-beta.5...v1.1.0-beta.6) (2026-06-12)
+
+### 🚀 New Features
+
+* blur hidden achievements ([#58](https://github.com/RemakeCode/sentinel/issues/58)) ([495e6db](https://github.com/RemakeCode/sentinel/commit/495e6db9de422e9dcd2159b4ad6cbdf502ad0f1e))
+
+## [1.1.0-beta.5](https://github.com/RemakeCode/sentinel/compare/v1.1.0-beta.4...v1.1.0-beta.5) (2026-06-12)
+
+### 🚀 New Features
+
+* blur hidden achievements ([6d3556c](https://github.com/RemakeCode/sentinel/commit/6d3556cafa870d15d4c728557ffdd9592e36c3ac))
+* blur hidden achievements ([bcec3b2](https://github.com/RemakeCode/sentinel/commit/bcec3b2f4f585f91fb506f8a3dc2f8f524a9d126))
+
 ## [1.1.0-beta.4](https://github.com/RemakeCode/sentinel/compare/v1.1.0-beta.3...v1.1.0-beta.4) (2026-06-08)
 
 ### 🐛 Bug Fixes
