@@ -1,16 +1,18 @@
 import { DialogButton, Navigation } from '@decky/ui';
-import { definePlugin, executeInTab, injectCssIntoTab, removeCssFromTab, routerHook, toaster } from '@decky/api';
+import { definePlugin, injectCssIntoTab, removeCssFromTab, routerHook, toaster } from '@decky/api';
 import { FaBook, FaGear } from 'react-icons/fa6';
-import { BASE_URL, getNotificationSSEUrl } from './shared/utils/fetcher';
+import { NOTIFICATION_SSE_URL } from './shared/utils/fetcher';
 import type { Notification } from '@/shared/types/Notification';
 import { getNotificationTab } from '@/shared/utils/utils';
 import { ImgIcon } from '@/shared/components/img-icon';
+import { ToastBody, ToastTitle } from '@/shared/components/toast';
 import { initTracker } from '@/shared/utils/non-steam-game-tracker';
 import MainPage from '@/pages/main';
 import SettingsPage from '@/pages/settings';
 import LibraryPage from '@/pages/library';
 import AchievementsPage from '@/pages/achievements';
 import { PiTrophy } from 'react-icons/pi';
+import { playAudio } from '@/shared/utils/usePlayAudio';
 
 let sse: EventSource | null = null;
 
@@ -24,15 +26,39 @@ const toasterContentClassName = `sentinel-toaster-content`;
 //language=css
 const toasterStyles = `
   .${toasterClassName} {
-    height: 70%;
+    height: 55%;
     padding: 2px;
     border: 1px solid #3d4450;
+
+    .${toasterContentClassName} {
+      margin: 5px;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .sentinel-toast-title {
+      font-size: 13px;
+      font-weight: bold;
+      text-overflow: ellipsis;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+
+    .sentinel-toast-body {
+      font-size: 12px;
+      opacity: 0.7;
+      text-overflow: ellipsis;
+      overflow: hidden;
+      white-space: nowrap;
+    }
 
     .sentinel-toaster-progress-container {
       display: flex;
       gap: 2px;
       align-items: center;
-      margin-top: 4px;
     }
 
     .sentinel-toaster-progress-meta {
@@ -43,7 +69,7 @@ const toasterStyles = `
 
     & progress {
       width: 100%;
-      height: 7px;
+      height: 8px;
       background: #3d4450;
       border-radius: 10px;
 
@@ -60,19 +86,16 @@ const toasterStyles = `
     }
 
     img[data-name="ach"] {
-      margin-left: 4px;
+      margin-left: 1px;
     }
   }
 
-  .${toasterContentClassName} {
-    width: 100%;
-  }
 `;
 
 let cssId: string | undefined;
 
 async function connectSSE() {
-  sse = new EventSource(await getNotificationSSEUrl());
+  sse = new EventSource(NOTIFICATION_SSE_URL);
 
   const duration = 7000;
 
@@ -85,8 +108,8 @@ async function connectSSE() {
     if (Object.keys(message).length > 0) {
       const showProgressToast = async () => {
         toaster.toast({
-          title: message.Title,
-          body: message.Message,
+          title: <ToastTitle message={message} />,
+          body: <ToastBody message={message} />,
           logo: <ImgIcon src={message.IconPath} />,
           playSound: false,
           eType: 3,
@@ -96,44 +119,11 @@ async function connectSSE() {
           duration
         });
 
-        if (message.IsProgress) {
-          const value = (message.Progress / message.MaxProgress) * 100;
-
-          //language=javascript
-          const progressEl = `
-            (function() {
-              const toastEl = document.querySelector(' .${toasterContentClassName}');
-
-              if (toastEl) {
-                const progressContainer = document.createElement('div');
-                progressContainer.className = 'sentinel-toaster-progress-container';
-
-                const progressBar = document.createElement('progress');
-                progressBar.value = '${value}';
-                progressBar.max = 100;
-
-                const progressMeta = document.createElement('div');
-                progressMeta.className = 'sentinel-toaster-progress-meta';
-                progressMeta.textContent = '${message.Progress}/${message.MaxProgress}' 
-                
-                progressContainer.append(...[progressBar, progressMeta])
-                toastEl.appendChild(progressContainer);
-              }
-            })();
-        `;
-          await executeInTab(notificationTab, false, progressEl);
+        if (message.SoundFile) {
+          await playAudio(message.SoundFile);
         }
       };
-
       await showProgressToast();
-
-      if (message.SoundFile) {
-        const audio = new Audio(`${BASE_URL}/sentinel-assets/media/${message.SoundFile}`);
-        audio.volume = 0.5;
-        audio.play().catch(() => {});
-      }
-      //TODO: Investigate how non-removal here might affect other users of toaster
-      //setTimeout(() => removeCssFromTab(notificationTab, cssId), duration + 500);
     }
   });
 
