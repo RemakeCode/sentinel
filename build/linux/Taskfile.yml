@@ -38,7 +38,7 @@ tasks:
       HAS_CC:
         sh: '(command -v gcc >/dev/null 2>&1 || command -v clang >/dev/null 2>&1) && echo "true" || echo "false"'
 
-  build:decky:
+  decky:backend:
     summary: Builds the headless Decky backend for Linux
     deps:
       - task: common:go:mod:tidy
@@ -156,7 +156,7 @@ tasks:
     deps:
       - task: build
     cmds:
-      - task: generate:dotdesktop:title
+      - task: generate:dotdesktop
       - task: generate:deb
 
   create:rpm:
@@ -164,7 +164,7 @@ tasks:
     deps:
       - task: build
     cmds:
-      - task: generate:dotdesktop:title
+      - task: generate:dotdesktop
       - task: generate:rpm
 
   create:aur:
@@ -172,7 +172,7 @@ tasks:
     deps:
       - task: build
     cmds:
-      - task: generate:dotdesktop:title
+      - task: generate:dotdesktop
       - task: generate:aur
 
   generate:deb:
@@ -197,23 +197,7 @@ tasks:
       - mkdir -p {{.ROOT_DIR}}/build/linux/appimage
       - wails3 generate .desktop -name "{{.NAME}}" -exec "{{.EXEC}}" -icon "{{.ICON}}" -outputfile "{{.OUTPUTFILE}}" -categories "{{.CATEGORIES}}" -comment "{{.COMMENT}}" -keywords "{{.KEYWORDS}}"
     vars:
-      NAME: '{{.APP_NAME}}'
-      EXEC: '{{.APP_NAME}}'
-      ICON: '{{.APP_NAME}}'
-      CATEGORIES: 'Game;'
-      OUTPUTFILE: '{{.ROOT_DIR}}/build/linux/{{.APP_NAME}}.desktop'
-      COMMENT: 'An Achievement Watcher for Linux'
-      KEYWORDS: 'steam, achievements, watcher, trophy'
-
-  generate:dotdesktop:title:
-    summary: Generates a `.desktop` file
-    dir: build
-    cmds:
-      - mkdir -p {{.ROOT_DIR}}/build/linux/appimage
-      - wails3 generate .desktop -name "{{.NAME | title}}" -exec "{{.EXEC}}" -icon "{{.ICON}}" -outputfile "{{.OUTPUTFILE}}" -categories "{{.CATEGORIES}}" -comment "{{.COMMENT}}" -keywords "{{.KEYWORDS}}"
-      - sed -i 's/^Name=sentinel/Name=Sentinel/' "{{.OUTPUTFILE}}"
-    vars:
-      NAME: '{{.APP_NAME}}'
+      NAME: 'Sentinel'
       EXEC: '{{.APP_NAME}}'
       ICON: '{{.APP_NAME}}'
       CATEGORIES: 'Game;'
@@ -255,7 +239,7 @@ tasks:
     cmds:
       - npm run dev
 
-  decky:build:
+  decky:frontend:
     summary: Build Decky Frontend
     dir: decky-plugin
     sources:
@@ -270,8 +254,8 @@ tasks:
     summary: Bundles the Decky plugin (dist + binary + manifest) and zips it for distribution
     dir: decky-plugin
     deps:
-      - task: decky:build
-      - task: build:decky
+      - task: decky:frontend
+      - task: decky:backend
     cmds:
       - mkdir -p out/bin
       - mkdir -p out/dist/
@@ -305,7 +289,7 @@ tasks:
       - mkdir -p out/bin
       - mkdir -p out/dist/
       - cp -r ./dist ./out/
-      - task: build:decky
+      - task: decky:backend
       - cp ../bin/{{.APP_NAME}}-decky out/bin/{{.APP_NAME}}-decky
       - cp ./plugin.json ./package.json ./main.py ./out/
       - chmod +x out/bin/{{.APP_NAME}}-decky
