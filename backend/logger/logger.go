@@ -45,8 +45,8 @@ func ParseLevel(level string) slog.Level {
 	}
 }
 
-// New returns a new slog.Logger instance with sanitization and formatting
-// It writes to both stderr and a log file with automatic rotation
+// New returns a new slog.Logger instance with sanitization and formatting.
+// It writes to both stdout and a log file with automatic rotation.
 func New() *slog.Logger {
 	// Prepare sanitization prefixes
 	homeDir, _ := os.UserHomeDir()
@@ -76,7 +76,7 @@ func New() *slog.Logger {
 	}
 
 	logWriter := NewLogFileWriter()
-	output := io.MultiWriter(os.Stderr, logWriter)
+	output := io.MultiWriter(os.Stdout, logWriter)
 
 	handler := slog.NewTextHandler(output, &slog.HandlerOptions{
 		Level:       levelVar,
@@ -86,8 +86,8 @@ func New() *slog.Logger {
 	return slog.New(handler)
 }
 
-// NewWithFile returns a new slog.Logger that writes to both stderr and a log file.
-// If fileWriter is nil, it falls back to stderr-only output and logs a warning.
+// NewWithFile returns a new slog.Logger that writes to both stdout and a log file.
+// If fileWriter is nil, it falls back to stdout-only output and logs a warning.
 func NewWithFile(fileWriter *lumberjack.Logger) *slog.Logger {
 	// Prepare sanitization prefixes
 	homeDir, _ := os.UserHomeDir()
@@ -116,10 +116,10 @@ func NewWithFile(fileWriter *lumberjack.Logger) *slog.Logger {
 		return a
 	}
 
-	var output io.Writer = os.Stderr
+	var output io.Writer = os.Stdout
 
 	if fileWriter != nil {
-		output = io.MultiWriter(os.Stderr, fileWriter)
+		output = io.MultiWriter(os.Stdout, fileWriter)
 	} else {
 		slog.Warn("Log file writer unavailable, falling back to stderr-only output")
 	}
