@@ -11,7 +11,7 @@ class Plugin:
         self.stderr_task = None
 
     async def _main(self):
-        bin_path = os.path.join(os.environ['DECKY_PLUGIN_DIR'], "bin", "sentinel-dev")
+        bin_path = os.path.join(os.environ['DECKY_PLUGIN_DIR'], "bin", "sentinel-decky")
         try:
             os.chmod(bin_path, 0o755)
         except PermissionError:
@@ -47,7 +47,7 @@ class Plugin:
             line = await self.process.stderr.readline()
             if not line:
                 break
-            logging.error(f"[sentinel-dev stderr] {line.decode(errors='replace').rstrip()}")
+            logging.error(f"[sentinel-decky stderr] {line.decode(errors='replace').rstrip()}")
 
     async def _stop_process(self):
         if self.stdout_task is not None:
