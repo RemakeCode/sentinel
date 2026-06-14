@@ -276,14 +276,14 @@ tasks:
       - mkdir -p out/bin
       - mkdir -p out/dist/
       - cp -r ./dist ./out/
-      - cp ../bin/{{.APP_NAME}}-decky out/bin/{{.APP_NAME}}-dev
+      - cp ../bin/{{.APP_NAME}}-decky out/bin/{{.APP_NAME}}-decky
       - cp ./plugin.json ./package.json ./main.py ./out/
       - |
         if [ -n "${APP_VERSION}" ]; then
           jq --arg v "$APP_VERSION" '.version = $v' out/package.json > out/package.json.tmp \
             && mv out/package.json.tmp out/package.json
         fi
-      - chmod +x out/bin/{{.APP_NAME}}-dev
+      - chmod +x out/bin/{{.APP_NAME}}-decky
       - mkdir -p {{.ROOT_DIR}}/bin
       - cd out && zip -r {{.ROOT_DIR}}/bin/{{.APP_NAME}}-decky-plugin.zip .
 
@@ -300,15 +300,15 @@ tasks:
       DECK_DIR: "~/homebrew/plugins"
       PLUGINNAME: "sentinel"
     cmds:
-      - pkill -f ~/homebrew/plugins/sentinel/bin/sentinel-dev || true
+      - pkill -f ~/homebrew/plugins/sentinel/bin/sentinel-decky || true
       - sleep 1
       - mkdir -p out/bin
       - mkdir -p out/dist/
       - cp -r ./dist ./out/
       - task: build:decky
-      - cp ../bin/{{.APP_NAME}}-decky out/bin/{{.APP_NAME}}-dev
+      - cp ../bin/{{.APP_NAME}}-decky out/bin/{{.APP_NAME}}-decky
       - cp ./plugin.json ./package.json ./main.py ./out/
-      - chmod +x out/bin/{{.APP_NAME}}-dev
+      - chmod +x out/bin/{{.APP_NAME}}-decky
       - sudo mkdir -p {{.DECK_DIR}}/{{.PLUGINNAME}}
       - sudo chown -R $(whoami) {{.DECK_DIR}}/{{.PLUGINNAME}}
       - sudo cp -R out/* {{.DECK_DIR}}/{{.PLUGINNAME}}
