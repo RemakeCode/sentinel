@@ -14,15 +14,12 @@ import (
 	"sentinel/backend"
 	"sentinel/backend/ach"
 	"sentinel/backend/config"
-	"sentinel/backend/decky"
 	"sentinel/backend/steam"
 	"strconv"
 	"strings"
 	"sync"
 	"syscall"
 	"time"
-
-	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 //go:embed media
@@ -39,11 +36,19 @@ type NotificationPayload struct {
 	IsProgress  bool
 }
 
+type DeliveryMode int
+
+const (
+	DeliveryDesktop DeliveryMode = iota
+	DeliveryDecky
+)
+
 type Service struct {
 	notificationQueue chan *NotificationPayload
 	ctx               context.Context
 	cancel            context.CancelFunc
 	Config            *config.File
+	deliveryMode      DeliveryMode
 	clients           map[string]chan string
 	mu                sync.RWMutex
 }
@@ -80,7 +85,7 @@ func init() {
 	}
 }
 
-func (s *Service) ServiceStartup(ctx context.Context, options application.ServiceOptions) error {
+func (s *Service) Start(ctx context.Context) error {
 	// Config must be injected before startup
 	if s.Config == nil {
 		slog.Error("Config not injected into notifier service")
@@ -97,6 +102,10 @@ func (s *Service) ServiceStartup(ctx context.Context, options application.Servic
 	return nil
 }
 
+func (s *Service) SetDeliveryMode(mode DeliveryMode) {
+	s.deliveryMode = mode
+}
+
 func (s *Service) notificationWorker() {
 	slog.Info("Notification worker started")
 	for {
@@ -106,7 +115,7 @@ func (s *Service) notificationWorker() {
 			return
 		case payload := <-s.notificationQueue:
 			slog.Info("Worker received payload", "title", payload.Title, "game", payload.GameName, "isProgress", payload.IsProgress)
-			if decky.IsDecky() {
+			if s.deliveryMode == DeliveryDecky {
 				s.sendNotificationSSE(payload)
 			} else {
 				s.sendNotificationSync(payload)
@@ -166,7 +175,7 @@ func (s *Service) sendNotificationSync(payload *NotificationPayload) {
 
 func (s *Service) SendNotification(appId string, achievements map[string]ach.Achievement, isProgress bool, shouldNotify bool) error {
 	slog.Info("SendNotification called", "appId", appId, "achievementsCount", len(achievements))
-	if !isAvailable() {
+	if s.deliveryMode == DeliveryDesktop && !isAvailable() {
 		err := fmt.Errorf("notify-send not found in PATH")
 		slog.Warn("Failed to send notification", "error", err)
 		return err
@@ -186,11 +195,9 @@ func (s *Service) SendNotification(appId string, achievements map[string]ach.Ach
 				title = achievement.DisplayName
 				message := achievement.Description
 
-				if isProgress && a.MaxProgress > 0 {
-					if !decky.IsDecky() {
-						title = achievement.Description
-						message = progressBar(a.Progress, a.MaxProgress, 22)
-					}
+				if isProgress && a.MaxProgress > 0 && s.deliveryMode == DeliveryDesktop {
+					title = achievement.Description
+					message = progressBar(a.Progress, a.MaxProgress, 22)
 				}
 
 				var soundFile string
