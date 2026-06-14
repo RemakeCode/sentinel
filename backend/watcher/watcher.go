@@ -18,7 +18,6 @@ import (
 	"sentinel/backend/steam"
 
 	"github.com/fsnotify/fsnotify"
-	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 type SteamService interface {
@@ -56,7 +55,7 @@ type scanResult struct {
 	AppIDPaths []string // Array of full paths to app ID folders
 }
 
-func (s *Service) ServiceStartup(ctx context.Context, options application.ServiceOptions) error {
+func (s *Service) Startup(ctx context.Context) error {
 	if s.Config == nil {
 		c, err := config.Get()
 		if err != nil {
@@ -375,8 +374,6 @@ func (s *Service) handleEvent(event fsnotify.Event) {
 
 // handleAchievementsWriteEvent processes write events on achievements.json files
 func (s *Service) handleAchievementsWriteEvent(path, appId string) {
-	app := application.Get()
-
 	newAch, err := s.Ach.ParseAch(path)
 
 	if err != nil {
@@ -412,10 +409,7 @@ func (s *Service) handleAchievementsWriteEvent(path, appId string) {
 		}
 	}
 
-	// Only emit event if application is running (not in tests)
-	if app != nil {
-		app.Event.Emit(backend.EventDataUpdated)
-	}
+	s.emitDataUpdated()
 }
 
 // triggerMetadataFetch fetches Steam metadata for the given appIds in a background goroutine

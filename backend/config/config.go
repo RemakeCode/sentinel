@@ -20,7 +20,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/wailsapp/wails/v3/pkg/application"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )
@@ -50,6 +49,10 @@ type LogLevelOption struct {
 	Value string `json:"value"`
 }
 
+type Autostarter interface {
+	SetEnabled(enabled bool) error
+}
+
 type AppInfo struct {
 	Name        string `json:"name"`
 	Version     string `json:"version"`
@@ -61,7 +64,7 @@ type AppInfo struct {
 
 //wails:internal
 type File struct {
-	app               *application.App
+	autostart         Autostarter
 	Language          types.Language `json:"language"`
 	Emulators         []Emulator     `json:"emulators"`
 	Prefixes          []Prefix       `json:"prefixes"`
@@ -118,7 +121,7 @@ func ResetSingleton() {
 	instanceErr = nil
 }
 
-func (c *File) ServiceStartup(ctx context.Context, options application.ServiceOptions) error {
+func (c *File) Start(ctx context.Context) error {
 	slog.Info("Starting config initialization")
 
 	// Run migration from old XDG locations if needed
@@ -184,25 +187,6 @@ func (c *File) ServiceStartup(ctx context.Context, options application.ServiceOp
 	// Load config into this instance so injected services have the values
 	if _, err := c.LoadConfig(); err != nil {
 		slog.Error("Failed to load config into service", "error", err)
-	}
-
-	// Sync autostart state with config preference using Wails built-in manager
-	if c.app != nil {
-		if c.StartOnLogin {
-			if err := c.app.Autostart.EnableWithOptions(application.AutostartOptions{
-				Arguments: []string{"--startminimized"},
-			}); err != nil {
-				if !errors.Is(err, application.ErrAutostartNotSupported) {
-					slog.Error("Failed to enable autostart", "error", err)
-				}
-			}
-		} else {
-			if err := c.app.Autostart.Disable(); err != nil {
-				if !errors.Is(err, application.ErrAutostartNotSupported) {
-					slog.Error("Failed to disable autostart", "error", err)
-				}
-			}
-		}
 	}
 
 	slog.Info("Config initialization complete")
@@ -548,18 +532,8 @@ func (c *File) SetStartOnLogin(enabled bool) error {
 	if err := c.SaveConfig(); err != nil {
 		return err
 	}
-	if c.app != nil {
-		if enabled {
-			if err := c.app.Autostart.EnableWithOptions(application.AutostartOptions{
-				Arguments: []string{"--startminimized"},
-			}); err != nil && !errors.Is(err, application.ErrAutostartNotSupported) {
-				return err
-			}
-		} else {
-			if err := c.app.Autostart.Disable(); err != nil && !errors.Is(err, application.ErrAutostartNotSupported) {
-				return err
-			}
-		}
+	if c.autostart != nil {
+		return c.autostart.SetEnabled(enabled)
 	}
 	return nil
 }

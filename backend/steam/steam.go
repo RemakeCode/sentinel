@@ -18,7 +18,6 @@ import (
 	"sync"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 type achievement struct {
@@ -108,8 +107,7 @@ type gameAchievementsResponse struct {
 	} `json:"response"`
 }
 
-// ServiceStartup implements the Wails service lifecycle hook.
-func (s *Service) ServiceStartup(ctx context.Context, options application.ServiceOptions) error {
+func (s *Service) Start(ctx context.Context) error {
 	if s.Config == nil {
 		c, err := config.Get()
 		if err != nil {
@@ -123,20 +121,14 @@ func (s *Service) ServiceStartup(ctx context.Context, options application.Servic
 
 //wails:internal
 func (s *Service) FetchAppDetailsBulk(appIDs []string, language types.Language) ([]*GameBasics, error) {
-	app := application.Get()
-
 	total := len(appIDs)
 
 	// Emit 0% immediately to signal fetch is starting (even if no appIDs)
-	if app != nil {
-		app.Event.Emit(backend.EventFetchStatus, backend.FetchStatusEvt{Current: 0, Total: uint32(total)})
-	}
+	s.emitFetchStatus(0, uint32(total))
 
 	if len(appIDs) == 0 {
 		// Emit 100% for "no games" case so frontend knows to load from cache
-		if app != nil {
-			app.Event.Emit(backend.EventFetchStatus, backend.FetchStatusEvt{Current: 100, Total: 100})
-		}
+		s.emitFetchStatus(100, 100)
 		return []*GameBasics{}, nil
 	}
 
@@ -146,9 +138,7 @@ func (s *Service) FetchAppDetailsBulk(appIDs []string, language types.Language) 
 
 	var completed uint32
 
-	if app != nil {
-		app.Event.Emit(backend.EventFetchStatus, backend.FetchStatusEvt{Current: 0, Total: uint32(total)})
-	}
+	s.emitFetchStatus(0, uint32(total))
 
 	sem := make(chan struct{}, 5)
 
@@ -167,9 +157,7 @@ func (s *Service) FetchAppDetailsBulk(appIDs []string, language types.Language) 
 				results = append(results, cached)
 				completed++
 				mu.Unlock()
-				if app != nil {
-					app.Event.Emit(backend.EventFetchStatus, backend.FetchStatusEvt{Current: completed, Total: uint32(total)})
-				}
+				s.emitFetchStatus(completed, uint32(total))
 				return
 			}
 
@@ -178,9 +166,7 @@ func (s *Service) FetchAppDetailsBulk(appIDs []string, language types.Language) 
 				mu.Lock()
 				completed++
 				mu.Unlock()
-				if app != nil {
-					app.Event.Emit(backend.EventFetchStatus, backend.FetchStatusEvt{Current: completed, Total: uint32(total)})
-				}
+				s.emitFetchStatus(completed, uint32(total))
 				return
 			}
 
@@ -197,9 +183,7 @@ func (s *Service) FetchAppDetailsBulk(appIDs []string, language types.Language) 
 			completed++
 			mu.Unlock()
 
-			if app != nil {
-				app.Event.Emit(backend.EventFetchStatus, backend.FetchStatusEvt{Current: completed, Total: uint32(total)})
-			}
+			s.emitFetchStatus(completed, uint32(total))
 		}(id)
 	}
 
