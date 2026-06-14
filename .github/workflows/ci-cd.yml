@@ -12,6 +12,9 @@ permissions:
   issues: write
   pull-requests: write
 
+env:
+  WAILS_VERSION: v3.0.0-alpha.101
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -44,7 +47,7 @@ jobs:
           version: 1.0
 
       - name: Install Wails v3 CLI
-        run: go install github.com/wailsapp/wails/v3/cmd/wails3@latest
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@${WAILS_VERSION}
 
       - name: Run tests
         run: go test ./backend/... -v -short -coverprofile=coverage.out
@@ -80,7 +83,7 @@ jobs:
           version: 1.0
 
       - name: Install Wails CLI
-        run: go install github.com/wailsapp/wails/v3/cmd/wails3@latest
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@${WAILS_VERSION}
 
       - name: Build Check
         run: task linux:build
@@ -178,7 +181,7 @@ jobs:
           version: 1.0
 
       - name: Install Wails CLI
-        run: go install github.com/wailsapp/wails/v3/cmd/wails3@latest
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@${WAILS_VERSION}
 
       - name: Semantic Release
         id: semantic
