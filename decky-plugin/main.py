@@ -36,8 +36,11 @@ class Plugin:
         if self.process is None or self.process.stdout is None:
             return
 
-        while await self.process.stdout.readline():
-            pass
+        while True:
+            line = await self.process.stdout.readline()
+            if not line:
+                break
+            logging.info(f"[sentinel-decky] {line.decode(errors='replace').rstrip()}")
 
     async def _drain_stderr(self):
         if self.process is None or self.process.stderr is None:
