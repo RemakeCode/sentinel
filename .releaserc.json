@@ -21,7 +21,7 @@
     [
       "@semantic-release/exec",
       {
-        "prepareCmd": "APP_VERSION=${nextRelease.version} task linux:package && APP_VERSION=${nextRelease.version} task linux:decky:package"
+        "prepareCmd": "APP_VERSION=${nextRelease.version} task linux:package linux:decky:package"
       }
     ],
     [
