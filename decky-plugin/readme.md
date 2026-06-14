@@ -1,13 +1,11 @@
-# Sentinel Decky  - An Achievement Watcher for Linux
+## Sentinel decky -  An Achievement Watcher for Linux
+<img src="../.github/assets/decky-plugin/dashboard.png" alt="Decky plugin dashboard"> 
 
-[![Decky plugin dashboard](../.github/assets/decky-plugin/dashboard.png)](../.github/assets/decky-plugin/dashboard.png)
-
-[![Currently running game details](../.github/assets/decky-plugin/now-playing.png)](../.github/assets/decky-plugin/now-playing.png)
+<img src="../.github/assets/decky-plugin/now-playing.png" alt="Currently running game details" width="200">
 
 The beta release includes an additional plugin for decky-loader.
 
-## Features
-
+### Features
 - Receive notification toasts for unlocked achievements and achievement stat updates for your Wine/Proton games supporting Goldberg Emulator forks
 - View detected Sentinel games from Steam Deck Gaming Mode.
 - See details for the currently running game.
@@ -17,49 +15,43 @@ The beta release includes an additional plugin for decky-loader.
 - Configure relevant Sentinel settings from the plugin.
 - Use the same Sentinel config and data as the desktop app.
 
-## Screenshots
+### Screenshots
 
-### No Game Running
 
-[![Default Decky plugin QAM state](../.github/assets/decky-plugin/!now-playing.png)](../.github/assets/decky-plugin/!now-playing.png)
+#### No Game Running
+<img src="../.github/assets/decky-plugin/!now-playing.png" alt="Default Decky plugin QAM state" width="200">
 
-### Now Playing
+#### Now Playing
+<img src="../.github/assets/decky-plugin/now-playing.png" alt="Currently running game details" width="200">
 
-[![Currently running game details](../.github/assets/decky-plugin/now-playing.png)](../.github/assets/decky-plugin/now-playing.png)
+#### Achievement Details
+<img src="../.github/assets/decky-plugin/details.png" alt="Achievement details" >
 
-### Achievement Details
+#### Settings
+<img src="../.github/assets/decky-plugin/settings.png" alt="Decky plugin settings">
 
-[![Achievement details](../.github/assets/decky-plugin/details.png)](../.github/assets/decky-plugin/details.png)
+#### Additional Settings
+<img src="../.github/assets/decky-plugin/settings-2.png" alt="Additional Decky plugin settings">
 
-### Settings
+### Install
 
-[![Decky plugin settings](../.github/assets/decky-plugin/settings.png)](../.github/assets/decky-plugin/settings.png)
+1. Download the `sentinel-decky-plugin` from the GitHub release assets .
+2. Run the following command assuming the zip is in Downloads folder
+```bash 
+sudo mkdir -p ~/homebrew/plugins/sentinel && sudo unzip -o ~/Downloads/sentinel-decky-plugin.zip -d "$_"
+```
+3. Restart Steam
 
-### Additional Settings
 
-[![Additional Decky plugin settings](../.github/assets/decky-plugin/settings-2.png)](../.github/assets/decky-plugin/settings-2.png)
 
-## Install
-
-1. Download the `sentinel-decky-plugin` from the GitHub release assets.
-2. Run the following command assuming the zip is in Downloads folder:
-
-   ```sh
-   sudo mkdir -p ~/homebrew/plugins/sentinel && sudo unzip -o ~/Downloads/sentinel-decky-plugin.zip -d "$_"
-   ```
-
-3. Restart Steam.
-
-## Beta Notes
-
+### Beta Notes
 - This plugin is beta software and may change between beta releases.
-- Report Decky-specific issues.
+- Report Decky-specific issues
 
-## Side Note
+### Side Note
+- The decky-plugin uses the same config as the Sentinel desktop app (v1.0.5+) for those who have it
 
-- The decky-plugin uses the same config as the Sentinel desktop app (v1.0.5+) for those who have it.
-
-## Known Issues
-
+### Known Issues
 - When using Steam Big Picture on a non-gamescope session, notification toasts are not triggered.
-- In some cases, "Now Playing" screen is not triggered in Steam Big Picture Mode in non-gamescope session.
+- In some cases, "Now Playing" screen is not triggered in Steam Big Picture Mode in non-gamescope session
+
