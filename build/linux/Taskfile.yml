@@ -38,6 +38,23 @@ tasks:
       HAS_CC:
         sh: '(command -v gcc >/dev/null 2>&1 || command -v clang >/dev/null 2>&1) && echo "true" || echo "false"'
 
+  build:decky:
+    summary: Builds the headless Decky backend for Linux
+    deps:
+      - task: common:go:mod:tidy
+    cmds:
+      - mkdir -p {{.BIN_DIR}}
+      - go build {{.BUILD_FLAGS}} -o {{.OUTPUT}} ./cmd/decky
+    vars:
+      DEFAULT_OUTPUT: '{{.BIN_DIR}}/{{.APP_NAME}}-decky'
+      OUTPUT: '{{ .OUTPUT | default .DEFAULT_OUTPUT }}'
+      BUILD_FLAGS: '-tags decky -trimpath -buildvcs=false -ldflags="-w -s -X {{.MODULE}}/backend.Version={{.APP_VERSION}}"'
+    env:
+      GOOS: linux
+      CGO_ENABLED: 1
+      GOARCH: '{{.ARCH | default ARCH}}'
+      VERSION: "{{.APP_VERSION}}"
+
   build:native:
     summary: Builds the application natively on Linux
     internal: true
@@ -254,11 +271,12 @@ tasks:
     dir: decky-plugin
     deps:
       - task: decky:build
+      - task: build:decky
     cmds:
       - mkdir -p out/bin
       - mkdir -p out/dist/
       - cp -r ./dist ./out/
-      - cp ../bin/{{.APP_NAME}} out/bin/{{.APP_NAME}}-dev
+      - cp ../bin/{{.APP_NAME}}-decky out/bin/{{.APP_NAME}}-dev
       - cp ./plugin.json ./package.json ./main.py ./out/
       - |
         if [ -n "${APP_VERSION}" ]; then
@@ -287,7 +305,8 @@ tasks:
       - mkdir -p out/bin
       - mkdir -p out/dist/
       - cp -r ./dist ./out/
-      - cp ../bin/{{.APP_NAME}} out/bin/{{.APP_NAME}}-dev
+      - task: build:decky
+      - cp ../bin/{{.APP_NAME}}-decky out/bin/{{.APP_NAME}}-dev
       - cp ./plugin.json ./package.json ./main.py ./out/
       - chmod +x out/bin/{{.APP_NAME}}-dev
       - sudo mkdir -p {{.DECK_DIR}}/{{.PLUGINNAME}}
