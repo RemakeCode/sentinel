@@ -1,3 +1,4 @@
 .flatpak-builder/
+dev.sentinel.app.generated.yml
 build-dir/
 repo/

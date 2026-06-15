@@ -17,6 +17,7 @@ build-options:
     GO111MODULE: on
     GOPATH: /run/build/sentinel/.go
     GOCACHE: /run/build/sentinel/.cache/go-build
+    APP_VERSION: 0.0.0-flatpak
     npm_config_cache: /run/build/sentinel/.npm
 
 finish-args:
@@ -36,9 +37,10 @@ modules:
     build-commands:
       - npm --prefix frontend ci
       - npm --prefix frontend run build
-      - go build -tags production -trimpath -buildvcs=false -ldflags="-w -s -X sentinel/backend.Version=${SENTINEL_VERSION:-0.0.0-flatpak}" -o /app/bin/sentinel .
+      - go build -tags production -trimpath -buildvcs=false -ldflags="-w -s -X sentinel/backend.Version=${APP_VERSION}" -o /app/bin/sentinel .
       - install -Dm644 build/linux/flatpak/dev.sentinel.app.desktop /app/share/applications/dev.sentinel.app.desktop
       - install -Dm644 build/linux/flatpak/dev.sentinel.app.metainfo.xml /app/share/metainfo/dev.sentinel.app.metainfo.xml
+      - sed -i "s/<release version=\"[^\"]*\"/<release version=\"${APP_VERSION}\"/" /app/share/metainfo/dev.sentinel.app.metainfo.xml
       - install -Dm644 build/appicon.png /app/share/icons/hicolor/512x512/apps/dev.sentinel.app.png
     sources:
       - type: dir
@@ -49,6 +51,7 @@ modules:
           - bin
           - build/linux/flatpak/.flatpak-builder
           - build/linux/flatpak/build-dir
+          - build/linux/flatpak/dev.sentinel.app.generated.yml
           - build/linux/flatpak/repo
           - decky-plugin/node_modules
           - frontend/node_modules
