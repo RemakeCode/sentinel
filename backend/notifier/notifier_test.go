@@ -1,9 +1,6 @@
 package notifier
 
 import (
-	"fmt"
-	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -12,7 +9,6 @@ import (
 	steamtypes "sentinel/backend/steam/types"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestProgressBar_ZeroMax(t *testing.T) {
@@ -47,35 +43,7 @@ func TestProgressBar_DifferentWidth(t *testing.T) {
 	assert.Contains(t, result, "25.0%")
 }
 
-func TestIsAvailable_WithNotifySend(t *testing.T) {
-	result := isAvailable()
-	_ = result
-}
-
-func TestSendNotification_NotifySendNotAvailable(t *testing.T) {
-	oldPath := os.Getenv("PATH")
-	defer os.Setenv("PATH", oldPath)
-
-	os.Setenv("PATH", "/nonexistent")
-
-	svc := &Service{
-		Config: &config.File{},
-	}
-
-	err := svc.SendNotification("12345", map[string]ach.Achievement{"ach_1": {}}, false, true)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "notify-send not found")
-}
-
 func TestSendNotification_NoAchievements(t *testing.T) {
-	mockDir := t.TempDir()
-	mockScript := filepath.Join(mockDir, "notify-send")
-	require.NoError(t, os.WriteFile(mockScript, []byte("#!/bin/bash\n"), 0755))
-
-	oldPath := os.Getenv("PATH")
-	defer os.Setenv("PATH", oldPath)
-	os.Setenv("PATH", mockDir+":"+oldPath)
-
 	svc := &Service{
 		Config: &config.File{},
 	}
@@ -84,18 +52,7 @@ func TestSendNotification_NoAchievements(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestSendNotification_CorrectCommandArgs(t *testing.T) {
-	mockDir := t.TempDir()
-	argsFile := filepath.Join(mockDir, "notify_args.txt")
-	mockScript := filepath.Join(mockDir, "notify-send")
-	require.NoError(t, os.WriteFile(mockScript, []byte(fmt.Sprintf(`#!/bin/bash
-printf '%%s\n' "$@" > %s
-`, argsFile)), 0755))
-
-	oldPath := os.Getenv("PATH")
-	defer os.Setenv("PATH", oldPath)
-	os.Setenv("PATH", mockDir+":"+oldPath)
-
+func TestSendNotification_QueuesPayload(t *testing.T) {
 	svc := &Service{
 		Config: &config.File{
 			Language:          steamtypes.Language{API: "english"},
