@@ -48,8 +48,8 @@ type Service struct {
 var queueCap = 100
 
 var (
-	speakerOnce   sync.Once
-	speakerInitOk bool
+	speakerMu          sync.Mutex
+	speakerInitialized bool
 )
 
 func init() {
@@ -326,6 +326,24 @@ func (s *Service) getAchDataForNotification(appId string) (*steam.GameBasics, st
 	return &gb, gb.Name, nil
 }
 
+func initSpeaker() bool {
+	speakerMu.Lock()
+	defer speakerMu.Unlock()
+
+	if speakerInitialized {
+		return true
+	}
+
+	sampleRate := beep.SampleRate(44100)
+	if err := speaker.Init(sampleRate, sampleRate.N(time.Second/10)); err != nil {
+		slog.Warn("Failed to initialize audio speaker", "error", err)
+		return false
+	}
+
+	speakerInitialized = true
+	return true
+}
+
 // PlaySound plays a sound file asynchronously.
 func (s *Service) PlaySound(filename string) error {
 	if filename == "" {
@@ -338,16 +356,7 @@ func (s *Service) PlaySound(filename string) error {
 	}
 
 	go func() {
-		speakerOnce.Do(func() {
-			sampleRate := beep.SampleRate(44100)
-			if err := speaker.Init(sampleRate, sampleRate.N(time.Second/10)); err != nil {
-				slog.Warn("Failed to initialize audio speaker", "error", err)
-				return
-			}
-			speakerInitOk = true
-		})
-
-		if !speakerInitOk {
+		if !initSpeaker() {
 			return
 		}
 
