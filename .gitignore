@@ -18,4 +18,4 @@ openspec/
 node_modules
 
 */**/.DS_Store
-
+/decky-plugin/__pycache__

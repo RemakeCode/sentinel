@@ -113,7 +113,33 @@ tasks:
       - task: create:deb
       - task: create:rpm
       - task: create:aur
+      - task: create:flatpak
       - task: cleanup:artifacts
+
+  create:flatpak:
+    summary: Creates a Flatpak bundle
+    deps:
+      - task: build
+    cmds:
+      - task: generate:flatpak:desktop
+      - task: generate:flatpak
+
+  generate:flatpak:
+    summary: Creates a Flatpak bundle
+    dir: build/linux/flatpak
+    preconditions:
+      - sh: flatpak-builder --version
+        msg: "flatpak-builder is required. Install flatpak-builder and try again."
+      - sh: flatpak --version
+        msg: "flatpak is required. Install flatpak and try again."
+    cmds:
+      # Creates bin/dev.sentinel.app.flatpak from a local Flatpak repository.
+      # The manifest currently allows network access during the build so Go and
+      # npm dependencies can be downloaded from the existing lock files. For a
+      # Flathub submission, replace that with generated offline dependency sources.
+      - mkdir -p {{.ROOT_DIR}}/build/linux/flatpak/repo {{.ROOT_DIR}}/bin
+      - flatpak-builder --force-clean --state-dir={{.ROOT_DIR}}/build/linux/flatpak/.flatpak-builder --repo={{.ROOT_DIR}}/build/linux/flatpak/repo --install-deps-from=flathub {{.ROOT_DIR}}/build/linux/flatpak/build-dir {{.ROOT_DIR}}/build/linux/flatpak/dev.sentinel.app.yml
+      - flatpak build-bundle {{.ROOT_DIR}}/build/linux/flatpak/repo {{.ROOT_DIR}}/bin/dev.sentinel.app.flatpak dev.sentinel.app
 
 #  create:appimage:
 #    summary: Creates an AppImage
@@ -175,6 +201,21 @@ tasks:
     summary: Creates a arch linux packager package
     cmds:
       - wails3 tool package -name "{{.APP_NAME}}" -format archlinux -config ./build/linux/nfpm/nfpm.yaml -out {{.ROOT_DIR}}/bin
+
+  generate:flatpak:desktop:
+    summary: Generates a Flatpak `.desktop` file
+    dir: build
+    cmds:
+      - mkdir -p {{.ROOT_DIR}}/build/linux/flatpak
+      - wails3 generate .desktop -name "{{.NAME}}" -exec "{{.EXEC}}" -icon "{{.ICON}}" -outputfile "{{.OUTPUTFILE}}" -categories "{{.CATEGORIES}}" -comment "{{.COMMENT}}" -keywords "{{.KEYWORDS}}"
+    vars:
+      NAME: 'Sentinel'
+      EXEC: '{{.APP_NAME}}'
+      ICON: 'dev.sentinel.app'
+      CATEGORIES: 'Game;'
+      OUTPUTFILE: '{{.ROOT_DIR}}/build/linux/flatpak/dev.sentinel.app.desktop'
+      COMMENT: 'An Achievement Watcher for Linux'
+      KEYWORDS: 'steam, achievements, watcher, trophy'
 
   generate:dotdesktop:
     summary: Generates a `.desktop` file

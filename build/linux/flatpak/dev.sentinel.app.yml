@@ -1,0 +1,55 @@
+app-id: dev.sentinel.app
+runtime: org.gnome.Platform
+runtime-version: '48'
+sdk: org.gnome.Sdk
+command: sentinel
+
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.golang
+  - org.freedesktop.Sdk.Extension.node22
+
+build-options:
+  append-path: /usr/lib/sdk/golang/bin:/usr/lib/sdk/node22/bin
+  build-args:
+    - --share=network
+  env:
+    CGO_ENABLED: '1'
+    GO111MODULE: on
+    GOPATH: /run/build/sentinel/.go
+    GOCACHE: /run/build/sentinel/.cache/go-build
+    npm_config_cache: /run/build/sentinel/.npm
+
+finish-args:
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --socket=pulseaudio
+  - --device=dri
+  - --filesystem=home
+  - --talk-name=org.freedesktop.Notifications
+  - --talk-name=org.kde.StatusNotifierWatcher
+  - --own-name=dev.sentinel.app
+
+modules:
+  - name: sentinel
+    buildsystem: simple
+    build-commands:
+      - npm --prefix frontend ci
+      - npm --prefix frontend run build
+      - go build -tags production -trimpath -buildvcs=false -ldflags="-w -s -X sentinel/backend.Version=${SENTINEL_VERSION:-0.0.0-flatpak}" -o /app/bin/sentinel .
+      - install -Dm644 build/linux/flatpak/dev.sentinel.app.desktop /app/share/applications/dev.sentinel.app.desktop
+      - install -Dm644 build/linux/flatpak/dev.sentinel.app.metainfo.xml /app/share/metainfo/dev.sentinel.app.metainfo.xml
+      - install -Dm644 build/appicon.png /app/share/icons/hicolor/512x512/apps/dev.sentinel.app.png
+    sources:
+      - type: dir
+        path: ../../..
+        skip:
+          - .git
+          - .task
+          - bin
+          - build/linux/flatpak/.flatpak-builder
+          - build/linux/flatpak/build-dir
+          - build/linux/flatpak/repo
+          - decky-plugin/node_modules
+          - frontend/node_modules
+          - node_modules
