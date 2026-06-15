@@ -1,3 +1,13 @@
+## [1.1.0-beta.8](https://github.com/RemakeCode/sentinel/compare/v1.1.0-beta.7...v1.1.0-beta.8) (2026-06-14)
+
+### 🚀 New Features
+
+* **decky:** add dedicated backend entrypoint ([94e902a](https://github.com/RemakeCode/sentinel/commit/94e902a107e7ae52757369a3ba9e4283eaaab23e))
+
+### 🐛 Bug Fixes
+
+* logging from go backend into the python backend stub to be picked up by decky-plugin-service ([84516b7](https://github.com/RemakeCode/sentinel/commit/84516b71e1928761f145e4012e18b6d0d17d38b8))
+
 ## [1.1.0-beta.7](https://github.com/RemakeCode/sentinel/compare/v1.1.0-beta.6...v1.1.0-beta.7) (2026-06-12)
 
 ### 🚀 New Features
