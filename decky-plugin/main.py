@@ -7,8 +7,6 @@ import signal
 class Plugin:
     def __init__(self):
         self.process = None
-        self.stdout_task = None
-        self.stderr_task = None
 
     async def _main(self):
         bin_path = os.path.join(os.environ['DECKY_PLUGIN_DIR'], "bin", "sentinel-decky")
@@ -22,45 +20,13 @@ class Plugin:
         try:
             self.process = await asyncio.create_subprocess_exec(
                 bin_path, '--decky',
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
                 start_new_session=True
             )
-            self.stderr_task = asyncio.create_task(self._drain_stderr())
-            self.stdout_task = asyncio.create_task(self._drain_stdout())
         except Exception as e:
             logging.error(f"Failed to start binary: {e}")
             await self._stop_process()
 
-    async def _drain_stdout(self):
-        if self.process is None or self.process.stdout is None:
-            return
-
-        while True:
-            line = await self.process.stdout.readline()
-            if not line:
-                break
-            logging.info(f"[sentinel-decky] {line.decode(errors='replace').rstrip()}")
-
-    async def _drain_stderr(self):
-        if self.process is None or self.process.stderr is None:
-            return
-
-        while True:
-            line = await self.process.stderr.readline()
-            if not line:
-                break
-            logging.error(f"[sentinel-decky stderr] {line.decode(errors='replace').rstrip()}")
-
     async def _stop_process(self):
-        if self.stdout_task is not None:
-            self.stdout_task.cancel()
-            self.stdout_task = None
-
-        if self.stderr_task is not None:
-            self.stderr_task.cancel()
-            self.stderr_task = None
-
         if self.process is None:
             return
 
