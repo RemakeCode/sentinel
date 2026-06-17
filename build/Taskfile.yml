@@ -19,7 +19,7 @@ tasks:
       - package.json
       - package-lock.json
     generates:
-      - node_modules
+      - node_modules/.sentinel-deps-stamp
     preconditions:
       - sh: npm version
         msg: "Looks like npm isn't installed. Npm is part of the Node installer: https://nodejs.org/en/download/"
@@ -30,6 +30,7 @@ tasks:
         else
           npm install
         fi
+        touch node_modules/.sentinel-deps-stamp
 
   build:frontend:
     label: build:frontend (DEV={{.DEV}})
@@ -200,5 +201,4 @@ tasks:
     preconditions:
       - sh: docker info > /dev/null 2>&1
         msg: "Docker is required. Please install Docker first."
-
 
