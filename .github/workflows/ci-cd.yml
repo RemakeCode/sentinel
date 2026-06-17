@@ -89,7 +89,11 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: linux-build
-          path: bin/sentinel
+          path: |
+            bin/sentinel
+            bin/*.deb
+            bin/*.rpm
+            bin/*.pkg.tar.zst
           retention-days: 30
 
   semantic-dry-run:
