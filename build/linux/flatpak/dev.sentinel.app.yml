@@ -16,10 +16,11 @@ build-options:
     CGO_ENABLED: '1'
     GO111MODULE: on
     GOFLAGS: -modcacherw
-    GOPATH: /run/build/sentinel/.go
-    GOCACHE: /run/build/sentinel/.cache/go-build
+    GOPATH: /tmp/sentinel-go
+    GOMODCACHE: /tmp/sentinel-go/pkg/mod
+    GOCACHE: /tmp/sentinel-go-build
     APP_VERSION: 0.0.0-flatpak
-    npm_config_cache: /run/build/sentinel/.npm
+    npm_config_cache: /tmp/sentinel-npm
 
 finish-args:
   - --share=ipc
@@ -43,6 +44,7 @@ modules:
       - install -Dm644 build/linux/flatpak/dev.sentinel.app.metainfo.xml /app/share/metainfo/dev.sentinel.app.metainfo.xml
       - sed -i "s/<release version=\"[^\"]*\"/<release version=\"${APP_VERSION}\"/" /app/share/metainfo/dev.sentinel.app.metainfo.xml
       - install -Dm644 build/appicon.png /app/share/icons/hicolor/512x512/apps/dev.sentinel.app.png
+      - chmod -R u+w /tmp/sentinel-go /tmp/sentinel-go-build /tmp/sentinel-npm 2>/dev/null || true
     sources:
       - type: dir
         path: ../../..
