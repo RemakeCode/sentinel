@@ -17,5 +17,6 @@ openspec/
 /bin
 node_modules
 
+decky-plugin/
 */**/.DS_Store
 
