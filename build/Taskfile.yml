@@ -4,6 +4,9 @@ tasks:
   go:mod:tidy:
     summary: Runs `go mod tidy`
     internal: true
+    # Universal/multi-arch builds invoke this concurrently from parallel deps;
+    # two `go mod tidy` processes racing on go.mod can corrupt it (#4637).
+    run: once
     cmds:
       - |
         if [ "$CI" = "true" ]; then
@@ -34,6 +37,12 @@ tasks:
   build:frontend:
     label: build:frontend (DEV={{.DEV}})
     summary: Build the frontend project
+    # darwin:build:universal runs its per-arch builds as parallel deps, each of
+    # which depends on this task. Without run:once the two executions race:
+    # one regenerates frontend/bindings (-clean deletes it first) while the
+    # other's bundler is reading it, failing intermittently with
+    # 'Could not resolve "./bindings/<pkg>"' (#4637).
+    run: once
     dir: frontend
     sources:
       - "**/*"

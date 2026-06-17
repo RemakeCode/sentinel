@@ -28,10 +28,10 @@ contents:
   - src: "./build/linux/sentinel.desktop"
     dst: "/usr/share/applications/sentinel.desktop"
 
-# Default dependencies for Debian 12/Ubuntu 22.04+
+# Default dependencies for Debian 12/Ubuntu 24.04+
 depends:
-  - libgtk-3-0
-  - libwebkit2gtk-4.1-0
+  - libgtk-4-1
+  - libwebkitgtk-6.0-4
   - libnotify-bin
 
 # Distribution-specific overrides for different package formats
@@ -39,15 +39,15 @@ overrides:
   # RPM packages for RHEL/CentOS/AlmaLinux/Rocky Linux
   rpm:
     depends:
-      - gtk3
-      - webkit2gtk4.1
+      - gtk4
+      - webkitgtk6.0
       - libnotify
 
   # Arch Linux packages
   archlinux:
     depends:
-      - gtk3
-      - webkit2gtk-4.1
+      - gtk4
+      - webkitgtk-6.0
       - libnotify
 
 
