@@ -83,7 +83,7 @@ jobs:
         run: go install github.com/wailsapp/wails/v3/cmd/wails3@latest
 
       - name: Build Check
-        run: task linux:build
+        run: task linux:package
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
