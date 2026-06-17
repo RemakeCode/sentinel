@@ -138,7 +138,7 @@ tasks:
       # npm dependencies can be downloaded from the existing lock files. For a
       # Flathub submission, replace that with generated offline dependency sources.
       - mkdir -p {{.ROOT_DIR}}/build/linux/flatpak/repo {{.ROOT_DIR}}/bin
-      - sed 's/APP_VERSION: 0.0.0-flatpak/APP_VERSION: "{{.APP_VERSION}}"/' {{.ROOT_DIR}}/build/linux/flatpak/dev.sentinel.app.yml > {{.ROOT_DIR}}/build/linux/flatpak/dev.sentinel.app.generated.yml
+      - 'sed "s/APP_VERSION: 0.0.0-flatpak/APP_VERSION: {{.APP_VERSION}}/" {{.ROOT_DIR}}/build/linux/flatpak/dev.sentinel.app.yml > {{.ROOT_DIR}}/build/linux/flatpak/dev.sentinel.app.generated.yml'
       - flatpak-builder --force-clean --state-dir={{.ROOT_DIR}}/build/linux/flatpak/.flatpak-builder --repo={{.ROOT_DIR}}/build/linux/flatpak/repo --install-deps-from=flathub {{.ROOT_DIR}}/build/linux/flatpak/build-dir {{.ROOT_DIR}}/build/linux/flatpak/dev.sentinel.app.generated.yml
       - flatpak build-bundle {{.ROOT_DIR}}/build/linux/flatpak/repo {{.ROOT_DIR}}/bin/dev.sentinel.app.flatpak dev.sentinel.app
 

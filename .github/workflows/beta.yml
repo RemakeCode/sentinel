@@ -196,11 +196,18 @@ jobs:
       - name: Install GTK Dependencies
         uses: awalsh128/cache-apt-pkgs-action@latest
         with:
-          packages: build-essential pkg-config libgtk-3-dev libgtk-4-dev libwebkit2gtk-4.1-dev libwebkitgtk-6.0-dev libnotify-bin
+          packages: build-essential pkg-config libgtk-3-dev libgtk-4-dev libwebkit2gtk-4.1-dev libwebkitgtk-6.0-dev libnotify-bin flatpak-builder
           version: 1.0
 
       - name: Install Wails CLI
         run: go install github.com/wailsapp/wails/v3/cmd/wails3@latest
+
+      - name: Install Flatpak runtimes
+        run: |
+          sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+          sudo flatpak install --noninteractive flathub \
+            org.gnome.Platform/x86_64/48 \
+            org.gnome.Sdk/x86_64/48
 
       - name: Semantic Release
         id: semantic
