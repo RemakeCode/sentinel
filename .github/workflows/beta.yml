@@ -206,10 +206,10 @@ jobs:
         run: |
           sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
           sudo flatpak install --noninteractive flathub \
-            org.gnome.Platform/x86_64/48 \
-            org.gnome.Sdk/x86_64/48 \
-            org.freedesktop.Sdk.Extension.golang/x86_64/24.08 \
-            org.freedesktop.Sdk.Extension.node22/x86_64/24.08
+            org.gnome.Platform/x86_64/50 \
+            org.gnome.Sdk/x86_64/50 \
+            org.freedesktop.Sdk.Extension.golang/x86_64/25.08 \
+            org.freedesktop.Sdk.Extension.node22/x86_64/25.08
 
       - name: Semantic Release
         id: semantic

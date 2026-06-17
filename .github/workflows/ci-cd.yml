@@ -76,34 +76,20 @@ jobs:
       - name: Install GTK Dependencies
         uses: awalsh128/cache-apt-pkgs-action@latest
         with:
-          packages: build-essential pkg-config flatpak flatpak-builder libasound2-dev libgtk-3-dev libgtk-4-dev libwebkit2gtk-4.1-dev libwebkitgtk-6.0-dev
+          packages: build-essential pkg-config libasound2-dev libgtk-3-dev libgtk-4-dev libwebkit2gtk-4.1-dev libwebkitgtk-6.0-dev
           version: 1.0
 
       - name: Install Wails CLI
         run: go install github.com/wailsapp/wails/v3/cmd/wails3@latest
 
-      - name: Install Flatpak runtimes
-        run: |
-          sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-          sudo flatpak install --noninteractive flathub \
-            org.gnome.Platform/x86_64/48 \
-            org.gnome.Sdk/x86_64/48 \
-            org.freedesktop.Sdk.Extension.golang/x86_64/24.08 \
-            org.freedesktop.Sdk.Extension.node22/x86_64/24.08
-
       - name: Build Check
-        run: task linux:package
+        run: task linux:build
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: linux-build
-          path: |
-            bin/sentinel
-            bin/*.deb
-            bin/*.rpm
-            bin/*.pkg.tar.zst
-            bin/*.flatpak
+          path: bin/sentinel
           retention-days: 30
 
   semantic-dry-run:
@@ -198,10 +184,10 @@ jobs:
         run: |
           sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
           sudo flatpak install --noninteractive flathub \
-            org.gnome.Platform/x86_64/48 \
-            org.gnome.Sdk/x86_64/48 \
-            org.freedesktop.Sdk.Extension.golang/x86_64/24.08 \
-            org.freedesktop.Sdk.Extension.node22/x86_64/24.08
+            org.gnome.Platform/x86_64/50 \
+            org.gnome.Sdk/x86_64/50 \
+            org.freedesktop.Sdk.Extension.golang/x86_64/25.08 \
+            org.freedesktop.Sdk.Extension.node22/x86_64/25.08
 
       - name: Semantic Release
         id: semantic
