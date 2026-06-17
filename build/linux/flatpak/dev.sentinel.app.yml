@@ -15,6 +15,7 @@ build-options:
   env:
     CGO_ENABLED: '1'
     GO111MODULE: on
+    GOFLAGS: -modcacherw
     GOPATH: /run/build/sentinel/.go
     GOCACHE: /run/build/sentinel/.cache/go-build
     APP_VERSION: 0.0.0-flatpak
