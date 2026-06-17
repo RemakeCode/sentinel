@@ -19,3 +19,4 @@ node_modules
 
 */**/.DS_Store
 /decky-plugin/__pycache__
+/decky-plugin/out
