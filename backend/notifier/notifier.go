@@ -108,7 +108,7 @@ func (s *Service) notificationWorker() {
 		case payload := <-s.notificationQueue:
 			slog.Info("Worker received payload", "title", payload.Title, "game", payload.GameName, "isProgress", payload.IsProgress)
 			s.sendNotificationDesktop(payload)
-			time.Sleep(backend.NotificationDelay)
+			time.Sleep(notificationDelay(payload.IsProgress))
 		}
 	}
 }
@@ -158,11 +158,25 @@ func (s *Service) sendNotificationDesktop(payload *NotificationPayload) {
 		s.PlaySound(payload.SoundFile)
 	}
 
-	time.AfterFunc(backend.NotificationExpireTime, func() {
+	time.AfterFunc(notificationExpireTime(payload.IsProgress), func() {
 		s.closeNotification(notificationID)
 	})
 
 	slog.Info("Sent notification", "title", payload.Title, "game", payload.GameName)
+}
+
+func notificationExpireTime(isProgress bool) time.Duration {
+	if isProgress {
+		return backend.ProgressNotificationExpireTime
+	}
+	return backend.NotificationExpireTime
+}
+
+func notificationDelay(isProgress bool) time.Duration {
+	if isProgress {
+		return backend.ProgressNotificationDelay
+	}
+	return backend.NotificationDelay
 }
 
 func (s *Service) closeNotification(notificationID uint32) {
@@ -181,6 +195,12 @@ func (s *Service) closeNotification(notificationID uint32) {
 
 func (s *Service) SendNotification(appId string, achievements map[string]ach.Achievement, isProgress bool, shouldNotify bool) error {
 	slog.Info("SendNotification called", "appId", appId, "achievementsCount", len(achievements))
+
+	progressUpdateMode := s.Config.GetAchievementProgressUpdateMode()
+	if isProgress && progressUpdateMode == config.AchievementProgressUpdateModeDisabled {
+		slog.Info("Achievement progress update notification disabled", "appId", appId, "achievementsCount", len(achievements))
+		return nil
+	}
 
 	for id, a := range achievements {
 		notificationAch, gameName, e := s.getAchDataForNotification(appId)
@@ -204,7 +224,7 @@ func (s *Service) SendNotification(appId string, achievements map[string]ach.Ach
 				}
 
 				var soundFile string
-				if shouldNotify && s.Config.NotificationSound != "" {
+				if shouldNotify && s.Config.NotificationSound != "" && !(isProgress && progressUpdateMode == config.AchievementProgressUpdateModeSilent) {
 					soundFile = s.Config.NotificationSound
 					soundPath := filepath.Join(backend.MediaDir, soundFile)
 					if _, err := os.Stat(soundPath); err != nil {

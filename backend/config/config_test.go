@@ -113,6 +113,57 @@ func TestSaveConfig(t *testing.T) {
 	assert.Len(t, loaded.Emulators, 1)
 }
 
+func TestLoadConfig_MissingAchievementProgressUpdateModeUsesDefault(t *testing.T) {
+	_, _ = setupTestConfig(t)
+
+	configJSON := `{
+		"language": {"displayName": "English", "api": "english", "webapi": "en"},
+		"steamDataSource": "external"
+	}`
+	require.NoError(t, os.WriteFile(backend.ConfigPath, []byte(configJSON), 0644))
+
+	cfg := &File{}
+	result, err := cfg.LoadConfig()
+	require.NoError(t, err)
+
+	assert.Equal(t, AchievementProgressUpdateModeDefault, result.AchievementProgressUpdateMode)
+	assert.Equal(t, AchievementProgressUpdateModeDefault, result.GetAchievementProgressUpdateMode())
+}
+
+func TestLoadConfig_EmptyAchievementProgressUpdateModeUsesDefault(t *testing.T) {
+	_, _ = setupTestConfig(t)
+
+	configData := File{
+		AchievementProgressUpdateMode: "",
+		SteamDataSource:               "external",
+	}
+	data, err := json.MarshalIndent(configData, "", "  ")
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(backend.ConfigPath, data, 0644))
+
+	cfg := &File{}
+	result, err := cfg.LoadConfig()
+	require.NoError(t, err)
+
+	assert.Equal(t, AchievementProgressUpdateModeDefault, result.AchievementProgressUpdateMode)
+	assert.Equal(t, AchievementProgressUpdateModeDefault, result.GetAchievementProgressUpdateMode())
+}
+
+func TestSaveConfig_DefaultsAchievementProgressUpdateMode(t *testing.T) {
+	_, _ = setupTestConfig(t)
+
+	cfg := &File{}
+	err := cfg.SaveConfig()
+	require.NoError(t, err)
+
+	var raw map[string]any
+	data, err := os.ReadFile(backend.ConfigPath)
+	require.NoError(t, err)
+	require.NoError(t, json.Unmarshal(data, &raw))
+
+	assert.Equal(t, string(AchievementProgressUpdateModeDefault), raw["achievementProgressUpdateMode"])
+}
+
 func TestSetSteamAPIKey(t *testing.T) {
 	_, tempDir := setupTestConfig(t)
 	_ = tempDir
@@ -196,6 +247,33 @@ func TestSetSteamDataSource(t *testing.T) {
 	err := cfg.SetSteamDataSource(Key)
 	require.NoError(t, err)
 	assert.Equal(t, Key, cfg.SteamDataSource)
+}
+
+func TestSetAchievementProgressUpdateMode_Valid(t *testing.T) {
+	_, tempDir := setupTestConfig(t)
+	_ = tempDir
+
+	cfg := &File{}
+	err := cfg.SetAchievementProgressUpdateMode(AchievementProgressUpdateModeSilent)
+	require.NoError(t, err)
+
+	assert.Equal(t, AchievementProgressUpdateModeSilent, cfg.AchievementProgressUpdateMode)
+
+	loaded := &File{}
+	_, err = loaded.LoadConfig()
+	require.NoError(t, err)
+	assert.Equal(t, AchievementProgressUpdateModeSilent, loaded.AchievementProgressUpdateMode)
+}
+
+func TestSetAchievementProgressUpdateMode_Invalid(t *testing.T) {
+	_, tempDir := setupTestConfig(t)
+	_ = tempDir
+
+	cfg := &File{AchievementProgressUpdateMode: AchievementProgressUpdateModeDefault}
+	err := cfg.SetAchievementProgressUpdateMode(AchievementProgressUpdateMode("loud"))
+
+	assert.Error(t, err)
+	assert.Equal(t, AchievementProgressUpdateModeDefault, cfg.AchievementProgressUpdateMode)
 }
 
 func TestAddEmulator(t *testing.T) {
