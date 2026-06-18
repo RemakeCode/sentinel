@@ -39,143 +39,142 @@ function formatUnlockTime(timestamp: number | undefined): string {
 
 //language=css
 const achievementStyles = `
-  .sentinel-achievement-container {
-    display: grid;
-    grid-template-columns: minmax(200px, 300px) 1fr;
-    align-items: start;
-    gap: 8px;
-  }
-
-  .sentinel-achievement-sidebar {
-    position: sticky;
-    top: 0;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .sentinel-achievement-sidebar-image {
-    display: flex;
-    padding: 0;
-    width: 100%;
-    margin-inline-end: 16px;
-  }
-
-  .sentinel-achievement-stats {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-    animation-name: fadeIn;
-    animation-timing-function: ease-in;
-    animation-duration: 300ms;
-    margin-block-start: 8px
-  }
-
-  .sentinel-achievement-stats-card {
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 8px;
-    padding: 12px;
-    text-align: center;
-    flex: 1;
-  }
-
-  .sentinel-achievement-stat-value {
-    font-size: 18px;
-    font-weight: bold;
-    display: block;
-  }
-
-  .sentinel-achievement-stat-label {
-    font-size: 12px;
-    color: #8b929a;
-    display: block;
-    margin-block-start: 2px;
-  }
-
-  .sentinel-achievement-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    position: sticky;
-    top: 0;
-    z-index: 5;
-    padding: 16px;
-    width: 100%;
-    background: #000;
-    box-sizing: border-box;
-    border-radius: 4px;
-    font-size: 24px;
-  }
-
-  .sentinel-achievement-sort-buttons {
-    display: flex;
-    gap: 16px;
-  }
-
-  .sentinel-achievement-sort-button {
-    width: 30px;
-    height: 30px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 4px;
-  }
-
-  .sentinel-achievement-sort-button--active, .sentinel-achievement-sort-button--focus {
-    background: var(--virtualmenu-accent);
-
-    & svg {
-      fill: #1b1b1b;
+    .sentinel-achievement-container {
+        display: grid;
+        grid-template-columns: minmax(200px, 300px) 1fr;
+        align-items: start;
+        gap: 8px;
     }
-  }
 
-
-  .sentinel-achievement-subheader {
-    background: inherit;
-    width: 100%;
-    margin-block-start: 16px;
-  }
-
-  .sentinel-achievement-item {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    padding-inline: 8px;
-    gap: 8px;
-    scroll-margin-top: 70px;
-  }
-
-  .sentinel-achievement-icon {
-    width: 60px;
-    height: 60px;
-    border-radius: 6px;
-  }
-
-  .sentinel-achievement-meta {
-    flex: 1;
-  }
-
-  .sentinel-achievement-hidden {
-    filter: blur(4px);
-    cursor: pointer;
-    transition: filter 200ms linear;
-  }
-
-  .sentinel-achievement-state {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-
-    & [role="progressbar"], progress {
-      width: 180px;
+    .sentinel-achievement-sidebar {
+        position: sticky;
+        top: 0;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
     }
-  }
+
+    .sentinel-achievement-sidebar-image {
+        display: flex;
+        padding: 0;
+        width: 100%;
+        margin-inline-end: 16px;
+    }
+
+    .sentinel-achievement-stats {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+        animation-name: fadeIn;
+        animation-timing-function: ease-in;
+        animation-duration: 300ms;
+        margin-block-start: 8px
+    }
+
+    .sentinel-achievement-stats-card {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 8px;
+        padding: 12px;
+        text-align: center;
+        flex: 1;
+    }
+
+    .sentinel-achievement-stat-value {
+        font-size: 18px;
+        font-weight: bold;
+        display: block;
+    }
+
+    .sentinel-achievement-stat-label {
+        font-size: 12px;
+        color: #8b929a;
+        display: block;
+        margin-block-start: 2px;
+    }
+
+    .sentinel-achievement-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        position: sticky;
+        top: 0;
+        z-index: 5;
+        padding: 16px;
+        width: 100%;
+        background: #000;
+        box-sizing: border-box;
+        border-radius: 4px;
+        font-size: 24px;
+    }
+
+    .sentinel-achievement-sort-buttons {
+        display: flex;
+        gap: 16px;
+    }
+
+    .sentinel-achievement-sort-button {
+        width: 30px;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 4px;
+    }
+
+    .sentinel-achievement-sort-button--active, .sentinel-achievement-sort-button--focus {
+        background: var(--virtualmenu-accent);
+
+        & svg {
+            fill: #1b1b1b;
+        }
+    }
+
+
+    .sentinel-achievement-subheader {
+        background: inherit;
+        width: 100%;
+        margin-block-start: 16px;
+    }
+
+    .sentinel-achievement-item {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        padding-inline: 8px;
+        gap: 8px;
+        scroll-margin-top: 70px;
+    }
+
+    .sentinel-achievement-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 6px;
+    }
+
+    .sentinel-achievement-meta {
+        flex: 1;
+    }
+
+    .sentinel-achievement-hidden {
+        filter: blur(4px);
+        cursor: pointer;
+        transition: filter 200ms linear;
+    }
+
+    .sentinel-achievement-state {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+
+        & [role="progressbar"], progress {
+            width: 180px;
+            background: #3d4450;
+        }
+    }
 `;
 
 const AchievementsPage: FC = () => {
-  console.log({ hidden: achievementListClasses.Hidden, hContent: achievementListClasses.HiddenAchievementContent });
-
   const appId = window.location.pathname.split('/games/')[1];
 
   const [game, setGame] = useState<GameBasics | null>(null);
