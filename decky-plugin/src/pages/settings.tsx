@@ -37,6 +37,7 @@ interface AppConfig {
   steamApiKeyMasked: string;
   notificationSound: string;
   logLevel: string;
+  achievementProgressUpdateMode: string;
 }
 
 interface SoundOption {
@@ -98,6 +99,7 @@ const SettingsPage: FC = () => {
   const [steamAPIKeyHasError, setSteamAPIKeyHasError] = useState(false);
   const [stmSrc, setStmSrc] = useState<string>('');
   const [testNotificationDisabled, setTestNotificationDisabled] = useState(false);
+  const [achievementProgressUpdateMode, setAchievementProgressUpdateMode] = useState<string>('');
   const [serviceStatus, setServiceStatus] = useState<'loading' | 'online' | 'offline'>('loading');
   const steamAPIKeyTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const testNotificationTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -109,6 +111,7 @@ const SettingsPage: FC = () => {
       const cfg = await fetcher.get<AppConfig>(`${BASE_URL}/config`);
       setConfig(cfg);
       setStmSrc(cfg.steamDataSource);
+      setAchievementProgressUpdateMode(cfg.achievementProgressUpdateMode);
     } catch {
       // config load failed
     }
@@ -237,6 +240,16 @@ const SettingsPage: FC = () => {
     }
   };
 
+  const handleAchievementProgressUpdateModeChange = async (option: { data: string }) => {
+    const value = option.data;
+    try {
+      await fetcher.put(`${BASE_URL}/config/achievement-progress-update-mode`, { mode: value });
+      setAchievementProgressUpdateMode(value);
+    } catch {
+      toaster.toast({ title: 'Error', body: 'Failed to save achievement progress update mode' });
+    }
+  };
+
   const handleLoggingToggle = async (enabled: boolean) => {
     try {
       await fetcher.put(`${BASE_URL}/config/logging`, { enabled });
@@ -341,6 +354,21 @@ const SettingsPage: FC = () => {
                     selectedOption={config?.notificationSound || ''}
                     onChange={handleSoundChange}
                     strDefaultLabel='Select a sound'
+                  />
+                </Field>
+              </DialogControlsSection>
+              <DialogControlsSection>
+                <DialogControlsSectionHeader>Achievement Progress Updates</DialogControlsSectionHeader>
+                <Field label='Mode' childrenContainerWidth='fixed'>
+                  <Dropdown
+                    rgOptions={[
+                      { data: 'default', label: 'Default (Sound & Notification)' },
+                      { data: 'silent', label: 'Silent (No Sound)' },
+                      { data: 'disabled', label: 'Disabled' }
+                    ]}
+                    selectedOption={achievementProgressUpdateMode}
+                    onChange={handleAchievementProgressUpdateModeChange}
+                    strDefaultLabel='Select mode'
                   />
                 </Field>
               </DialogControlsSection>

@@ -113,6 +113,7 @@ func (r *Router) Handler() http.Handler {
 		api.Put("/config/steam-api-key", Wrap(r.handleSetSteamAPIKey))
 		api.Put("/config/steam-data-source", Wrap(r.handleSetSteamDataSource))
 		api.Put("/config/logging", Wrap(r.handleSetLogging))
+		api.Put("/config/achievement-progress-update-mode", Wrap(r.handleSetAchievementProgressUpdateMode))
 		api.Post("/config/notification-sound", Wrap(r.handleSetSound))
 		api.Patch("/config/emulator-notification/{index}", Wrap(r.handleToggleEmulatorNotification))
 		api.Post("/config/prefix", Wrap(r.handleAddPrefix))
@@ -227,6 +228,23 @@ func (r *Router) handleToggleEmulatorNotification(w http.ResponseWriter, req *ht
 
 	if err := r.Config.ToggleEmulatorNotification(index); err != nil {
 		return AppError{Status: http.StatusInternalServerError, Message: err.Error()}
+	}
+
+	return JSON(w, http.StatusOK, map[string]string{"status": "success"})
+}
+
+// handleSetAchievementProgressUpdateMode sets the achievement progress update mode
+func (r *Router) handleSetAchievementProgressUpdateMode(w http.ResponseWriter, req *http.Request) error {
+	var body struct {
+		Mode config.AchievementProgressUpdateMode `json:"mode"`
+	}
+
+	if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
+		return AppError{Status: http.StatusBadRequest, Message: "Invalid request body"}
+	}
+
+	if err := r.Config.SetAchievementProgressUpdateMode(body.Mode); err != nil {
+		return AppError{Status: http.StatusBadRequest, Message: err.Error()}
 	}
 
 	return JSON(w, http.StatusOK, map[string]string{"status": "success"})
