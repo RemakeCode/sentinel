@@ -41,6 +41,14 @@ const (
 	External SteamSource = "external"
 )
 
+type AchievementProgressUpdateMode string
+
+const (
+	AchievementProgressUpdateModeDefault  AchievementProgressUpdateMode = "default"
+	AchievementProgressUpdateModeSilent   AchievementProgressUpdateMode = "silent"
+	AchievementProgressUpdateModeDisabled AchievementProgressUpdateMode = "disabled"
+)
+
 type SoundOption struct {
 	Name  string `json:"name"`
 	Value string `json:"value"`
@@ -62,16 +70,17 @@ type AppInfo struct {
 
 //wails:internal
 type File struct {
-	app               *application.App
-	Language          types.Language `json:"language"`
-	Emulators         []Emulator     `json:"emulators"`
-	Prefixes          []Prefix       `json:"prefixes"`
-	SteamAPIKey       string         `json:"SteamAPIKey"`
-	SteamDataSource   SteamSource    `json:"steamDataSource"`
-	SteamAPIKeyMasked string         `json:"steamApiKeyMasked"`
-	NotificationSound string         `json:"notificationSound"`
-	LogLevel          string         `json:"logLevel"`
-	StartOnLogin      bool           `json:"startOnLogin"`
+	app                           *application.App
+	Language                      types.Language                `json:"language"`
+	Emulators                     []Emulator                    `json:"emulators"`
+	Prefixes                      []Prefix                      `json:"prefixes"`
+	SteamAPIKey                   string                        `json:"SteamAPIKey"`
+	SteamDataSource               SteamSource                   `json:"steamDataSource"`
+	SteamAPIKeyMasked             string                        `json:"steamApiKeyMasked"`
+	NotificationSound             string                        `json:"notificationSound"`
+	AchievementProgressUpdateMode AchievementProgressUpdateMode `json:"achievementProgressUpdateMode"`
+	LogLevel                      string                        `json:"logLevel"`
+	StartOnLogin                  bool                          `json:"startOnLogin"`
 }
 
 var defaultEmulatorPaths = []Emulator{
@@ -153,9 +162,10 @@ func (c *File) ServiceStartup(ctx context.Context, options application.ServiceOp
 	if os.IsNotExist(err) {
 		// File doesn't exist - initialize default config
 		defaultConfig := File{
-			Emulators:         defaultEmulatorPaths,
-			SteamDataSource:   "external",
-			NotificationSound: "steam-deck.wav",
+			Emulators:                     defaultEmulatorPaths,
+			SteamDataSource:               "external",
+			NotificationSound:             "steam-deck.wav",
+			AchievementProgressUpdateMode: AchievementProgressUpdateModeDefault,
 			Language: types.Language{
 				DisplayName: "English", API: "english", WebAPI: "en",
 			},
@@ -207,10 +217,14 @@ func (c *File) LoadConfig() (*File, error) {
 		return nil, errors.New("unable to unmarshal config")
 	}
 
+	c.applyProgressModeDefaults()
+
 	return c, nil
 }
 
 func (c *File) SaveConfig() error {
+	c.applyProgressModeDefaults()
+
 	data, err := json.MarshalIndent(c, "", "  ")
 
 	if err != nil {
@@ -226,6 +240,12 @@ func (c *File) SaveConfig() error {
 	}
 
 	return nil
+}
+
+func (c *File) applyProgressModeDefaults() {
+	if c.AchievementProgressUpdateMode == "" {
+		c.AchievementProgressUpdateMode = AchievementProgressUpdateModeDefault
+	}
 }
 
 // SetSteamAPIKey sets the Steam API key in the configuration
@@ -275,6 +295,32 @@ func (c *File) GetSteamDataSource() SteamSource {
 // SetSteamDataSource sets the Steam data source preference and saves the configuration
 func (c *File) SetSteamDataSource(source SteamSource) error {
 	c.SteamDataSource = source
+	return c.SaveConfig()
+}
+
+func (m AchievementProgressUpdateMode) valid() bool {
+	switch m {
+	case AchievementProgressUpdateModeDefault, AchievementProgressUpdateModeSilent, AchievementProgressUpdateModeDisabled:
+		return true
+	default:
+		return false
+	}
+}
+
+//wails:internal
+func (c *File) GetAchievementProgressUpdateMode() AchievementProgressUpdateMode {
+	if c.AchievementProgressUpdateMode == "" {
+		return AchievementProgressUpdateModeDefault
+	}
+	return c.AchievementProgressUpdateMode
+}
+
+func (c *File) SetAchievementProgressUpdateMode(mode AchievementProgressUpdateMode) error {
+	if !mode.valid() {
+		return fmt.Errorf("invalid achievement progress update mode: %s", mode)
+	}
+
+	c.AchievementProgressUpdateMode = mode
 	return c.SaveConfig()
 }
 
