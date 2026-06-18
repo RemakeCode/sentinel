@@ -5,15 +5,11 @@ import (
 	"flag"
 	"fmt"
 	"log/slog"
-	"sentinel/backend"
-	"sentinel/backend/ach"
-	"sentinel/backend/config"
-	"sentinel/backend/logger"
-	"sentinel/backend/notifier"
-	"sentinel/backend/steam"
-	"sentinel/backend/watcher"
-
 	"net/http"
+	"sentinel/backend"
+	"sentinel/backend/bootstrap"
+	"sentinel/backend/logger"
+
 	"path/filepath"
 	"strings"
 
@@ -31,47 +27,16 @@ var startMinimized bool
 
 func init() {
 	flag.BoolVar(&startMinimized, "startminimized", false, "Start with window minimized (systray only)")
-	application.RegisterEvent[application.Void]("sentinel::ready")
 	application.RegisterEvent[backend.FetchStatusEvt](backend.EventFetchStatus)
 	application.RegisterEvent[application.Void](backend.EventDataUpdated)
 }
 
 func main() {
-	//if runtime.GOOS == "linux" {
-	//	os.Setenv("WEBKIT_DISABLE_DMABUF_RENDERER", "1")
-	//}
-
+	flag.Parse()
 	var window *application.WebviewWindow
 
-	appLogger := logger.New()
-	// Load config early to check logging preferences
-	cfg, err := config.Get()
-	logLevel := "info" // default
-	if err == nil && cfg != nil {
-		logLevel = cfg.LogLevel
-		logger.SetLevel(logger.ParseLevel(logLevel))
-	}
-
-	slog.SetDefault(appLogger)
-
-	// Initialize services
-	configService := &config.File{}
-	achService := &ach.Service{}
-
-	steamService := &steam.Service{
-		Config: configService,
-		Ach:    achService,
-	}
-
-	notifierService := &notifier.Service{
-		Config: configService,
-	}
-	watcherService := &watcher.Service{
-		Steam:    steamService,
-		Ach:      achService,
-		Config:   configService,
-		Notifier: notifierService,
-	}
+	appLogger, logLevel := bootstrap.ConfigureLogger()
+	services := bootstrap.NewServices()
 
 	options := application.Options{
 		Name:        "dev.sentinel.app",
@@ -79,11 +44,11 @@ func main() {
 		Logger:      appLogger,
 		LogLevel:    logger.ParseLevel(logLevel),
 		Services: []application.Service{
-			application.NewService(configService),
-			application.NewService(steamService),
-			application.NewService(achService),
-			application.NewService(watcherService),
-			application.NewService(notifierService),
+			application.NewService(services.Config),
+			application.NewService(services.Steam),
+			application.NewService(services.Ach),
+			application.NewService(services.Watcher),
+			application.NewService(services.Notifier),
 		},
 
 		Assets: application.AssetOptions{
@@ -100,10 +65,10 @@ func main() {
 		Mac: application.MacOptions{
 			ApplicationShouldTerminateAfterLastWindowClosed: false,
 		},
+		Linux: application.LinuxOptions{},
 		SingleInstance: &application.SingleInstanceOptions{
 			UniqueID: "dev.sentinel.app",
 			OnSecondInstanceLaunch: func(data application.SecondInstanceData) {
-				// Bring the existing instance to front when second instance is launched
 				if window != nil {
 					window.Show()
 					window.Focus()
@@ -112,10 +77,7 @@ func main() {
 		},
 	}
 
-	// Sync slog level with Wails LogLevel option
 	logger.SetLevel(options.LogLevel)
-
-	flag.Parse()
 
 	app := application.New(options)
 
@@ -130,6 +92,9 @@ func main() {
 		UseApplicationMenu:         false,
 		DefaultContextMenuDisabled: false,
 		BackgroundColour:           application.NewRGB(18, 18, 18),
+		Linux: application.LinuxWindow{
+			WebviewGpuPolicy: application.WebviewGpuPolicyOnDemand,
+		},
 	})
 
 	window.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
@@ -156,8 +121,6 @@ func main() {
 	tray.SetMenu(menu)
 
 	window.OnWindowEvent(events.Common.WindowRuntimeReady, func(e *application.WindowEvent) {
-		app.Event.Emit("sentinel::ready")
-
 		slog.Info(fmt.Sprintf("%s %s is running", backend.AppName, backend.Version))
 	})
 

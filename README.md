@@ -60,6 +60,12 @@ sudo dnf install sentinel.rpm
 sudo pacman -U sentinel.pkg.tar.zst
 ```
 
+### Steam Deck / Decky Plugin
+
+A beta Decky Loader plugin is available for SteamDeck/Gamescope users. Download the `decky-plugin` artifact from here, then install it through Decky Loader.
+
+The Decky plugin is currently beta software, so check the beta release notes for install steps, known issues, and compatibility notes before using it.
+
 
 ## Quick Start
 
@@ -103,8 +109,8 @@ Short answer - No. Sentinel is Linux-first. It is technically possible to have a
 ### How do I add a new game after setup?
 Sentinel automatically rescans prefix directories every few seconds. New games appear in the library automatically.
 
-### Is there a plan to support SteamDeck/Decky Loader Plugin.
-Yes.
+### Is Steam Deck / Decky Loader supported?
+Yes. A beta Decky Loader plugin is available for Steam Deck users. See the beta release notes for current install steps and known issues.
 
 ## Acknowledgments
 - [Achievement Watcher](https://github.com/xan105/Achievement-Watcher) - Inspiration

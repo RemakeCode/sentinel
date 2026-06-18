@@ -14,14 +14,12 @@ import (
 	"os"
 	"path/filepath"
 	"sentinel/backend"
-	"sentinel/backend/autostart"
 	"sentinel/backend/logger"
 	"sentinel/backend/migrate"
 	"sentinel/backend/steam/types"
 	"strings"
 	"sync"
 
-	"github.com/wailsapp/wails/v3/pkg/application"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )
@@ -59,6 +57,10 @@ type LogLevelOption struct {
 	Value string `json:"value"`
 }
 
+type Autostarter interface {
+	SetEnabled(enabled bool) error
+}
+
 type AppInfo struct {
 	Name        string `json:"name"`
 	Version     string `json:"version"`
@@ -70,7 +72,7 @@ type AppInfo struct {
 
 //wails:internal
 type File struct {
-	app                           *application.App
+	autostart                     Autostarter
 	Language                      types.Language                `json:"language"`
 	Emulators                     []Emulator                    `json:"emulators"`
 	Prefixes                      []Prefix                      `json:"prefixes"`
@@ -128,7 +130,7 @@ func ResetSingleton() {
 	instanceErr = nil
 }
 
-func (c *File) ServiceStartup(ctx context.Context, options application.ServiceOptions) error {
+func (c *File) Start(ctx context.Context) error {
 	slog.Info("Starting config initialization")
 
 	// Run migration from old XDG locations if needed
@@ -195,11 +197,6 @@ func (c *File) ServiceStartup(ctx context.Context, options application.ServiceOp
 	// Load config into this instance so injected services have the values
 	if _, err := c.LoadConfig(); err != nil {
 		slog.Error("Failed to load config into service", "error", err)
-	}
-
-	// Sync autostart file state with config preference
-	if err := autostart.SetAutostartEnabled(c.StartOnLogin); err != nil {
-		slog.Error("Failed to sync autostart state", "error", err)
 	}
 
 	slog.Info("Config initialization complete")
@@ -581,5 +578,8 @@ func (c *File) SetStartOnLogin(enabled bool) error {
 	if err := c.SaveConfig(); err != nil {
 		return err
 	}
-	return autostart.SetAutostartEnabled(enabled)
+	if c.autostart != nil {
+		return c.autostart.SetEnabled(enabled)
+	}
+	return nil
 }

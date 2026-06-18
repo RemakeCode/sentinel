@@ -353,7 +353,6 @@ const Settings: FC = () => {
                   <div key={record.index} className='settings-grid-item'>
                     <span className='badge success'>Prefix</span>
                     <code>{record.prefix.path}</code>
-
                     <div className='settings-grid-actions' title={'Delete Prefix'}>
                       <Trash2 size={20} onClick={() => handleRemovePrefix(record.index)} />
                     </div>

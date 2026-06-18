@@ -173,7 +173,13 @@ const GameDetails: FC = () => {
           <div className='game-details-container'>
             <div className='game-details-container-inner'>
               <div className='game-details-image card'>
-                <img src={game?.PortraitImage} alt={game?.Name} onError={(e) => { e.currentTarget.src = missingCover; }} />
+                <img
+                  src={game?.PortraitImage}
+                  alt={game?.Name}
+                  onError={(e) => {
+                    e.currentTarget.src = missingCover;
+                  }}
+                />
               </div>
               <progress value={stats.percentage} max={100} className='mt-6'></progress>
               <div className='game-details-stats'>
@@ -256,7 +262,7 @@ const GameDetails: FC = () => {
                                 max={maxProgress}
                               />
                               <span className='game-details-ach-progress-text'>
-                                {currentAch?.earned && progress !== maxProgress ? progress + 1 : progress} /{' '}
+                                {currentAch?.earned && progress !== maxProgress ? progress + 1 : progress} /
                                 {maxProgress}
                               </span>
                             </div>

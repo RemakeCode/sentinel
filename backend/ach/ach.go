@@ -8,13 +8,11 @@ import (
 	"path/filepath"
 	"sentinel/backend"
 	"strings"
-
-	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 type Service struct{}
 
-func (s *Service) ServiceStartup(ctx context.Context, options application.ServiceOptions) error {
+func (s *Service) Start(ctx context.Context) error {
 	return nil
 }
 
