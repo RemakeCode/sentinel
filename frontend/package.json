@@ -34,6 +34,6 @@
     "prettier": "^3.8.1",
     "sass-embedded": "^1.97.3",
     "typescript": "^6.0.2",
-    "vite": "8.0.5"
+    "vite": "^8.0.16"
   }
 }
