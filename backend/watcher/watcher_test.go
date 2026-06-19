@@ -410,6 +410,213 @@ func TestComputeFullPath_NoDriveC(t *testing.T) {
 	assert.Contains(t, err.Error(), "could not find drive_c")
 }
 
+// ─── isShortcutAppID tests ────────────────────────────────────────────────────
+
+func TestIsShortcutAppID(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected bool
+	}{
+		{"0", false},
+		{"1493710", false},
+		{"1665460", false},
+		{"2147483647", false},
+		{"2147483648", true},
+		{"3237746183", true},
+		{"3989101494", true},
+		{"abc", false},
+		{"", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			assert.Equal(t, tt.expected, isShortcutAppID(tt.input))
+		})
+	}
+}
+
+// ─── scanAndWatchPrefix tests ──────────────────────────────────────────────────
+
+func TestScanAndWatchPrefix_Compatdata_FiltersShortcuts(t *testing.T) {
+	tempDir := t.TempDir()
+	prefixDir := filepath.Join(tempDir, "compatdata")
+
+	emuPath := "GSE Saves"
+	storeGameDir := filepath.Join(prefixDir, "drive_c", "users", "steamuser", emuPath, "1493710")
+	shortcutDir := filepath.Join(prefixDir, "drive_c", "users", "steamuser", emuPath, "3237746183")
+	require.NoError(t, os.MkdirAll(storeGameDir, 0755))
+	require.NoError(t, os.MkdirAll(shortcutDir, 0755))
+
+	achMock := &mockAchManager{}
+	service := &Service{
+		Ach:   achMock,
+		Steam: &mockSteam{},
+		Config: &config.File{
+			Emulators: []config.Emulator{{Path: emuPath}},
+		},
+	}
+	service.watcher = createTestWatcher(t)
+
+	service.scanAndWatchPrefix(prefixDir)
+
+	assert.Contains(t, service.watcher.WatchList(), storeGameDir)
+	assert.NotContains(t, service.watcher.WatchList(), shortcutDir)
+	assert.Equal(t, 1, achMock.saveCalls)
+}
+
+func TestScanAndWatchPrefix_Compatdata_DoesNotWalkEntireTree(t *testing.T) {
+	tempDir := t.TempDir()
+	prefixDir := filepath.Join(tempDir, "compatdata")
+
+	emuPath := "GSE Saves"
+	gameDir := filepath.Join(prefixDir, "drive_c", "users", "steamuser", emuPath, "1493710")
+	require.NoError(t, os.MkdirAll(gameDir, 0755))
+
+	// Create numeric system dirs that should NOT be found by scan
+	systemDir := filepath.Join(prefixDir, "drive_c", "windows", "system32", "spool", "drivers", "w32x86", "3")
+	require.NoError(t, os.MkdirAll(systemDir, 0755))
+
+	achMock := &mockAchManager{}
+	service := &Service{
+		Ach:   achMock,
+		Steam: &mockSteam{},
+		Config: &config.File{
+			Emulators: []config.Emulator{{Path: emuPath}},
+		},
+	}
+	service.watcher = createTestWatcher(t)
+
+	service.scanAndWatchPrefix(prefixDir)
+
+	assert.Contains(t, service.watcher.WatchList(), gameDir)
+	assert.NotContains(t, service.watcher.WatchList(), systemDir)
+	assert.Equal(t, 1, achMock.saveCalls)
+}
+
+func TestScanAndWatchPrefix_NonCompatdata_StillScansEmuPaths(t *testing.T) {
+	tempDir := t.TempDir()
+	prefixDir := filepath.Join(tempDir, "customprefix")
+
+	emuPath := "GSE Saves"
+	gameDir := filepath.Join(prefixDir, "drive_c", "users", "steamuser", emuPath, "99999")
+	require.NoError(t, os.MkdirAll(gameDir, 0755))
+
+	// Shortcut IDs should NOT be filtered for non-compatdata prefixes
+	shortcutDir := filepath.Join(prefixDir, "drive_c", "users", "steamuser", emuPath, "3989101494")
+	require.NoError(t, os.MkdirAll(shortcutDir, 0755))
+
+	achMock := &mockAchManager{}
+	service := &Service{
+		Ach:   achMock,
+		Steam: &mockSteam{},
+		Config: &config.File{
+			Emulators: []config.Emulator{{Path: emuPath}},
+		},
+	}
+	service.watcher = createTestWatcher(t)
+
+	service.scanAndWatchPrefix(prefixDir)
+
+	assert.Contains(t, service.watcher.WatchList(), gameDir)
+	assert.Contains(t, service.watcher.WatchList(), shortcutDir)
+	assert.Equal(t, 2, achMock.saveCalls)
+}
+
+func TestScanAndWatchPrefix_PrefixNoLongerExists(t *testing.T) {
+	achMock := &mockAchManager{}
+	service := &Service{
+		Ach:   achMock,
+		Steam: &mockSteam{},
+	}
+	service.watcher = createTestWatcher(t)
+
+	service.scanAndWatchPrefix("/nonexistent/path")
+
+	assert.Empty(t, service.watcher.WatchList())
+	assert.Equal(t, 0, achMock.saveCalls)
+}
+
+func TestScanAndWatchPrefix_NoDriveC(t *testing.T) {
+	tempDir := t.TempDir()
+
+	achMock := &mockAchManager{}
+	service := &Service{
+		Ach:    achMock,
+		Steam:  &mockSteam{},
+		Config: &config.File{},
+	}
+	service.watcher = createTestWatcher(t)
+
+	service.scanAndWatchPrefix(tempDir)
+
+	assert.Empty(t, service.watcher.WatchList())
+	assert.Equal(t, 0, achMock.saveCalls)
+}
+
+// ─── Start shortcut filtering test ────────────────────────────────────────────
+
+func TestStart_CompatdataPrefix_FiltersShortcuts(t *testing.T) {
+	tempDir := t.TempDir()
+	prefixDir := filepath.Join(tempDir, "compatdata")
+
+	emuPath := "GSE Saves"
+	storeDir := filepath.Join(prefixDir, "drive_c", "users", "steamuser", emuPath, "1493710")
+	shortcutDir := filepath.Join(prefixDir, "drive_c", "users", "steamuser", emuPath, "3989101494")
+	require.NoError(t, os.MkdirAll(storeDir, 0755))
+	require.NoError(t, os.MkdirAll(shortcutDir, 0755))
+
+	steamMock := &mockSteam{done: make(chan struct{})}
+	achMock := &mockAchManager{}
+	service := &Service{
+		Config: &config.File{
+			Prefixes:  []config.Prefix{{Path: prefixDir}},
+			Emulators: []config.Emulator{{Path: emuPath}},
+		},
+		Steam: steamMock,
+		Ach:   achMock,
+	}
+
+	require.NoError(t, service.Start())
+	<-steamMock.done
+
+	assert.Contains(t, steamMock.calledWithAppIDs, "1493710")
+	assert.NotContains(t, steamMock.calledWithAppIDs, "3989101494")
+	assert.Len(t, steamMock.calledWithAppIDs, 1)
+
+	service.Stop()
+}
+
+func TestStart_NonCompatdataPrefix_DoesNotFilterShortcuts(t *testing.T) {
+	tempDir := t.TempDir()
+	prefixDir := filepath.Join(tempDir, "customprefix")
+
+	emuPath := "GSE Saves"
+	storeDir := filepath.Join(prefixDir, "drive_c", "users", "steamuser", emuPath, "1493710")
+	shortcutDir := filepath.Join(prefixDir, "drive_c", "users", "steamuser", emuPath, "3989101494")
+	require.NoError(t, os.MkdirAll(storeDir, 0755))
+	require.NoError(t, os.MkdirAll(shortcutDir, 0755))
+
+	steamMock := &mockSteam{done: make(chan struct{})}
+	achMock := &mockAchManager{}
+	service := &Service{
+		Config: &config.File{
+			Prefixes:  []config.Prefix{{Path: prefixDir}},
+			Emulators: []config.Emulator{{Path: emuPath}},
+		},
+		Steam: steamMock,
+		Ach:   achMock,
+	}
+
+	require.NoError(t, service.Start())
+	<-steamMock.done
+
+	assert.Contains(t, steamMock.calledWithAppIDs, "1493710")
+	assert.Contains(t, steamMock.calledWithAppIDs, "3989101494")
+	assert.Len(t, steamMock.calledWithAppIDs, 2)
+
+	service.Stop()
+}
+
 func TestComputeFullPath_WithEmulatorPaths(t *testing.T) {
 	tempDir := t.TempDir()
 

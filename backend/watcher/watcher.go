@@ -10,6 +10,7 @@ import (
 	"sentinel/backend"
 	"sentinel/backend/steam/types"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -122,7 +123,8 @@ func (s *Service) Start() error {
 
 	s.prefixPaths = prefixPaths
 
-	var scanPaths []string
+	var allAppIDs []string
+	var allAppIDPaths []string
 
 	if len(prefixPaths) > 0 {
 		for _, prefix := range prefixPaths {
@@ -132,8 +134,17 @@ func (s *Service) Start() error {
 				slog.Warn("Failed to compute additional path", "prefix", prefix, "error", err)
 				continue
 			}
-			for _, fullPath := range fullPaths {
-				scanPaths = append(scanPaths, fullPath)
+
+			result := s.scan(fullPaths)
+
+			isCompatdata := filepath.Base(prefix) == "compatdata"
+
+			for i, appID := range result.AppIDs {
+				if isCompatdata && isShortcutAppID(appID) {
+					continue
+				}
+				allAppIDs = append(allAppIDs, appID)
+				allAppIDPaths = append(allAppIDPaths, result.AppIDPaths[i])
 			}
 		}
 		slog.Info("Prefix paths configured, scanning prefix × emulator paths", "prefixes", len(prefixPaths))
@@ -141,7 +152,7 @@ func (s *Service) Start() error {
 		slog.Info("No prefix paths configured, scanning emulator paths directly")
 	}
 
-	scanResult := s.scan(scanPaths)
+	scanResult := scanResult{AppIDs: allAppIDs, AppIDPaths: allAppIDPaths}
 
 	// Fetch metadata for all discovered appIds
 	if len(scanResult.AppIDs) > 0 {
@@ -229,7 +240,16 @@ func (s *Service) PathWalker() {
 	}
 }
 
-// scanAndWatchPrefix walks a prefix directory and watches any new game directories found
+// isShortcutAppID returns true if the given app ID is in the non-Steam shortcut range
+func isShortcutAppID(appID string) bool {
+	id, err := strconv.ParseUint(appID, 10, 64)
+	if err != nil {
+		return false
+	}
+	return id >= 2147483648
+}
+
+// scanAndWatchPrefix scans the emulator save paths for new game directories and watches them
 func (s *Service) scanAndWatchPrefix(prefix string) {
 	if _, err := os.Stat(prefix); err != nil {
 		slog.Warn("Prefix path no longer exists, skipping", "prefix", prefix, "error", err)
@@ -238,43 +258,36 @@ func (s *Service) scanAndWatchPrefix(prefix string) {
 
 	watchlist := s.watcher.WatchList()
 
-	err := filepath.WalkDir(prefix, func(path string, d os.DirEntry, err error) error {
-		// Handle walk errors first
-		if err != nil {
-			// If there's a walk error, log it and skip this directory
-			slog.Warn("Error walking path", "path", path, "error", err)
-			return filepath.SkipDir
-		}
-
-		// Check if d is nil (shouldn't happen with proper error handling, but just in case)
-		if d == nil {
-			return nil
-		}
-
-		if d.IsDir() && strings.EqualFold(d.Name(), "drive_c") && slices.ContainsFunc(watchlist, func(s string) bool { return strings.Contains(s, path) }) {
-			return filepath.SkipDir
-		}
-
-		if d.IsDir() && numericRegex.MatchString(d.Name()) {
-			if err := s.watchPath(path); err != nil {
-				slog.Warn("Failed to watch path", "path", path, "error", err)
-				return nil
-			}
-
-			if err := s.Ach.SaveAch(path); err != nil {
-				slog.Warn("Failed to cache ach from path", "path", path, "error", err)
-				return nil
-			}
-
-			s.triggerMetadataFetch([]string{filepath.Base(path)})
-		}
-
-		return nil
-	})
-
+	fullPaths, err := s.computeFullPath(prefix)
 	if err != nil {
-		slog.Error("Error scanning prefix", "prefix", prefix, "error", err)
+		slog.Debug("Failed to compute full path", "prefix", prefix, "error", err)
 		return
+	}
+
+	result := s.scan(fullPaths)
+
+	isCompatdata := filepath.Base(prefix) == "compatdata"
+
+	for i, appID := range result.AppIDs {
+		if isCompatdata && isShortcutAppID(appID) {
+			continue
+		}
+
+		path := result.AppIDPaths[i]
+		if slices.Contains(watchlist, path) {
+			continue
+		}
+
+		if err := s.watchPath(path); err != nil {
+			slog.Warn("Failed to watch path", "path", path, "error", err)
+			continue
+		}
+
+		if err := s.Ach.SaveAch(path); err != nil {
+			slog.Warn("Failed to cache ach from path", "path", path, "error", err)
+		}
+
+		s.triggerMetadataFetch([]string{appID})
 	}
 }
 

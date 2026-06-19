@@ -1,8 +1,5 @@
 import { findModuleExport } from '@decky/ui';
 import { EDisplayStatus, EAppType } from '@decky/ui/dist/globals/steam-client/App';
-import type {SteamClient} from '@decky/ui/dist/globals/steam-client';
-
-let SteamClient: SteamClient;
 
 interface NonSteamGame {
   appId: number;
