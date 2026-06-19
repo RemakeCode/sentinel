@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"sentinel/backend"
 	"sentinel/backend/bootstrap"
+	"sentinel/backend/config"
 	"sentinel/backend/logger"
 
 	"path/filepath"
@@ -39,7 +40,7 @@ func main() {
 	services := bootstrap.NewServices()
 
 	options := application.Options{
-		Name:        "dev.sentinel.app",
+		Name:        "Sentinel",
 		Description: "An Achievement Watcher",
 		Logger:      appLogger,
 		LogLevel:    logger.ParseLevel(logLevel),
@@ -80,6 +81,11 @@ func main() {
 	logger.SetLevel(options.LogLevel)
 
 	app := application.New(options)
+
+	services.Config.SetAutostart(config.NewAutostartManager(app))
+	if err := services.Config.SyncAutostart(); err != nil {
+		slog.Error("Failed to sync autostart", "error", err)
+	}
 
 	window = app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title:                      "Sentinel",

@@ -569,6 +569,10 @@ func (c *File) GetAppInfo() AppInfo {
 	}
 }
 
+func (c *File) SetAutostart(a Autostarter) {
+	c.autostart = a
+}
+
 func (c *File) GetStartOnLogin() bool {
 	return c.StartOnLogin
 }
@@ -580,6 +584,13 @@ func (c *File) SetStartOnLogin(enabled bool) error {
 	}
 	if c.autostart != nil {
 		return c.autostart.SetEnabled(enabled)
+	}
+	return nil
+}
+
+func (c *File) SyncAutostart() error {
+	if c.autostart != nil {
+		return c.autostart.SetEnabled(c.StartOnLogin)
 	}
 	return nil
 }
