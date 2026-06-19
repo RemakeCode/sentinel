@@ -42,16 +42,11 @@ func IsSteamInBPM() bool {
 	return false
 }
 
-func IsDeckyInstalled() bool {
-	_, err := os.Stat("/etc/systemd/system/plugin_loader.service")
-	return err == nil
-}
-
 func IsGamescopeSession() bool {
 	cmd := exec.Command("pgrep", "gamescope")
 	return cmd.Run() == nil
 }
 
-func IsDecky() bool {
-	return IsSteamInBPM() && IsDeckyInstalled() || IsGamescopeSession() && IsDeckyInstalled()
+func IsActiveDeckSession() bool {
+	return IsSteamInBPM() || IsGamescopeSession()
 }

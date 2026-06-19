@@ -21,13 +21,13 @@ func main() {
 	bootstrap.ConfigureLogger()
 	services := bootstrap.NewServices()
 	services.Notifier.SetDeliveryMode(notifier.DeliveryDecky)
-	activeDecky := decky.IsDecky()
+	activeDeckSession := decky.IsActiveDeckSession()
 
-	if !activeDecky {
+	if !activeDeckSession {
 		slog.Info("Decky watcher disabled outside active Decky session")
 	}
 
-	if err := bootstrap.StartSharedServices(context.Background(), services, bootstrap.StartOptions{StartWatcher: activeDecky}); err != nil {
+	if err := bootstrap.StartSharedServices(context.Background(), services, bootstrap.StartOptions{StartWatcher: activeDeckSession}); err != nil {
 		slog.Error("Failed to initialize Decky backend", "error", err)
 	}
 	if err := startDeckyServer(services); err != nil {
