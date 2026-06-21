@@ -63,7 +63,6 @@ type GlobalAchievementPercentage struct {
 }
 
 type Config interface {
-	GetSteamAPIKey() (string, error)
 	GetSteamDataSource() config.SteamSource
 	GetLanguage() types.Language
 }
@@ -291,13 +290,10 @@ func (s *Service) applyAchievementProgress(game *GameBasics, achData *ach.Achiev
 	}
 }
 
-func (s *Service) fetchAchievementsWithKey(appID string, language string) ([]achievement, error) {
-	apiKey, _ := s.Config.GetSteamAPIKey()
-
-	//Strangely doesn't require a key
+func (s *Service) fetchAchievementsFromOfficialAPI(appID string, language string) ([]achievement, error) {
 	url := fmt.Sprintf(
-		"https://api.steampowered.com/IPlayerService/GetGameAchievements/v1/?key=%s&appid=%s&language=%s",
-		apiKey, appID, language,
+		"https://api.steampowered.com/IPlayerService/GetGameAchievements/v1/?appid=%s&language=%s",
+		appID, language,
 	)
 
 	resp, err := http.Get(url)
@@ -534,8 +530,8 @@ func (s *Service) fetchAchievements(appID string, language string) ([]achievemen
 
 	switch dataSource {
 	case "key":
-		// Use Steam API key
-		return s.fetchAchievementsWithKey(appID, language)
+		// Use official Steam API (key is optional)
+		return s.fetchAchievementsFromOfficialAPI(appID, language)
 
 	case "external":
 		// Use third-party external source
