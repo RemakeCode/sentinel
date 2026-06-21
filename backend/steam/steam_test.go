@@ -29,11 +29,6 @@ func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
 	return f(req)
 }
 
-func (m *mockConfig) GetSteamAPIKey() (string, error) {
-	args := m.Called()
-	return args.String(0), args.Error(1)
-}
-
 func (m *mockConfig) GetSteamDataSource() config.SteamSource {
 	args := m.Called()
 	return args.Get(0).(config.SteamSource)
@@ -151,7 +146,7 @@ func TestFetchAppDetailsBulk_Cached(t *testing.T) {
 	assert.Equal(t, "Test Game", results[0].Name)
 }
 
-func TestFetchAchievementsWithKey_CachesFilenameIconsAsLocalMediaPaths(t *testing.T) {
+func TestFetchAchievementsFromOfficialAPI_CachesFilenameIconsAsLocalMediaPaths(t *testing.T) {
 	tmpDir := t.TempDir()
 	originalDataDir := backend.DataDir
 	originalIconDir := backend.ACHCacheIconDir
@@ -163,10 +158,10 @@ func TestFetchAchievementsWithKey_CachesFilenameIconsAsLocalMediaPaths(t *testin
 	})
 
 	mc := new(mockConfig)
-	mc.On("GetSteamAPIKey").Return("TESTKEY", nil)
+
 	svc := &Service{Config: mc}
 	appID := "12345"
-	apiURL := "https://api.steampowered.com/IPlayerService/GetGameAchievements/v1/?key=TESTKEY&appid=12345&language=english"
+	apiURL := "https://api.steampowered.com/IPlayerService/GetGameAchievements/v1/?appid=12345&language=english"
 	iconURL := "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/12345/icon.png"
 	grayURL := "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/12345/icon_gray.png"
 
@@ -206,7 +201,7 @@ func TestFetchAchievementsWithKey_CachesFilenameIconsAsLocalMediaPaths(t *testin
 		http.DefaultTransport = originalTransport
 	})
 
-	achievements, err := svc.fetchAchievementsWithKey(appID, "english")
+	achievements, err := svc.fetchAchievementsFromOfficialAPI(appID, "english")
 
 	assert.NoError(t, err)
 	assert.Len(t, achievements, 1)
@@ -219,7 +214,7 @@ func TestFetchAchievementsWithKey_CachesFilenameIconsAsLocalMediaPaths(t *testin
 	assert.NoError(t, err)
 }
 
-func TestFetchAchievementsWithKey_IconDownloadFailureDoesNotReturnRemoteURL(t *testing.T) {
+func TestFetchAchievementsFromOfficialAPI_IconDownloadFailureDoesNotReturnRemoteURL(t *testing.T) {
 	tmpDir := t.TempDir()
 	originalDataDir := backend.DataDir
 	originalIconDir := backend.ACHCacheIconDir
@@ -231,10 +226,10 @@ func TestFetchAchievementsWithKey_IconDownloadFailureDoesNotReturnRemoteURL(t *t
 	})
 
 	mc := new(mockConfig)
-	mc.On("GetSteamAPIKey").Return("TESTKEY", nil)
+
 	svc := &Service{Config: mc}
 	appID := "12345"
-	apiURL := "https://api.steampowered.com/IPlayerService/GetGameAchievements/v1/?key=TESTKEY&appid=12345&language=english"
+	apiURL := "https://api.steampowered.com/IPlayerService/GetGameAchievements/v1/?appid=12345&language=english"
 	iconURL := "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/12345/icon.png"
 	grayURL := "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/12345/icon_gray.png"
 
@@ -274,7 +269,7 @@ func TestFetchAchievementsWithKey_IconDownloadFailureDoesNotReturnRemoteURL(t *t
 		http.DefaultTransport = originalTransport
 	})
 
-	achievements, err := svc.fetchAchievementsWithKey(appID, "english")
+	achievements, err := svc.fetchAchievementsFromOfficialAPI(appID, "english")
 
 	assert.NoError(t, err)
 	assert.Len(t, achievements, 1)
@@ -284,7 +279,7 @@ func TestFetchAchievementsWithKey_IconDownloadFailureDoesNotReturnRemoteURL(t *t
 	assert.False(t, strings.HasPrefix(achievements[0].IconGray, "http"))
 }
 
-func TestFetchAchievementsWithKey_CachesAbsoluteIconURLsAsLocalMediaPaths(t *testing.T) {
+func TestFetchAchievementsFromOfficialAPI_CachesAbsoluteIconURLsAsLocalMediaPaths(t *testing.T) {
 	tmpDir := t.TempDir()
 	originalDataDir := backend.DataDir
 	originalIconDir := backend.ACHCacheIconDir
@@ -296,10 +291,10 @@ func TestFetchAchievementsWithKey_CachesAbsoluteIconURLsAsLocalMediaPaths(t *tes
 	})
 
 	mc := new(mockConfig)
-	mc.On("GetSteamAPIKey").Return("TESTKEY", nil)
+
 	svc := &Service{Config: mc}
 	appID := "12345"
-	apiURL := "https://api.steampowered.com/IPlayerService/GetGameAchievements/v1/?key=TESTKEY&appid=12345&language=english"
+	apiURL := "https://api.steampowered.com/IPlayerService/GetGameAchievements/v1/?appid=12345&language=english"
 	iconURL := "https://cdn.example.com/assets/full_icon.png"
 	grayURL := "https://cdn.example.com/assets/full_icon_gray.png"
 
@@ -339,7 +334,7 @@ func TestFetchAchievementsWithKey_CachesAbsoluteIconURLsAsLocalMediaPaths(t *tes
 		http.DefaultTransport = originalTransport
 	})
 
-	achievements, err := svc.fetchAchievementsWithKey(appID, "english")
+	achievements, err := svc.fetchAchievementsFromOfficialAPI(appID, "english")
 
 	assert.NoError(t, err)
 	assert.Len(t, achievements, 1)
@@ -364,7 +359,7 @@ func TestRefetchGameData_BypassesExistingCacheAndOverwritesOnSuccess(t *testing.
 	mc := new(mockConfig)
 	mc.On("GetLanguage").Return(types.Language{API: "english"})
 	mc.On("GetSteamDataSource").Return(config.SteamSource("key"))
-	mc.On("GetSteamAPIKey").Return("TESTKEY", nil)
+
 	svc := &Service{Config: mc}
 	appID := "12345"
 	oldGame := &GameBasics{AppID: appID, Name: "Old Cached Game"}
@@ -373,7 +368,7 @@ func TestRefetchGameData_BypassesExistingCacheAndOverwritesOnSuccess(t *testing.
 	storeURL := "https://store.steampowered.com/api/appdetails?appids=12345&l=english"
 	headerURL := "https://cdn.example.com/header.jpg"
 	portraitURL := "https://cdn.akamai.steamstatic.com/steam/apps/12345/library_600x900.jpg"
-	apiURL := "https://api.steampowered.com/IPlayerService/GetGameAchievements/v1/?key=TESTKEY&appid=12345&language=english"
+	apiURL := "https://api.steampowered.com/IPlayerService/GetGameAchievements/v1/?appid=12345&language=english"
 	iconURL := "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/12345/icon.png"
 	grayURL := "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/12345/icon_gray.png"
 	storeHit := false
@@ -465,7 +460,7 @@ func TestRefetchGameData_ReturnsCachedAchievementProgress(t *testing.T) {
 	mc := new(mockConfig)
 	mc.On("GetLanguage").Return(types.Language{API: "english"})
 	mc.On("GetSteamDataSource").Return(config.SteamSource("key"))
-	mc.On("GetSteamAPIKey").Return("TESTKEY", nil)
+
 	svc := &Service{Config: mc, Ach: &ach.Service{}}
 	appID := "12345"
 
@@ -484,7 +479,7 @@ func TestRefetchGameData_ReturnsCachedAchievementProgress(t *testing.T) {
 	storeURL := "https://store.steampowered.com/api/appdetails?appids=12345&l=english"
 	headerURL := "https://cdn.example.com/header.jpg"
 	portraitURL := "https://cdn.akamai.steamstatic.com/steam/apps/12345/library_600x900.jpg"
-	apiURL := "https://api.steampowered.com/IPlayerService/GetGameAchievements/v1/?key=TESTKEY&appid=12345&language=english"
+	apiURL := "https://api.steampowered.com/IPlayerService/GetGameAchievements/v1/?appid=12345&language=english"
 	iconURL := "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/12345/icon.png"
 	grayURL := "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/12345/icon_gray.png"
 
