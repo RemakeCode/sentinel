@@ -150,6 +150,202 @@ func TestFetchAppDetailsBulk_Cached(t *testing.T) {
 	assert.Equal(t, "Test Game", results[0].Name)
 }
 
+func TestFetchAchievementsWithKey_CachesFilenameIconsAsLocalMediaPaths(t *testing.T) {
+	tmpDir := t.TempDir()
+	originalDataDir := backend.DataDir
+	originalIconDir := backend.ACHCacheIconDir
+	backend.DataDir = tmpDir
+	backend.ACHCacheIconDir = filepath.Join(tmpDir, "icon")
+	t.Cleanup(func() {
+		backend.DataDir = originalDataDir
+		backend.ACHCacheIconDir = originalIconDir
+	})
+
+	mc := new(mockConfig)
+	mc.On("GetSteamAPIKey").Return("TESTKEY", nil)
+	svc := &Service{Config: mc}
+	appID := "12345"
+	apiURL := "https://api.steampowered.com/IPlayerService/GetGameAchievements/v1/?key=TESTKEY&appid=12345&language=english"
+	iconURL := "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/12345/icon.png"
+	grayURL := "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/12345/icon_gray.png"
+
+	originalTransport := http.DefaultTransport
+	http.DefaultTransport = roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		switch req.URL.String() {
+		case apiURL:
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body: io.NopCloser(strings.NewReader(`{
+					"response": {
+						"achievements": [
+							{
+								"internal_name": "ACH_1",
+								"localized_name": "Achievement One",
+								"localized_desc": "Do the thing",
+								"icon": "icon.png",
+								"icon_gray": "icon_gray.png",
+								"hidden": false
+							}
+						]
+					}
+				}`)),
+				Header: make(http.Header),
+			}, nil
+		case iconURL, grayURL:
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body:       io.NopCloser(strings.NewReader("image-bytes")),
+				Header:     make(http.Header),
+			}, nil
+		default:
+			return nil, assert.AnError
+		}
+	})
+	t.Cleanup(func() {
+		http.DefaultTransport = originalTransport
+	})
+
+	achievements, err := svc.fetchAchievementsWithKey(appID, "english")
+
+	assert.NoError(t, err)
+	assert.Len(t, achievements, 1)
+	assert.Equal(t, "/api/media/icon/12345/icon.png", achievements[0].Icon)
+	assert.Equal(t, "/api/media/icon/12345/icon_gray.png", achievements[0].IconGray)
+
+	_, err = os.Stat(filepath.Join(backend.ACHCacheIconDir, appID, "icon.png"))
+	assert.NoError(t, err)
+	_, err = os.Stat(filepath.Join(backend.ACHCacheIconDir, appID, "icon_gray.png"))
+	assert.NoError(t, err)
+}
+
+func TestFetchAchievementsWithKey_IconDownloadFailureDoesNotReturnRemoteURL(t *testing.T) {
+	tmpDir := t.TempDir()
+	originalDataDir := backend.DataDir
+	originalIconDir := backend.ACHCacheIconDir
+	backend.DataDir = tmpDir
+	backend.ACHCacheIconDir = filepath.Join(tmpDir, "icon")
+	t.Cleanup(func() {
+		backend.DataDir = originalDataDir
+		backend.ACHCacheIconDir = originalIconDir
+	})
+
+	mc := new(mockConfig)
+	mc.On("GetSteamAPIKey").Return("TESTKEY", nil)
+	svc := &Service{Config: mc}
+	appID := "12345"
+	apiURL := "https://api.steampowered.com/IPlayerService/GetGameAchievements/v1/?key=TESTKEY&appid=12345&language=english"
+	iconURL := "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/12345/icon.png"
+	grayURL := "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/12345/icon_gray.png"
+
+	originalTransport := http.DefaultTransport
+	http.DefaultTransport = roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		switch req.URL.String() {
+		case apiURL:
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body: io.NopCloser(strings.NewReader(`{
+					"response": {
+						"achievements": [
+							{
+								"internal_name": "ACH_1",
+								"localized_name": "Achievement One",
+								"localized_desc": "Do the thing",
+								"icon": "icon.png",
+								"icon_gray": "icon_gray.png",
+								"hidden": false
+							}
+						]
+					}
+				}`)),
+				Header: make(http.Header),
+			}, nil
+		case iconURL, grayURL:
+			return &http.Response{
+				StatusCode: http.StatusNotFound,
+				Body:       io.NopCloser(strings.NewReader("not found")),
+				Header:     make(http.Header),
+			}, nil
+		default:
+			return nil, assert.AnError
+		}
+	})
+	t.Cleanup(func() {
+		http.DefaultTransport = originalTransport
+	})
+
+	achievements, err := svc.fetchAchievementsWithKey(appID, "english")
+
+	assert.NoError(t, err)
+	assert.Len(t, achievements, 1)
+	assert.Equal(t, "", achievements[0].Icon)
+	assert.Equal(t, "", achievements[0].IconGray)
+	assert.False(t, strings.HasPrefix(achievements[0].Icon, "http"))
+	assert.False(t, strings.HasPrefix(achievements[0].IconGray, "http"))
+}
+
+func TestFetchAchievementsWithKey_CachesAbsoluteIconURLsAsLocalMediaPaths(t *testing.T) {
+	tmpDir := t.TempDir()
+	originalDataDir := backend.DataDir
+	originalIconDir := backend.ACHCacheIconDir
+	backend.DataDir = tmpDir
+	backend.ACHCacheIconDir = filepath.Join(tmpDir, "icon")
+	t.Cleanup(func() {
+		backend.DataDir = originalDataDir
+		backend.ACHCacheIconDir = originalIconDir
+	})
+
+	mc := new(mockConfig)
+	mc.On("GetSteamAPIKey").Return("TESTKEY", nil)
+	svc := &Service{Config: mc}
+	appID := "12345"
+	apiURL := "https://api.steampowered.com/IPlayerService/GetGameAchievements/v1/?key=TESTKEY&appid=12345&language=english"
+	iconURL := "https://cdn.example.com/assets/full_icon.png"
+	grayURL := "https://cdn.example.com/assets/full_icon_gray.png"
+
+	originalTransport := http.DefaultTransport
+	http.DefaultTransport = roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		switch req.URL.String() {
+		case apiURL:
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body: io.NopCloser(strings.NewReader(`{
+					"response": {
+						"achievements": [
+							{
+								"internal_name": "ACH_1",
+								"localized_name": "Achievement One",
+								"localized_desc": "Do the thing",
+								"icon": "https://cdn.example.com/assets/full_icon.png",
+								"icon_gray": "https://cdn.example.com/assets/full_icon_gray.png",
+								"hidden": false
+							}
+						]
+					}
+				}`)),
+				Header: make(http.Header),
+			}, nil
+		case iconURL, grayURL:
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body:       io.NopCloser(strings.NewReader("image-bytes")),
+				Header:     make(http.Header),
+			}, nil
+		default:
+			return nil, assert.AnError
+		}
+	})
+	t.Cleanup(func() {
+		http.DefaultTransport = originalTransport
+	})
+
+	achievements, err := svc.fetchAchievementsWithKey(appID, "english")
+
+	assert.NoError(t, err)
+	assert.Len(t, achievements, 1)
+	assert.Equal(t, "/api/media/icon/12345/full_icon.png", achievements[0].Icon)
+	assert.Equal(t, "/api/media/icon/12345/full_icon_gray.png", achievements[0].IconGray)
+}
+
 func TestLoadCachedGameData_SelfHealsRemotePortraitImage(t *testing.T) {
 	tmpDir := t.TempDir()
 	backend.DataDir = tmpDir

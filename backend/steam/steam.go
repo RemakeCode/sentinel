@@ -286,25 +286,14 @@ func (s *Service) fetchAchievementsWithKey(appID string, language string) ([]ach
 
 	var achievements []achievement
 
-	steamCDN := fmt.Sprintf("https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/%s/", appID)
-
 	for _, a := range schema.Response.Achievements {
-		_ = s.cacheAchievementIcon(appID, a.Icon)
-
 		hiddenVal := 0
 		if a.Hidden {
 			hiddenVal = 1
 		}
 
-		iconPath := steamCDN + a.Icon
-		if path, err := s.loadCachedAchievementIcon(appID, iconPath); err == nil {
-			iconPath = path
-		}
-
-		iconGrayPath := steamCDN + a.IconGray
-		if path, err := s.loadCachedAchievementIcon(appID, iconGrayPath); err == nil {
-			iconGrayPath = path
-		}
+		iconPath := s.localizeKeySourceAchievementIcon(appID, a.Icon, "icon")
+		iconGrayPath := s.localizeKeySourceAchievementIcon(appID, a.IconGray, "iconGray")
 
 		achievement := achievement{
 			Name:        a.Apiname,
@@ -318,6 +307,37 @@ func (s *Service) fetchAchievementsWithKey(appID string, language string) ([]ach
 	}
 
 	return achievements, nil
+}
+
+func (s *Service) resolveKeyAchievementIconURL(appID string, icon string) string {
+	if icon == "" {
+		return ""
+	}
+	if strings.HasPrefix(icon, "http://") || strings.HasPrefix(icon, "https://") {
+		return icon
+	}
+	steamCDN := fmt.Sprintf("https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/%s/", appID)
+	return steamCDN + strings.TrimLeft(icon, "/")
+}
+
+func (s *Service) localizeKeySourceAchievementIcon(appID string, icon string, field string) string {
+	iconURL := s.resolveKeyAchievementIconURL(appID, icon)
+	if iconURL == "" {
+		return ""
+	}
+
+	if err := s.cacheAchievementIcon(appID, iconURL); err != nil {
+		slog.Warn("Failed to cache key-source achievement icon", "appID", appID, "field", field, "iconURL", iconURL, "error", err)
+		return ""
+	}
+
+	path, err := s.loadCachedAchievementIcon(appID, iconURL)
+	if err != nil {
+		slog.Warn("Failed to load cached key-source achievement icon", "appID", appID, "field", field, "iconURL", iconURL, "error", err)
+		return ""
+	}
+
+	return path
 }
 
 // fetchAchievementsWithKeyLegacy is a fallback using GetSchemaForGame API
