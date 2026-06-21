@@ -5,6 +5,8 @@ import (
 	"flag"
 	"fmt"
 	"log/slog"
+	"unicode"
+
 	"sentinel/backend"
 	"sentinel/backend/ach"
 	"sentinel/backend/config"
@@ -34,6 +36,7 @@ func init() {
 	application.RegisterEvent[application.Void]("sentinel::ready")
 	application.RegisterEvent[backend.FetchStatusEvt](backend.EventFetchStatus)
 	application.RegisterEvent[application.Void](backend.EventDataUpdated)
+	application.RegisterEvent[string](backend.EventRefreshGameRequested)
 }
 
 func main() {
@@ -119,6 +122,18 @@ func main() {
 
 	app := application.New(options)
 
+	gameMenu := app.ContextMenu.New()
+	gameMenu.Add("Refresh game").OnClick(func(ctx *application.Context) {
+		appID := strings.TrimSpace(ctx.ContextMenuData())
+		if !isValidSteamAppID(appID) {
+			slog.Warn("Ignoring invalid game context menu data", "appID", appID)
+			return
+		}
+
+		app.Event.Emit(backend.EventRefreshGameRequested, appID)
+	})
+	app.ContextMenu.Add("game-card-menu", gameMenu)
+
 	window = app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title:                      "Sentinel",
 		MinWidth:                   1280,
@@ -164,4 +179,18 @@ func main() {
 	if err := app.Run(); err != nil {
 		slog.Error("Application failed", "error", err)
 	}
+}
+
+func isValidSteamAppID(appID string) bool {
+	if appID == "" {
+		return false
+	}
+
+	for _, r := range appID {
+		if !unicode.IsDigit(r) {
+			return false
+		}
+	}
+
+	return true
 }

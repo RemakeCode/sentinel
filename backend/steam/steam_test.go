@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sentinel/backend"
+	"sentinel/backend/ach"
 	"sentinel/backend/config"
 	"sentinel/backend/steam/types"
 	"strings"
@@ -344,6 +345,369 @@ func TestFetchAchievementsWithKey_CachesAbsoluteIconURLsAsLocalMediaPaths(t *tes
 	assert.Len(t, achievements, 1)
 	assert.Equal(t, "/api/media/icon/12345/full_icon.png", achievements[0].Icon)
 	assert.Equal(t, "/api/media/icon/12345/full_icon_gray.png", achievements[0].IconGray)
+}
+
+func TestRefetchGameData_BypassesExistingCacheAndOverwritesOnSuccess(t *testing.T) {
+	tmpDir := t.TempDir()
+	originalDataDir := backend.DataDir
+	originalGameCacheDir := backend.GameCacheDir
+	originalIconDir := backend.ACHCacheIconDir
+	backend.DataDir = tmpDir
+	backend.GameCacheDir = filepath.Join(tmpDir, "games")
+	backend.ACHCacheIconDir = filepath.Join(tmpDir, "icon")
+	t.Cleanup(func() {
+		backend.DataDir = originalDataDir
+		backend.GameCacheDir = originalGameCacheDir
+		backend.ACHCacheIconDir = originalIconDir
+	})
+
+	mc := new(mockConfig)
+	mc.On("GetLanguage").Return(types.Language{API: "english"})
+	mc.On("GetSteamDataSource").Return(config.SteamSource("key"))
+	mc.On("GetSteamAPIKey").Return("TESTKEY", nil)
+	svc := &Service{Config: mc}
+	appID := "12345"
+	oldGame := &GameBasics{AppID: appID, Name: "Old Cached Game"}
+	assert.NoError(t, svc.cacheGameData(appID, "english", oldGame))
+
+	storeURL := "https://store.steampowered.com/api/appdetails?appids=12345&l=english"
+	headerURL := "https://cdn.example.com/header.jpg"
+	portraitURL := "https://cdn.akamai.steamstatic.com/steam/apps/12345/library_600x900.jpg"
+	apiURL := "https://api.steampowered.com/IPlayerService/GetGameAchievements/v1/?key=TESTKEY&appid=12345&language=english"
+	iconURL := "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/12345/icon.png"
+	grayURL := "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/12345/icon_gray.png"
+	storeHit := false
+
+	originalTransport := http.DefaultTransport
+	http.DefaultTransport = roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		switch req.URL.String() {
+		case storeURL:
+			storeHit = true
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body: io.NopCloser(strings.NewReader(`{
+					"12345": {
+						"data": {
+							"name": "Fresh Game",
+							"header_image": "https://cdn.example.com/header.jpg"
+						}
+					}
+				}`)),
+				Header: make(http.Header),
+			}, nil
+		case headerURL, portraitURL, iconURL, grayURL:
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body:       io.NopCloser(strings.NewReader("image-bytes")),
+				Header:     make(http.Header),
+			}, nil
+		case apiURL:
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body: io.NopCloser(strings.NewReader(`{
+					"response": {
+						"achievements": [
+							{
+								"internal_name": "ACH_1",
+								"localized_name": "Achievement One",
+								"localized_desc": "Do the thing",
+								"icon": "icon.png",
+								"icon_gray": "icon_gray.png",
+								"hidden": false
+							}
+						]
+					}
+				}`)),
+				Header: make(http.Header),
+			}, nil
+		default:
+			return nil, assert.AnError
+		}
+	})
+	t.Cleanup(func() {
+		http.DefaultTransport = originalTransport
+	})
+
+	game, err := svc.RefetchGameData(appID)
+
+	assert.NoError(t, err)
+	assert.True(t, storeHit)
+	assert.Equal(t, "Fresh Game", game.Name)
+	assert.Equal(t, 1, game.Achievement.Total)
+	assert.Equal(t, "/api/media/icon/12345/headerImage.jpg", game.HeaderImage)
+	assert.Equal(t, "/api/media/icon/12345/portraitImage.jpg", game.PortraitImage)
+	assert.Equal(t, "/api/media/icon/12345/icon.png", game.Achievement.List[0].Icon)
+	assert.Equal(t, "/api/media/icon/12345/icon_gray.png", game.Achievement.List[0].IconGray)
+
+	cached, err := svc.loadCachedGameData(appID, "english")
+	assert.NoError(t, err)
+	assert.Equal(t, "Fresh Game", cached.Name)
+	assert.Equal(t, 1, cached.Achievement.Total)
+}
+
+func TestRefetchGameData_ReturnsCachedAchievementProgress(t *testing.T) {
+	tmpDir := t.TempDir()
+	originalDataDir := backend.DataDir
+	originalGameCacheDir := backend.GameCacheDir
+	originalIconDir := backend.ACHCacheIconDir
+	originalAchDataDir := backend.ACHCacheDataDir
+	backend.DataDir = tmpDir
+	backend.GameCacheDir = filepath.Join(tmpDir, "games")
+	backend.ACHCacheIconDir = filepath.Join(tmpDir, "icon")
+	backend.ACHCacheDataDir = filepath.Join(tmpDir, "data")
+	t.Cleanup(func() {
+		backend.DataDir = originalDataDir
+		backend.GameCacheDir = originalGameCacheDir
+		backend.ACHCacheIconDir = originalIconDir
+		backend.ACHCacheDataDir = originalAchDataDir
+	})
+
+	mc := new(mockConfig)
+	mc.On("GetLanguage").Return(types.Language{API: "english"})
+	mc.On("GetSteamDataSource").Return(config.SteamSource("key"))
+	mc.On("GetSteamAPIKey").Return("TESTKEY", nil)
+	svc := &Service{Config: mc, Ach: &ach.Service{}}
+	appID := "12345"
+
+	assert.NoError(t, os.MkdirAll(backend.ACHCacheDataDir, 0755))
+	achProgress := map[string]ach.Achievement{
+		"ACH_1": {
+			Earned:     true,
+			EarnedTime: 123,
+			Progress:   1,
+		},
+	}
+	progressData, err := json.Marshal(achProgress)
+	assert.NoError(t, err)
+	assert.NoError(t, os.WriteFile(filepath.Join(backend.ACHCacheDataDir, appID+".json"), progressData, 0644))
+
+	storeURL := "https://store.steampowered.com/api/appdetails?appids=12345&l=english"
+	headerURL := "https://cdn.example.com/header.jpg"
+	portraitURL := "https://cdn.akamai.steamstatic.com/steam/apps/12345/library_600x900.jpg"
+	apiURL := "https://api.steampowered.com/IPlayerService/GetGameAchievements/v1/?key=TESTKEY&appid=12345&language=english"
+	iconURL := "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/12345/icon.png"
+	grayURL := "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/12345/icon_gray.png"
+
+	originalTransport := http.DefaultTransport
+	http.DefaultTransport = roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		switch req.URL.String() {
+		case storeURL:
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body: io.NopCloser(strings.NewReader(`{
+					"12345": {
+						"data": {
+							"name": "Fresh Game",
+							"header_image": "https://cdn.example.com/header.jpg"
+						}
+					}
+				}`)),
+				Header: make(http.Header),
+			}, nil
+		case headerURL, portraitURL, iconURL, grayURL:
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body:       io.NopCloser(strings.NewReader("image-bytes")),
+				Header:     make(http.Header),
+			}, nil
+		case apiURL:
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body: io.NopCloser(strings.NewReader(`{
+					"response": {
+						"achievements": [
+							{
+								"internal_name": "ACH_1",
+								"localized_name": "Achievement One",
+								"localized_desc": "Do the thing",
+								"icon": "icon.png",
+								"icon_gray": "icon_gray.png",
+								"hidden": false
+							}
+						]
+					}
+				}`)),
+				Header: make(http.Header),
+			}, nil
+		default:
+			return nil, assert.AnError
+		}
+	})
+	t.Cleanup(func() {
+		http.DefaultTransport = originalTransport
+	})
+
+	game, err := svc.RefetchGameData(appID)
+
+	assert.NoError(t, err)
+	assert.True(t, game.Achievement.List[0].CurrentAch.Earned)
+	assert.Equal(t, int64(123), game.Achievement.List[0].CurrentAch.EarnedTime)
+	assert.Equal(t, 1, game.Achievement.List[0].CurrentAch.Progress)
+}
+
+func TestRefetchGameData_FailureLeavesExistingCacheUnchanged(t *testing.T) {
+	tmpDir := t.TempDir()
+	originalDataDir := backend.DataDir
+	originalGameCacheDir := backend.GameCacheDir
+	originalIconDir := backend.ACHCacheIconDir
+	backend.DataDir = tmpDir
+	backend.GameCacheDir = filepath.Join(tmpDir, "games")
+	backend.ACHCacheIconDir = filepath.Join(tmpDir, "icon")
+	t.Cleanup(func() {
+		backend.DataDir = originalDataDir
+		backend.GameCacheDir = originalGameCacheDir
+		backend.ACHCacheIconDir = originalIconDir
+	})
+
+	mc := new(mockConfig)
+	mc.On("GetLanguage").Return(types.Language{API: "english"})
+	svc := &Service{Config: mc}
+	appID := "12345"
+	oldGame := &GameBasics{AppID: appID, Name: "Old Cached Game"}
+	assert.NoError(t, svc.cacheGameData(appID, "english", oldGame))
+	cachePath := svc.getGameCachePath(appID, "english")
+	before, err := os.ReadFile(cachePath)
+	assert.NoError(t, err)
+
+	storeURL := "https://store.steampowered.com/api/appdetails?appids=12345&l=english"
+	originalTransport := http.DefaultTransport
+	http.DefaultTransport = roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		switch req.URL.String() {
+		case storeURL:
+			return &http.Response{
+				StatusCode: http.StatusInternalServerError,
+				Body:       io.NopCloser(strings.NewReader("error")),
+				Header:     make(http.Header),
+			}, nil
+		default:
+			return nil, assert.AnError
+		}
+	})
+	t.Cleanup(func() {
+		http.DefaultTransport = originalTransport
+	})
+
+	_, err = svc.RefetchGameData(appID)
+
+	assert.Error(t, err)
+	after, readErr := os.ReadFile(cachePath)
+	assert.NoError(t, readErr)
+	assert.Equal(t, string(before), string(after))
+	cached, err := svc.loadCachedGameData(appID, "english")
+	assert.NoError(t, err)
+	assert.Equal(t, "Old Cached Game", cached.Name)
+}
+
+func TestRefetchGameData_RejectsInvalidAppIDBeforeNetwork(t *testing.T) {
+	svc := &Service{}
+	networkCalled := false
+
+	originalTransport := http.DefaultTransport
+	http.DefaultTransport = roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		networkCalled = true
+		return nil, assert.AnError
+	})
+	t.Cleanup(func() {
+		http.DefaultTransport = originalTransport
+	})
+
+	_, err := svc.RefetchGameData("not-an-app")
+
+	assert.Error(t, err)
+	assert.False(t, networkCalled)
+}
+
+func TestRefetchGameData_UsesConfiguredExternalSourceAndLanguage(t *testing.T) {
+	tmpDir := t.TempDir()
+	originalDataDir := backend.DataDir
+	originalGameCacheDir := backend.GameCacheDir
+	originalIconDir := backend.ACHCacheIconDir
+	backend.DataDir = tmpDir
+	backend.GameCacheDir = filepath.Join(tmpDir, "games")
+	backend.ACHCacheIconDir = filepath.Join(tmpDir, "icon")
+	t.Cleanup(func() {
+		backend.DataDir = originalDataDir
+		backend.GameCacheDir = originalGameCacheDir
+		backend.ACHCacheIconDir = originalIconDir
+	})
+
+	mc := new(mockConfig)
+	mc.On("GetLanguage").Return(types.Language{API: "spanish"})
+	mc.On("GetSteamDataSource").Return(config.SteamSource("external"))
+	svc := &Service{Config: mc}
+	appID := "12345"
+	storeURL := "https://store.steampowered.com/api/appdetails?appids=12345&l=spanish"
+	headerURL := "https://cdn.example.com/header.jpg"
+	portraitURL := "https://cdn.akamai.steamstatic.com/steam/apps/12345/library_600x900.jpg"
+	shURL := "https://steamhunters.com/api/apps/12345/achievements"
+	communityURL := "https://steamcommunity.com/stats/12345/achievements?l=spanish"
+	iconURL := "https://cdn.example.com/external_icon.jpg"
+	steamHuntersHit := false
+
+	originalTransport := http.DefaultTransport
+	http.DefaultTransport = roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		switch req.URL.String() {
+		case storeURL:
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body: io.NopCloser(strings.NewReader(`{
+					"12345": {
+						"data": {
+							"name": "Juego Nuevo",
+							"header_image": "https://cdn.example.com/header.jpg"
+						}
+					}
+				}`)),
+				Header: make(http.Header),
+			}, nil
+		case headerURL, portraitURL, iconURL:
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body:       io.NopCloser(strings.NewReader("image-bytes")),
+				Header:     make(http.Header),
+			}, nil
+		case shURL:
+			steamHuntersHit = true
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body: io.NopCloser(strings.NewReader(`[
+					{
+						"apiName": "EXT_ACH",
+						"name": "External Achievement",
+						"description": "External description"
+					}
+				]`)),
+				Header: make(http.Header),
+			}, nil
+		case communityURL:
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body: io.NopCloser(strings.NewReader(`<html><body>
+					<div class="achieveRow">
+						<div class="achieveImgHolder"><img src="https://cdn.example.com/external_icon.jpg"></div>
+						<div class="achieveTxt"><h3>External Achievement</h3><h5>External description</h5></div>
+					</div>
+				</body></html>`)),
+				Header: make(http.Header),
+			}, nil
+		default:
+			return nil, assert.AnError
+		}
+	})
+	t.Cleanup(func() {
+		http.DefaultTransport = originalTransport
+	})
+
+	game, err := svc.RefetchGameData(appID)
+
+	assert.NoError(t, err)
+	assert.True(t, steamHuntersHit)
+	assert.Equal(t, "Juego Nuevo", game.Name)
+	assert.Equal(t, 1, game.Achievement.Total)
+	assert.Equal(t, "EXT_ACH", game.Achievement.List[0].Name)
+	assert.Equal(t, "/api/media/icon/12345/external_icon.jpg", game.Achievement.List[0].Icon)
+	_, err = os.Stat(svc.getGameCachePath(appID, "spanish"))
+	assert.NoError(t, err)
 }
 
 func TestLoadCachedGameData_SelfHealsRemotePortraitImage(t *testing.T) {
