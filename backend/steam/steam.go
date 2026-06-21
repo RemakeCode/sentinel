@@ -121,6 +121,27 @@ func (s *Service) ServiceStartup(ctx context.Context, options application.Servic
 	return nil
 }
 
+func (s *Service) RefetchGameData(appID string) (*GameBasics, error) {
+	appID = strings.TrimSpace(appID)
+	if appID == "" {
+		return nil, errors.New("appID is required")
+	}
+	for _, r := range appID {
+		if r < '0' || r > '9' {
+			return nil, fmt.Errorf("invalid appID: %s", appID)
+		}
+	}
+
+	language := s.Config.GetLanguage().API
+	game, err := s.fetchGameDataFresh(appID, language)
+	if err != nil {
+		return nil, err
+	}
+
+	s.applyCachedAchievementProgress(game)
+	return game, nil
+}
+
 //wails:internal
 func (s *Service) FetchAppDetailsBulk(appIDs []string, language types.Language) ([]*GameBasics, error) {
 	app := application.Get()
@@ -173,7 +194,7 @@ func (s *Service) FetchAppDetailsBulk(appIDs []string, language types.Language) 
 				return
 			}
 
-			details, err := s.fetchGameDetails(id, language.API)
+			details, err := s.fetchGameDataFresh(id, language.API)
 			if err != nil {
 				mu.Lock()
 				completed++
@@ -183,14 +204,6 @@ func (s *Service) FetchAppDetailsBulk(appIDs []string, language types.Language) 
 				}
 				return
 			}
-
-			achievementsList, err := s.fetchAchievements(id, language.API)
-
-			if err == nil {
-				details.Achievement.List = achievementsList
-			}
-
-			_ = s.cacheGameData(id, language.API, details)
 
 			mu.Lock()
 			results = append(results, details)
@@ -243,20 +256,39 @@ func (s *Service) LoadAllCachedGameData() ([]*GameBasics, error) {
 			continue
 		}
 
-		// Map achievement data by appId to each GameBasics.Achievement.List element
-		if achData, ok := allAch[gb.AppID]; ok {
-			for i, a := range gb.Achievement.List {
-				if progress, exists := achData.Achievements[a.Name]; exists {
-					a.CurrentAch = progress
-					gb.Achievement.List[i] = a
-				}
-			}
-		}
+		s.applyAchievementProgress(gb, allAch[gb.AppID])
 
 		cached = append(cached, gb)
 	}
 
 	return cached, nil
+}
+
+func (s *Service) applyCachedAchievementProgress(game *GameBasics) {
+	if game == nil || s.Ach == nil {
+		return
+	}
+
+	achData, err := s.Ach.LoadCachedAch(game.AppID)
+	if err != nil {
+		slog.Warn("Couldn't load cached current ach", "appID", game.AppID, "error", err)
+		return
+	}
+
+	s.applyAchievementProgress(game, achData)
+}
+
+func (s *Service) applyAchievementProgress(game *GameBasics, achData *ach.AchievementData) {
+	if game == nil || achData == nil {
+		return
+	}
+
+	for i, a := range game.Achievement.List {
+		if progress, exists := achData.Achievements[a.Name]; exists {
+			a.CurrentAch = progress
+			game.Achievement.List[i] = a
+		}
+	}
 }
 
 func (s *Service) fetchAchievementsWithKey(appID string, language string) ([]achievement, error) {
@@ -515,16 +547,37 @@ func (s *Service) fetchAchievements(appID string, language string) ([]achievemen
 	}
 }
 
+func (s *Service) fetchGameDataFresh(appID string, language string) (*GameBasics, error) {
+	details, err := s.fetchGameDetailsFresh(appID, language)
+	if err != nil {
+		return nil, err
+	}
+
+	achievementsList, err := s.fetchAchievements(appID, language)
+	if err != nil {
+		return nil, err
+	}
+
+	details.Achievement.Total = len(achievementsList)
+	details.Achievement.List = achievementsList
+
+	if err := s.cacheGameData(appID, language, details); err != nil {
+		return nil, err
+	}
+
+	return details, nil
+}
+
 func (s *Service) fetchGameDetails(appID string, language string) (*GameBasics, error) {
 	// 1. Check unified game cache first
 	if cached, err := s.loadCachedGameData(appID, language); err == nil {
 		return cached, nil
 	}
 
-	// 2. Check cache for game images
-	headerImagePath, _ := s.loadCachedGameImage(appID, "headerImage")
-	portraitImagePath, _ := s.loadCachedGameImage(appID, "portraitImage")
+	return s.fetchGameDetailsFresh(appID, language)
+}
 
+func (s *Service) fetchGameDetailsFresh(appID string, language string) (*GameBasics, error) {
 	url := fmt.Sprintf("https://store.steampowered.com/api/appdetails?appids=%s&l=%s", appID, language)
 
 	resp, err := http.Get(url)
@@ -561,11 +614,11 @@ func (s *Service) fetchGameDetails(appID string, language string) (*GameBasics, 
 	headerImage := appData.Data.HeaderImage
 	portraitImage := portraitImageURL
 
-	if headerImagePath != "" {
+	if headerImagePath, err := s.loadCachedGameImage(appID, "headerImage"); err == nil {
 		headerImage = headerImagePath
 	}
 
-	if portraitImagePath != "" {
+	if portraitImagePath, err := s.loadCachedGameImage(appID, "portraitImage"); err == nil {
 		portraitImage = portraitImagePath
 	}
 
