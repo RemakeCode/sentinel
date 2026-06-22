@@ -387,7 +387,7 @@ const Settings: FC = () => {
                   checked={stmSrc === SteamSource.Key}
                   onChange={handleSteamDataSourceChange}
                 />
-                Official API
+                Steam API
               </label>
               <label className='radio-option'>
                 <input
