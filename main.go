@@ -122,8 +122,8 @@ func main() {
 
 	app := application.New(options)
 
-	gameMenu := app.ContextMenu.New()
-	gameMenu.Add("Refresh game").OnClick(func(ctx *application.Context) {
+	gameMenu := application.NewContextMenu("game-card-menu")
+	gameMenu.Add("Refresh Metadata").OnClick(func(ctx *application.Context) {
 		appID := strings.TrimSpace(ctx.ContextMenuData())
 		if !isValidSteamAppID(appID) {
 			slog.Warn("Ignoring invalid game context menu data", "appID", appID)
@@ -132,7 +132,7 @@ func main() {
 
 		app.Event.Emit(backend.EventRefreshGameRequested, appID)
 	})
-	app.ContextMenu.Add("game-card-menu", gameMenu)
+	gameMenu.Update()
 
 	window = app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title:                      "Sentinel",
@@ -143,7 +143,7 @@ func main() {
 		URL:                        "/",
 		Hidden:                     startMinimized,
 		UseApplicationMenu:         false,
-		DefaultContextMenuDisabled: false,
+		DefaultContextMenuDisabled: true,
 		BackgroundColour:           application.NewRGB(18, 18, 18),
 	})
 
