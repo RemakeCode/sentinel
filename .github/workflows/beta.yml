@@ -15,7 +15,7 @@ permissions:
   pull-requests: write
 
 env:
-  WAILS_VERSION: v3.0.0-alpha2.103
+  WAILS_VERSION: v3.0.0-alpha2.105
 
 jobs:
   test:
