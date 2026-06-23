@@ -230,7 +230,13 @@ func (s *Service) SendNotification(appId string, achievements map[string]ach.Ach
 
 			var title string
 			if strings.EqualFold(achievement.Name, id) {
-				iconPath := filepath.Join(backend.ACHCacheIconDir, appId, filepath.Base(achievement.Icon))
+				iconPath := ""
+				if achievement.Icon != "" {
+					candidate := filepath.Join(backend.ACHCacheIconDir, appId, filepath.Base(achievement.Icon))
+					if info, err := os.Stat(candidate); err == nil && !info.IsDir() {
+						iconPath = candidate
+					}
+				}
 				title = achievement.DisplayName
 				message := achievement.Description
 

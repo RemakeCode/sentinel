@@ -154,6 +154,50 @@ func TestSendNotification_EarnedIgnoresProgressUpdateMode(t *testing.T) {
 	assert.Equal(t, "Progress Description", payload.Message)
 }
 
+func TestSendNotification_EmptyAchievementIconOmitsIconPath(t *testing.T) {
+	appID := setupNotifierCache(t)
+	svc := newNotifierTestService(config.AchievementProgressUpdateModeDisabled)
+	cachePath := filepath.Join(backend.GameCacheDir, "english", appID+".json")
+	gameData := `{
+		"AppID": "12345",
+		"Name": "Test Game",
+		"Achievement": {
+			"Total": 1,
+			"List": [
+				{
+					"Name": "ACH_PROGRESS",
+					"DisplayName": "Progress Achievement",
+					"Description": "Progress Description",
+					"Icon": ""
+				}
+			]
+		}
+	}`
+	require.NoError(t, os.WriteFile(cachePath, []byte(gameData), 0644))
+
+	err := svc.SendNotification(appID, map[string]ach.Achievement{
+		"ACH_PROGRESS": {Earned: true},
+	}, false, true)
+	require.NoError(t, err)
+
+	payload := requireQueuedPayload(t, svc)
+	assert.Equal(t, "", payload.IconPath)
+}
+
+func TestSendNotification_DirectoryAchievementIconOmitsIconPath(t *testing.T) {
+	appID := setupNotifierCache(t)
+	svc := newNotifierTestService(config.AchievementProgressUpdateModeDisabled)
+	require.NoError(t, os.MkdirAll(filepath.Join(backend.ACHCacheIconDir, appID, "icon.png"), 0755))
+
+	err := svc.SendNotification(appID, map[string]ach.Achievement{
+		"ACH_PROGRESS": {Earned: true},
+	}, false, true)
+	require.NoError(t, err)
+
+	payload := requireQueuedPayload(t, svc)
+	assert.Equal(t, "", payload.IconPath)
+}
+
 func TestTestNotificationProgress_IgnoresProgressUpdateMode(t *testing.T) {
 	tests := []struct {
 		name string
