@@ -489,7 +489,6 @@ func (s *Service) mergeAchievements(shItems []struct {
 		}
 
 		if data, ok := communityMap[item.Name]; ok {
-			a.Icon = data.Icon
 			a.Hidden = data.Hidden
 
 			// Cache the achievement icon
@@ -590,9 +589,8 @@ func (s *Service) fetchGameDetailsFresh(appID string, language string) (*GameBas
 	_ = s.cacheGameImage(appID, appData.Data.HeaderImage, "headerImage")
 	_ = s.cacheGameImage(appID, portraitImageURL, "portraitImage")
 
-	// Use cached paths if available, otherwise use URLs
-	headerImage := appData.Data.HeaderImage
-	portraitImage := portraitImageURL
+	headerImage := ""
+	portraitImage := ""
 
 	if headerImagePath, err := s.loadCachedGameImage(appID, "headerImage"); err == nil {
 		headerImage = headerImagePath
@@ -656,79 +654,39 @@ func (s *Service) loadCachedGameData(appID string, language string) (*GameBasics
 		return nil, fmt.Errorf("failed to unmarshal game data: %w", err)
 	}
 
-	dirty := false
-
-	// Lazy migration: Proactively check for local image files even if JSON has URLs
 	if game.PortraitImage != "" {
 		if localPath, err := s.loadCachedGameImage(appID, "portraitImage"); err == nil {
 			game.PortraitImage = localPath
-			dirty = true
-		} else if strings.HasPrefix(game.PortraitImage, "http") || strings.HasPrefix(game.PortraitImage, "/api/media/") || filepath.IsAbs(game.PortraitImage) {
-			// TODO(remove after legacy pre-fallback portrait caches have aged out): self-heal stale portrait cache references.
-			portraitImageURL := game.PortraitImage
-			if !strings.HasPrefix(portraitImageURL, "http") {
-				portraitImageURL = s.primaryPortraitImageURL(appID)
-			}
-
-			if err := s.cacheGameImage(appID, portraitImageURL, "portraitImage"); err == nil {
-				if localPath, err := s.loadCachedGameImage(appID, "portraitImage"); err == nil {
-					slog.Info("Self-healed cached portrait image", "appID", appID)
-					game.PortraitImage = localPath
-					dirty = true
-				}
-			}
 		}
 	}
 
 	if strings.HasPrefix(game.HeaderImage, "http") {
 		if localPath, err := s.loadCachedGameImage(appID, "headerImage"); err == nil {
 			game.HeaderImage = localPath
-			dirty = true
 		}
 	}
 
-	// Process achievement icons
 	for i, a := range game.Achievement.List {
 		if strings.HasPrefix(a.Icon, "http") {
 			if path, err := s.loadCachedAchievementIcon(appID, a.Icon); err == nil {
 				a.Icon = path
-				dirty = true
 			}
 		}
 		if strings.HasPrefix(a.IconGray, "http") {
 			if path, err := s.loadCachedAchievementIcon(appID, a.IconGray); err == nil {
 				a.IconGray = path
-				dirty = true
 			}
 		}
 		game.Achievement.List[i] = a
 	}
 
-	// Standardize all paths to virtual and detect if any changes were made (including filesystem -> virtual)
-	origHeader := game.HeaderImage
-	origPortrait := game.PortraitImage
 	game.HeaderImage = s.toVirtualPath(game.HeaderImage)
 	game.PortraitImage = s.toVirtualPath(game.PortraitImage)
 
-	if game.HeaderImage != origHeader || game.PortraitImage != origPortrait {
-		dirty = true
-	}
-
 	for i, a := range game.Achievement.List {
-		origIcon := a.Icon
-		origIconGray := a.IconGray
 		a.Icon = s.toVirtualPath(a.Icon)
 		a.IconGray = s.toVirtualPath(a.IconGray)
-		if a.Icon != origIcon || a.IconGray != origIconGray {
-			dirty = true
-		}
 		game.Achievement.List[i] = a
-	}
-
-	// Save back if we cleaned up any CDN URLs or legacy absolute paths
-	if dirty {
-		slog.Info("Sanitizing game cache to local paths", "appID", appID)
-		_ = s.cacheGameData(appID, language, &game)
 	}
 
 	return &game, nil
@@ -916,18 +874,7 @@ func (s *Service) loadCachedGameImage(appID string, imageType string) (string, e
 
 	for _, entry := range entries {
 		if strings.HasPrefix(entry.Name(), imageType) {
-			fullPath := filepath.Join(cacheDir, entry.Name())
-
-			// TODO(remove after legacy malformed cache filenames have aged out): drop query-string filename self-healing.
-			if strings.Contains(entry.Name(), "?") {
-				cleanName := strings.Split(entry.Name(), "?")[0]
-				cleanPath := filepath.Join(cacheDir, cleanName)
-				if err := os.Rename(fullPath, cleanPath); err == nil {
-					return cleanPath, nil
-				}
-			}
-
-			return fullPath, nil
+			return filepath.Join(cacheDir, entry.Name()), nil
 		}
 	}
 
@@ -971,6 +918,9 @@ func (s *Service) toVirtualPath(absPath string) string {
 	}
 	rel, err := filepath.Rel(backend.DataDir, absPath)
 	if err != nil {
+		return absPath
+	}
+	if rel == "." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) || rel == ".." || filepath.IsAbs(rel) {
 		return absPath
 	}
 	return "/api/media/" + filepath.ToSlash(rel)
