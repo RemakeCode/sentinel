@@ -62,7 +62,6 @@ type GlobalAchievementPercentage struct {
 }
 
 type Config interface {
-	GetSteamAPIKey() (string, error)
 	GetSteamDataSource() config.SteamSource
 	GetLanguage() types.Language
 }
@@ -119,6 +118,27 @@ func (s *Service) Start(ctx context.Context) error {
 	return nil
 }
 
+func (s *Service) RefetchGameData(appID string) (*GameBasics, error) {
+	appID = strings.TrimSpace(appID)
+	if appID == "" {
+		return nil, errors.New("appID is required")
+	}
+	for _, r := range appID {
+		if r < '0' || r > '9' {
+			return nil, fmt.Errorf("invalid appID: %s", appID)
+		}
+	}
+
+	language := s.Config.GetLanguage().API
+	game, err := s.fetchGameDataFresh(appID, language)
+	if err != nil {
+		return nil, err
+	}
+
+	s.applyCachedAchievementProgress(game)
+	return game, nil
+}
+
 //wails:internal
 func (s *Service) FetchAppDetailsBulk(appIDs []string, language types.Language) ([]*GameBasics, error) {
 	total := len(appIDs)
@@ -161,7 +181,7 @@ func (s *Service) FetchAppDetailsBulk(appIDs []string, language types.Language) 
 				return
 			}
 
-			details, err := s.fetchGameDetails(id, language.API)
+			details, err := s.fetchGameDataFresh(id, language.API)
 			if err != nil {
 				mu.Lock()
 				completed++
@@ -169,14 +189,6 @@ func (s *Service) FetchAppDetailsBulk(appIDs []string, language types.Language) 
 				s.emitFetchStatus(completed, uint32(total))
 				return
 			}
-
-			achievementsList, err := s.fetchAchievements(id, language.API)
-
-			if err == nil {
-				details.Achievement.List = achievementsList
-			}
-
-			_ = s.cacheGameData(id, language.API, details)
 
 			mu.Lock()
 			results = append(results, details)
@@ -227,15 +239,7 @@ func (s *Service) LoadAllCachedGameData() ([]*GameBasics, error) {
 			continue
 		}
 
-		// Map achievement data by appId to each GameBasics.Achievement.List element
-		if achData, ok := allAch[gb.AppID]; ok {
-			for i, a := range gb.Achievement.List {
-				if progress, exists := achData.Achievements[a.Name]; exists {
-					a.CurrentAch = progress
-					gb.Achievement.List[i] = a
-				}
-			}
-		}
+		s.applyAchievementProgress(gb, allAch[gb.AppID])
 
 		cached = append(cached, gb)
 	}
@@ -243,13 +247,37 @@ func (s *Service) LoadAllCachedGameData() ([]*GameBasics, error) {
 	return cached, nil
 }
 
-func (s *Service) fetchAchievementsWithKey(appID string, language string) ([]achievement, error) {
-	apiKey, _ := s.Config.GetSteamAPIKey()
+func (s *Service) applyCachedAchievementProgress(game *GameBasics) {
+	if game == nil || s.Ach == nil {
+		return
+	}
 
-	//Strangely doesn't require a key
+	achData, err := s.Ach.LoadCachedAch(game.AppID)
+	if err != nil {
+		slog.Warn("Couldn't load cached current ach", "appID", game.AppID, "error", err)
+		return
+	}
+
+	s.applyAchievementProgress(game, achData)
+}
+
+func (s *Service) applyAchievementProgress(game *GameBasics, achData *ach.AchievementData) {
+	if game == nil || achData == nil {
+		return
+	}
+
+	for i, a := range game.Achievement.List {
+		if progress, exists := achData.Achievements[a.Name]; exists {
+			a.CurrentAch = progress
+			game.Achievement.List[i] = a
+		}
+	}
+}
+
+func (s *Service) fetchAchievementsFromOfficialAPI(appID string, language string) ([]achievement, error) {
 	url := fmt.Sprintf(
-		"https://api.steampowered.com/IPlayerService/GetGameAchievements/v1/?key=%s&appid=%s&language=%s",
-		apiKey, appID, language,
+		"https://api.steampowered.com/IPlayerService/GetGameAchievements/v1/?appid=%s&language=%s",
+		appID, language,
 	)
 
 	resp, err := http.Get(url)
@@ -270,25 +298,14 @@ func (s *Service) fetchAchievementsWithKey(appID string, language string) ([]ach
 
 	var achievements []achievement
 
-	steamCDN := fmt.Sprintf("https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/%s/", appID)
-
 	for _, a := range schema.Response.Achievements {
-		_ = s.cacheAchievementIcon(appID, a.Icon)
-
 		hiddenVal := 0
 		if a.Hidden {
 			hiddenVal = 1
 		}
 
-		iconPath := steamCDN + a.Icon
-		if path, err := s.loadCachedAchievementIcon(appID, iconPath); err == nil {
-			iconPath = path
-		}
-
-		iconGrayPath := steamCDN + a.IconGray
-		if path, err := s.loadCachedAchievementIcon(appID, iconGrayPath); err == nil {
-			iconGrayPath = path
-		}
+		iconPath := s.localizeKeySourceAchievementIcon(appID, a.Icon, "icon")
+		iconGrayPath := s.localizeKeySourceAchievementIcon(appID, a.IconGray, "iconGray")
 
 		achievement := achievement{
 			Name:        a.Apiname,
@@ -302,6 +319,37 @@ func (s *Service) fetchAchievementsWithKey(appID string, language string) ([]ach
 	}
 
 	return achievements, nil
+}
+
+func (s *Service) resolveKeyAchievementIconURL(appID string, icon string) string {
+	if icon == "" {
+		return ""
+	}
+	if strings.HasPrefix(icon, "http://") || strings.HasPrefix(icon, "https://") {
+		return icon
+	}
+	steamCDN := fmt.Sprintf("https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/%s/", appID)
+	return steamCDN + strings.TrimLeft(icon, "/")
+}
+
+func (s *Service) localizeKeySourceAchievementIcon(appID string, icon string, field string) string {
+	iconURL := s.resolveKeyAchievementIconURL(appID, icon)
+	if iconURL == "" {
+		return ""
+	}
+
+	if err := s.cacheAchievementIcon(appID, iconURL); err != nil {
+		slog.Warn("Failed to cache key-source achievement icon", "appID", appID, "field", field, "iconURL", iconURL, "error", err)
+		return ""
+	}
+
+	path, err := s.loadCachedAchievementIcon(appID, iconURL)
+	if err != nil {
+		slog.Warn("Failed to load cached key-source achievement icon", "appID", appID, "field", field, "iconURL", iconURL, "error", err)
+		return ""
+	}
+
+	return path
 }
 
 // fetchAchievementsWithKeyLegacy is a fallback using GetSchemaForGame API
@@ -466,8 +514,8 @@ func (s *Service) fetchAchievements(appID string, language string) ([]achievemen
 
 	switch dataSource {
 	case "key":
-		// Use Steam API key
-		return s.fetchAchievementsWithKey(appID, language)
+		// Use official Steam API (key is optional)
+		return s.fetchAchievementsFromOfficialAPI(appID, language)
 
 	case "external":
 		// Use third-party external source
@@ -479,16 +527,37 @@ func (s *Service) fetchAchievements(appID string, language string) ([]achievemen
 	}
 }
 
+func (s *Service) fetchGameDataFresh(appID string, language string) (*GameBasics, error) {
+	details, err := s.fetchGameDetailsFresh(appID, language)
+	if err != nil {
+		return nil, err
+	}
+
+	achievementsList, err := s.fetchAchievements(appID, language)
+	if err != nil {
+		return nil, err
+	}
+
+	details.Achievement.Total = len(achievementsList)
+	details.Achievement.List = achievementsList
+
+	if err := s.cacheGameData(appID, language, details); err != nil {
+		return nil, err
+	}
+
+	return details, nil
+}
+
 func (s *Service) fetchGameDetails(appID string, language string) (*GameBasics, error) {
 	// 1. Check unified game cache first
 	if cached, err := s.loadCachedGameData(appID, language); err == nil {
 		return cached, nil
 	}
 
-	// 2. Check cache for game images
-	headerImagePath, _ := s.loadCachedGameImage(appID, "headerImage")
-	portraitImagePath, _ := s.loadCachedGameImage(appID, "portraitImage")
+	return s.fetchGameDetailsFresh(appID, language)
+}
 
+func (s *Service) fetchGameDetailsFresh(appID string, language string) (*GameBasics, error) {
 	url := fmt.Sprintf("https://store.steampowered.com/api/appdetails?appids=%s&l=%s", appID, language)
 
 	resp, err := http.Get(url)
@@ -525,11 +594,11 @@ func (s *Service) fetchGameDetails(appID string, language string) (*GameBasics, 
 	headerImage := appData.Data.HeaderImage
 	portraitImage := portraitImageURL
 
-	if headerImagePath != "" {
+	if headerImagePath, err := s.loadCachedGameImage(appID, "headerImage"); err == nil {
 		headerImage = headerImagePath
 	}
 
-	if portraitImagePath != "" {
+	if portraitImagePath, err := s.loadCachedGameImage(appID, "portraitImage"); err == nil {
 		portraitImage = portraitImagePath
 	}
 

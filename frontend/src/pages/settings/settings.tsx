@@ -27,7 +27,6 @@ import {
   SetLoggingEnabled,
   SetNotificationSound,
   SetStartOnLogin,
-  SetSteamAPIKey,
   SetSteamDataSource,
   ToggleEmulatorNotification
 } from '@wa/sentinel/backend/config/file';
@@ -78,8 +77,6 @@ const achievementProgressUpdateModes: { name: string; value: AchievementProgress
 
 const Settings: FC = () => {
   const [appConfig, setAppConfig] = useState<File | null>(null);
-  const [steamAPIKey, setSteamAPIKey] = useState('');
-  const [steamAPIKeyHasError, setSteamAPIKeyHasError] = useState<boolean>(false);
   const [stmSrc, setStmSrc] = useState<SteamSource>();
   const [selectedLanguage, setSelectedLanguage] = useState<string>('');
   const [languages, setLanguages] = useState<{ api: string; displayName: string }[]>([]);
@@ -93,7 +90,6 @@ const Settings: FC = () => {
   const [testNotificationDisabled, setTestNotificationDisabled] = useState(false);
   const [startOnLogin, setStartOnLogin] = useState(false);
   const testNotificationTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const steamAPIKeyTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     Promise.all([loadConfig(), loadLanguages(), loadAvailableSounds()]);
@@ -102,37 +98,12 @@ const Settings: FC = () => {
   const handleSteamDataSourceChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value as SteamSource;
     setStmSrc(value);
-    if (value === SteamSource.External) {
-      try {
-        await SetSteamDataSource(value);
-        window.ot?.toast('Steam data source updated', 'Success', { variant: 'success' });
-      } catch (err) {
-        console.error('Failed to save Steam data source:', err);
-        window.ot?.toast('Failed to save Steam data source', 'Error', { variant: 'danger' });
-      }
-    }
-  };
-
-  const handleSaveSteamAPIKey = async () => {
-    if (steamAPIKeyTimeout.current) {
-      clearTimeout(steamAPIKeyTimeout.current);
-    }
-
     try {
-      if (steamAPIKey === '') {
-        setSteamAPIKeyHasError(true);
-        steamAPIKeyTimeout.current = setTimeout(() => setSteamAPIKeyHasError(false), 5000);
-        return;
-      }
-      await Promise.all([SetSteamDataSource(SteamSource.Key), SetSteamAPIKey(steamAPIKey)]);
-
-      await loadConfig();
-
-      window.ot?.toast('Steam API key saved', 'Success', { variant: 'success' });
-
-      setSteamAPIKey('');
+      await SetSteamDataSource(value);
+      window.ot?.toast('Steam data source updated', 'Success', { variant: 'success' });
     } catch (err) {
-      window.ot?.toast('Failed to save Steam API key', 'Error', { variant: 'danger' });
+      console.error('Failed to save Steam data source:', err);
+      window.ot?.toast('Failed to save Steam data source', 'Error', { variant: 'danger' });
     }
   };
 
@@ -415,7 +386,7 @@ const Settings: FC = () => {
                   checked={stmSrc === SteamSource.Key}
                   onChange={handleSteamDataSourceChange}
                 />
-                Steam Key
+                Steam API
               </label>
               <label className='radio-option'>
                 <input
@@ -428,33 +399,7 @@ const Settings: FC = () => {
                 External Source
               </label>
             </fieldset>
-            {stmSrc === SteamSource.Key && (
-              <>
-                <div data-field={steamAPIKeyHasError ? 'error' : ''}>
-                  <label>Steam API Key</label>
-                  <div className={'form-inline'}>
-                    <input
-                      placeholder='Enter your Steam API key'
-                      value={steamAPIKey}
-                      onChange={(e) => setSteamAPIKey(e.target.value)}
-                      aria-invalid={steamAPIKeyHasError}
-                    />
-                    <button onClick={handleSaveSteamAPIKey}>Save</button>
-                  </div>
-                  <div>
-                    <div className='error' role='status'>
-                      Please enter a Steam API key, if you need one
-                    </div>
-                  </div>
-                </div>
-                {appConfig?.steamApiKeyMasked && (
-                  <div className='settings-table-form-display'>
-                    <span>Current API Key:</span>
-                    <code>{appConfig.steamApiKeyMasked}</code>
-                  </div>
-                )}
-              </>
-            )}
+            {/* TODO: restore API key input and masked key display if Steam ever requires key auth */}
           </div>
         </div>
 
