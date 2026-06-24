@@ -23,6 +23,7 @@ import { FaArrowDown, FaArrowUp, FaClock, FaHistory } from 'react-icons/fa';
 type SortOption = 'name-asc' | 'name-desc' | 'time-newest' | 'time-oldest';
 
 const fetcher = new Fetcher();
+const SORT_STORAGE_KEY = 'sentinel.decky.achievements.sort';
 
 const SORT_OPTIONS: { value: SortOption; icon: ReactNode }[] = [
   { value: 'name-asc', icon: <FaArrowUp size={20} /> },
@@ -180,7 +181,18 @@ const AchievementsPage: FC = () => {
   const [game, setGame] = useState<GameBasics | null>(null);
   const [globalPercentages, setGlobalPercentages] = useState<Map<string, number>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
-  const [sortBy, setSortBy] = useState<SortOption>('name-asc');
+  const [sortBy, setSortBy] = useState<SortOption>(() => {
+    if (typeof window === 'undefined') {
+      return 'name-asc';
+    }
+
+    const stored = window.localStorage.getItem(SORT_STORAGE_KEY);
+    if (stored && SORT_OPTIONS.some((option) => option.value === stored)) {
+      return stored as SortOption;
+    }
+
+    return 'name-asc';
+  });
   const [revealedHidden, setRevealedHidden] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
@@ -266,8 +278,11 @@ const AchievementsPage: FC = () => {
         'time-newest': 'time-oldest',
         'time-oldest': 'time-newest'
       };
-      setSortBy(opposite[option]);
+      const nextSort = opposite[option];
+      setSortBy(nextSort);
+      window.localStorage.setItem(SORT_STORAGE_KEY, nextSort);
     } else {
+      window.localStorage.setItem(SORT_STORAGE_KEY, option);
       setSortBy(option);
     }
   };
