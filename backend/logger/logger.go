@@ -48,42 +48,7 @@ func ParseLevel(level string) slog.Level {
 // New returns a new slog.Logger instance with sanitization and formatting.
 // It writes to both stdout and a log file with automatic rotation.
 func New() *slog.Logger {
-	// Prepare sanitization prefixes
-	homeDir, _ := os.UserHomeDir()
-
-	// ReplaceAttr for path sanitization and time formatting
-	replace := func(groups []string, a slog.Attr) slog.Attr {
-		if a.Key == slog.TimeKey {
-			return slog.String(slog.TimeKey, a.Value.Any().(time.Time).Format("15:04:05"))
-		}
-		if a.Value.Kind() == slog.KindString {
-			val := a.Value.String()
-
-			// Sanitize common paths
-			if backend.ConfigDir != "" {
-				val = strings.ReplaceAll(val, backend.ConfigDir, "<CONFIG_DIR>")
-			}
-			if homeDir != "" {
-				val = strings.ReplaceAll(val, homeDir, "<HOME>")
-			}
-			if backend.UserCacheDir != "" {
-				val = strings.ReplaceAll(val, backend.UserCacheDir, "<CACHE_DIR>")
-			}
-
-			return slog.String(a.Key, val)
-		}
-		return a
-	}
-
-	logWriter := NewLogFileWriter()
-	output := io.MultiWriter(os.Stdout, logWriter)
-
-	handler := slog.NewTextHandler(output, &slog.HandlerOptions{
-		Level:       levelVar,
-		ReplaceAttr: replace,
-	})
-
-	return slog.New(handler)
+	return NewWithFile(NewLogFileWriter())
 }
 
 // NewWithFile returns a new slog.Logger that writes to both stdout and a log file.
