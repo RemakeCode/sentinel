@@ -92,13 +92,12 @@ func TestParseAch_MissingFile(t *testing.T) {
 }
 
 func TestParseAch_InvalidJSON(t *testing.T) {
-	// Test JSON parsing directly
-	invalidJSON := []byte("invalid json")
-	var parsedAchievements map[string]Achievement
-	err := json.Unmarshal(invalidJSON, &parsedAchievements)
-	if err == nil {
-		t.Error("Expected error for invalid JSON, got nil")
-	}
+	tempDir := t.TempDir()
+	achievementsPath := filepath.Join(tempDir, "achievements.json")
+	require.NoError(t, os.WriteFile(achievementsPath, []byte("invalid json"), 0644))
+
+	_, err := svc.ParseAch(achievementsPath)
+	require.Error(t, err)
 }
 
 func TestParseAch_UnsupportedExtension(t *testing.T) {
@@ -317,24 +316,19 @@ func TestSaveAch_CreatesDirectory(t *testing.T) {
 		t.Fatalf("Failed to write test file: %v", err)
 	}
 
-	// Isolate cache directory
+	// Isolate cache directory to a non-existent path
 	oldCacheDir := backend.ACHCacheDataDir
-	backend.ACHCacheDataDir = t.TempDir()
+	newCacheDir := filepath.Join(t.TempDir(), "nested", "cache")
+	backend.ACHCacheDataDir = newCacheDir
 	defer func() { backend.ACHCacheDataDir = oldCacheDir }()
 
 	err = svc.SaveAch(achievementsDir)
-	if err != nil {
-		t.Fatalf("SaveAch returned error: %v", err)
-	}
+	require.NoError(t, err)
 
-	// Verify directory was created in the actual cache directory
-	if _, err := os.Stat(backend.ACHCacheDataDir); os.IsNotExist(err) {
-		t.Error("Cache directory was not created")
-	}
-
-	// Clean up
-	cachePath := filepath.Join(backend.ACHCacheDataDir, appID+".json")
-	os.Remove(cachePath)
+	// Verify directory was created and file was written
+	cachePath := filepath.Join(newCacheDir, appID+".json")
+	_, err = os.Stat(cachePath)
+	require.NoError(t, err, "Cache file should be created in newly created directory")
 }
 
 func TestSaveAch_NormalizesINIToJSONCache(t *testing.T) {

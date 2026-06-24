@@ -120,40 +120,34 @@ func TestSaveConfig(t *testing.T) {
 	assert.NotContains(t, string(data), `"path"`)
 }
 
-func TestLoadConfig_MissingAchievementProgressUpdateModeUsesDefault(t *testing.T) {
-	_, _ = setupTestConfig(t)
-
-	configJSON := `{
-		"language": {"displayName": "English", "api": "english", "webapi": "en"},
-		"steamDataSource": "external"
-	}`
-	require.NoError(t, os.WriteFile(backend.ConfigPath, []byte(configJSON), 0644))
-
-	cfg := &File{}
-	result, err := cfg.LoadConfig()
-	require.NoError(t, err)
-
-	assert.Equal(t, AchievementProgressUpdateModeDefault, result.AchievementProgressUpdateMode)
-	assert.Equal(t, AchievementProgressUpdateModeDefault, result.GetAchievementProgressUpdateMode())
-}
-
-func TestLoadConfig_EmptyAchievementProgressUpdateModeUsesDefault(t *testing.T) {
-	_, _ = setupTestConfig(t)
-
-	configData := File{
-		AchievementProgressUpdateMode: "",
-		SteamDataSource:               "external",
+func TestLoadConfig_AchievementProgressUpdateModeDefaults(t *testing.T) {
+	tests := []struct {
+		name string
+		json string
+	}{
+		{
+			name: "missing field defaults",
+			json: `{"language":{"displayName":"English","api":"english","webapi":"en"},"steamDataSource":"external"}`,
+		},
+		{
+			name: "empty string defaults",
+			json: `{"AchievementProgressUpdateMode":"","steamDataSource":"external"}`,
+		},
 	}
-	data, err := json.MarshalIndent(configData, "", "  ")
-	require.NoError(t, err)
-	require.NoError(t, os.WriteFile(backend.ConfigPath, data, 0644))
 
-	cfg := &File{}
-	result, err := cfg.LoadConfig()
-	require.NoError(t, err)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, _ = setupTestConfig(t)
+			require.NoError(t, os.WriteFile(backend.ConfigPath, []byte(tt.json), 0644))
 
-	assert.Equal(t, AchievementProgressUpdateModeDefault, result.AchievementProgressUpdateMode)
-	assert.Equal(t, AchievementProgressUpdateModeDefault, result.GetAchievementProgressUpdateMode())
+			cfg := &File{}
+			result, err := cfg.LoadConfig()
+			require.NoError(t, err)
+
+			assert.Equal(t, AchievementProgressUpdateModeDefault, result.AchievementProgressUpdateMode)
+			assert.Equal(t, AchievementProgressUpdateModeDefault, result.GetAchievementProgressUpdateMode())
+		})
+	}
 }
 
 func TestSaveConfig_DefaultsAchievementProgressUpdateMode(t *testing.T) {

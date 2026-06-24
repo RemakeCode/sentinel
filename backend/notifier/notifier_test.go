@@ -42,9 +42,11 @@ func TestProgressBar_ProgressExceedsMax(t *testing.T) {
 }
 
 func TestProgressBar_DifferentWidth(t *testing.T) {
-	result := progressBar(25, 100, 50)
-	assert.Contains(t, result, "25/100")
-	assert.Contains(t, result, "25.0%")
+	narrow := progressBar(25, 100, 22)
+	wide := progressBar(25, 100, 50)
+	assert.NotEqual(t, narrow, wide)
+	assert.Contains(t, wide, "25/100")
+	assert.Contains(t, wide, "25.0%")
 }
 
 func TestSendNotification_NoAchievements(t *testing.T) {
