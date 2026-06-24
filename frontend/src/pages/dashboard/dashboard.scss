@@ -35,16 +35,11 @@
   }
 
   &-loader {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(var(--game-card-width), 1fr));
-    gap: var(--space-6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
     width: 100%;
-
-    > .skeleton {
-      width: 100%;
-      height: auto;
-      aspect-ratio: 9 / 13;
-    }
+    height: 60vh;
   }
 
   &-empty-state {
@@ -195,10 +190,6 @@
       pointer-events: none;
       backdrop-filter: blur(2px);
 
-      > .spinner {
-        width: 18px;
-        height: 18px;
-      }
     }
   }
 }

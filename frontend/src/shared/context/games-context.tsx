@@ -43,7 +43,7 @@ const getSyncPercentage = (syncStatus: LibrarySyncStatus) => {
 
 export const GamesProvider: FC<GamesProviderProps> = ({ children }) => {
   const [games, setGames] = useState<(GameBasics | null)[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState<number>(0);
   const [syncStatus, setSyncStatus] = useState<LibrarySyncStatus>(emptySyncStatus);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -77,8 +77,10 @@ export const GamesProvider: FC<GamesProviderProps> = ({ children }) => {
     try {
       const data = await LoadAllCachedGameData();
       setGames(data);
+      return data;
     } catch (error) {
       console.error(error);
+      return [];
     } finally {
       if (showLoading) {
         setLoading(false);
@@ -86,7 +88,7 @@ export const GamesProvider: FC<GamesProviderProps> = ({ children }) => {
     }
   }, []);
 
-  const refresh = useCallback(async () => loadCachedGames(true), [loadCachedGames]);
+  const refresh = useCallback(async () => { await loadCachedGames(true); }, [loadCachedGames]);
 
   const refreshGame = async (appID: string) => {
     if (!appID || refreshingGameIDsRef.current.has(appID)) {
@@ -159,10 +161,13 @@ export const GamesProvider: FC<GamesProviderProps> = ({ children }) => {
         setStatus(getSyncPercentage(currentSyncStatus));
         lastSyncCurrentRef.current = currentSyncStatus.Current;
         setIsInitialized(currentSyncStatus.State !== 'running');
+
+        if (data.length > 0 || currentSyncStatus.State !== 'running') {
+          setLoading(false);
+        }
       } catch (e) {
         console.error(e);
         setIsInitialized(true);
-      } finally {
         setLoading(false);
       }
     };
@@ -170,7 +175,7 @@ export const GamesProvider: FC<GamesProviderProps> = ({ children }) => {
   }, []);
 
   useEffect(() => {
-    if (syncStatus.State !== 'running') {
+    if (syncStatus.State !== 'running' && syncStatus.State !== 'idle') {
       return;
     }
 
@@ -188,9 +193,12 @@ export const GamesProvider: FC<GamesProviderProps> = ({ children }) => {
         setSyncStatus(currentSyncStatus);
         setStatus(getSyncPercentage(currentSyncStatus));
 
-        if (currentSyncStatus.Current > previousCurrent) {
+        if (currentSyncStatus.State === 'running' && currentSyncStatus.Current > previousCurrent) {
           lastSyncCurrentRef.current = currentSyncStatus.Current;
-          await loadCachedGames(false);
+          const data = await loadCachedGames(false);
+          if (data.length > 0) {
+            setLoading(false);
+          }
         }
 
         if (currentSyncStatus.State === 'done' || currentSyncStatus.State === 'error') {

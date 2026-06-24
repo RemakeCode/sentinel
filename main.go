@@ -126,6 +126,7 @@ func main() {
 	tray := app.SystemTray.New()
 	tray.SetIcon(trayIcon)
 	tray.SetTooltip("Sentinel")
+	tray.SetLabel("Sentinel")
 
 	menu := application.NewMenu()
 	showItem := menu.Add("Show")

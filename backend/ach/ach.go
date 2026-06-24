@@ -103,7 +103,7 @@ func parseSteamEmuINIAchievements(data []byte) (*AchievementData, error) {
 		case "MaxProgress":
 			achievement.MaxProgress = parseIntValue(value)
 		case "UnlockTime":
-			achievement.EarnedTime = int64(parseIntValue(value))
+			achievement.EarnedTime, _ = strconv.ParseInt(strings.TrimSpace(value), 10, 64)
 		}
 		achievements[currentSection] = achievement
 	}
