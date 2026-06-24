@@ -18,7 +18,6 @@ openspec/
 /bin
 node_modules
 
-decky-plugin/
 */**/.DS_Store
 .DS_Store
 AGENTS.md
