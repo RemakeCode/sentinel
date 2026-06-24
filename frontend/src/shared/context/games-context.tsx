@@ -202,7 +202,10 @@ export const GamesProvider: FC<GamesProviderProps> = ({ children }) => {
         }
 
         if (currentSyncStatus.State === 'done' || currentSyncStatus.State === 'error') {
-          setLoading(false);
+          const data = await loadCachedGames(false);
+          if (data.length > 0) {
+            setLoading(false);
+          }
           setIsInitialized(true);
         }
       } catch (error) {
