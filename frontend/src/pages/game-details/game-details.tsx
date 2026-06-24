@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { Link, useLocation, useParams } from 'react-router';
 import { ArrowDown, ArrowLeft, ArrowUp, Clock, EyeOff, Ghost, Glasses, History, ListCheck, Trophy } from 'lucide-react';
 import { GameBasics } from '@wa/sentinel/backend/steam';
+import type { achievement } from '@wa/sentinel/backend/steam/models';
 import { GetGlobalAchievementPercentages } from '@wa/sentinel/backend/steam/service';
 import { computeProgress } from '@/shared/utils';
 import missingCover from '@/assets/images/missing-cover.png';
@@ -41,6 +42,59 @@ const itemVariants = {
       ease: 'easeOut'
     }
   }
+};
+
+type AchievementListItemProps = {
+  ach: achievement;
+  globalPercentages: Map<string, number>;
+};
+
+const formatUnlockTime = (timestamp: number | undefined): string => {
+  if (!timestamp) return '';
+  const tsSeconds = timestamp > Math.floor(Date.now() / 1000) ? Math.floor(timestamp / 1000) : timestamp;
+  return new Date(tsSeconds * 1000).toLocaleString();
+};
+
+const AchievementListItem: FC<AchievementListItemProps> = ({ ach, globalPercentages }) => {
+  const currentAch = (ach as any).CurrentAch;
+  const earned = currentAch?.earned;
+  const hasProgress = (currentAch?.max_progress || 0) > 1;
+  const progress = currentAch?.progress || 0;
+  const maxProgress = currentAch?.max_progress || 1;
+  const displayProgress = earned && progress !== maxProgress ? progress + 1 : progress;
+
+  return (
+    <motion.li className='game-details-ach-item' variants={itemVariants}>
+      <div className='game-details-ach-icon'>
+        <img src={ach.Icon} alt={ach.DisplayName} width={64} height={64} />
+      </div>
+      <div className='game-details-ach-info'>
+        <span className='game-details-ach-title'>{ach.DisplayName}</span>
+        <span className='game-details-ach-desc'>
+          <span className={`${ach.Hidden === 1 ? 'blur' : ''}`}>{ach.Description || ''}</span>
+          {ach.Hidden === 1 && <EyeOff width={18} height={18} />}
+        </span>
+        {hasProgress && (
+          <div className='game-details-ach-progress'>
+            <progress value={displayProgress} max={maxProgress} />
+            <span className='game-details-ach-progress-text'>
+              {displayProgress} / {maxProgress}
+            </span>
+          </div>
+        )}
+      </div>
+      <div className='game-details-ach-meta'>
+        <code className='game-details-ach-unlocktime'>
+          {currentAch?.earned_time ? formatUnlockTime(currentAch.earned_time) : 'Locked'}
+        </code>
+        {globalPercentages.has(ach.Name) && (
+          <code className='game-details-ach-global-percent fade-in'>
+            {globalPercentages.get(ach.Name)}% of players have this
+          </code>
+        )}
+      </div>
+    </motion.li>
+  );
 };
 
 const GameDetails: FC = () => {
@@ -152,12 +206,6 @@ const GameDetails: FC = () => {
     return { sortedUnlocked: unlocked, sortedLocked: locked };
   }, [game?.Achievement.List, sortBy]);
 
-  const formatUnlockTime = (timestamp: number | undefined): string => {
-    if (!timestamp) return '';
-    const tsSeconds = timestamp > Math.floor(Date.now() / 1000) ? Math.floor(timestamp / 1000) : timestamp;
-    return new Date(tsSeconds * 1000).toLocaleString();
-  };
-
   return (
     <main className='full-layout'>
       <HeaderPortal>
@@ -229,7 +277,7 @@ const GameDetails: FC = () => {
                 ))}
               </div>
             </div>
-            {sortedUnlocked.length > 0 && (
+            {!isLoading && sortedUnlocked.length > 0 && (
               <>
                 <h3 className='game-details-ach-subheader'>Unlocked</h3>
                 <motion.ul
@@ -238,55 +286,13 @@ const GameDetails: FC = () => {
                   initial='hidden'
                   animate='visible'
                 >
-                  {sortedUnlocked.map((ach, i) => {
-                    const currentAch = (ach as any).CurrentAch;
-                    const hasProgress = (currentAch?.max_progress || 0) > 1;
-                    const progress = currentAch?.progress || 0;
-                    const maxProgress = currentAch?.max_progress || 1;
-
-                    return (
-                      <motion.li key={`${ach.Name}#${i}`} className='game-details-ach-item' variants={itemVariants}>
-                        <div className='game-details-ach-icon'>
-                          <img src={ach.Icon} alt={ach.DisplayName} width={64} height={64} />
-                        </div>
-                        <div className='game-details-ach-info'>
-                          <span className='game-details-ach-title'>{ach.DisplayName}</span>
-                          <span className='game-details-ach-desc'>
-                            <span className={`${ach.Hidden === 1 ? 'blur' : ''}`}>{ach.Description || ''}</span>
-                            {ach.Hidden === 1 && <EyeOff width={18} height={18} />}
-                          </span>
-                          {hasProgress && (
-                            <div className='game-details-ach-progress'>
-                              <progress
-                                value={currentAch?.earned && progress !== maxProgress ? progress + 1 : progress}
-                                max={maxProgress}
-                              />
-                              <span className='game-details-ach-progress-text'>
-                                {currentAch?.earned && progress !== maxProgress ? progress + 1 : progress} /
-                                {maxProgress}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                        <div className='game-details-ach-meta'>
-                          <code className='game-details-ach-unlocktime'>
-                            {currentAch?.earned_time ? formatUnlockTime(currentAch.earned_time) : 'Locked'}
-                          </code>
-                          {isLoading ? (
-                            <span role='status' className='skeleton line game-details-skeleton'></span>
-                          ) : globalPercentages.has(ach.Name) ? (
-                            <code className='game-details-ach-global-percent fade-in'>
-                              {globalPercentages.get(ach.Name)}% of players have this
-                            </code>
-                          ) : null}
-                        </div>
-                      </motion.li>
-                    );
-                  })}
+                  {sortedUnlocked.map((ach, i) => (
+                    <AchievementListItem key={`${ach.Name}#${i}`} ach={ach} globalPercentages={globalPercentages} />
+                  ))}
                 </motion.ul>
               </>
             )}
-            {sortedLocked.length > 0 && (
+            {!isLoading && sortedLocked.length > 0 && (
               <>
                 <h3 className='game-details-ach-subheader'>Locked</h3>
                 <motion.ul
@@ -295,47 +301,9 @@ const GameDetails: FC = () => {
                   initial='hidden'
                   animate='visible'
                 >
-                  {sortedLocked.map((ach, i) => {
-                    const currentAch = (ach as any).CurrentAch;
-                    const hasProgress = (currentAch?.max_progress || 0) > 1;
-                    const progress = currentAch?.progress || 0;
-                    const maxProgress = currentAch?.max_progress || 1;
-
-                    return (
-                      <motion.li key={`${ach.Name}#${i}`} className='game-details-ach-item' variants={itemVariants}>
-                        <div className='game-details-ach-icon'>
-                          <img src={ach.Icon} alt={ach.DisplayName} width={64} height={64} />
-                        </div>
-                        <div className='game-details-ach-info'>
-                          <span className='game-details-ach-title'>{ach.DisplayName}</span>
-                          <span className='game-details-ach-desc'>
-                            <span className={`${ach.Hidden === 1 ? 'blur' : ''}`}>{ach.Description || ''}</span>
-                            {ach.Hidden === 1 && <EyeOff width={18} height={18} />}
-                          </span>
-                          {hasProgress && (
-                            <div className='game-details-ach-progress'>
-                              <progress value={progress} max={maxProgress} />
-                              <span className='game-details-ach-progress-text'>
-                                {progress} / {maxProgress}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                        <div className='game-details-ach-meta'>
-                          <code className='game-details-ach-unlocktime'>
-                            {currentAch?.earned_time ? formatUnlockTime(currentAch.earned_time) : 'Locked'}
-                          </code>
-                          {isLoading ? (
-                            <span role='status' className='skeleton line game-details-skeleton'></span>
-                          ) : globalPercentages.has(ach.Name) ? (
-                            <code className='game-details-ach-global-percent fade-in'>
-                              {globalPercentages.get(ach.Name)}% of players have this
-                            </code>
-                          ) : null}
-                        </div>
-                      </motion.li>
-                    );
-                  })}
+                  {sortedLocked.map((ach, i) => (
+                    <AchievementListItem key={`${ach.Name}#${i}`} ach={ach} globalPercentages={globalPercentages} />
+                  ))}
                 </motion.ul>
               </>
             )}
