@@ -56,8 +56,8 @@ const LibraryImage: FC<LibraryImageProps> = ({
       <Focusable
         ref={focusableRef}
         onActivate={onActivate}
-        onOptionsButton={() => onOpenContextMenu?.(focusableRef.current)}
-        onOptionsActionDescription='Game Actions'
+        onMenuButton={() => onOpenContextMenu?.(focusableRef.current)}
+        onMenuActionDescription='Game Actions'
         onContextMenu={(event) => {
           event.preventDefault();
           onOpenContextMenu?.(focusableRef.current ?? event.currentTarget);
