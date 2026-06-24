@@ -3,13 +3,13 @@ import type { FC, ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link, useLocation, useParams } from 'react-router';
-import { ArrowDown, ArrowLeft, ArrowUp, Clock, EyeOff, Ghost, Glasses, History, ListCheck, Trophy } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowUp, Clock, Ghost, Glasses, History, ListCheck, Trophy } from 'lucide-react';
 import { GameBasics } from '@wa/sentinel/backend/steam';
-import type { achievement } from '@wa/sentinel/backend/steam/models';
 import { GetGlobalAchievementPercentages } from '@wa/sentinel/backend/steam/service';
 import { computeProgress } from '@/shared/utils';
 import missingCover from '@/assets/images/missing-cover.png';
 import { HeaderPortal } from '@/shared/components/header/header';
+import { AchievementListItem } from './achievement-list-item';
 
 type SortOption = 'name-asc' | 'name-desc' | 'time-newest' | 'time-oldest';
 
@@ -30,71 +30,6 @@ const containerVariants = {
       staggerChildren: 0.1
     }
   }
-};
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 15 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: 0.3,
-      ease: 'easeOut'
-    }
-  }
-};
-
-type AchievementListItemProps = {
-  ach: achievement;
-  globalPercentages: Map<string, number>;
-};
-
-const formatUnlockTime = (timestamp: number | undefined): string => {
-  if (!timestamp) return '';
-  const tsSeconds = timestamp > Math.floor(Date.now() / 1000) ? Math.floor(timestamp / 1000) : timestamp;
-  return new Date(tsSeconds * 1000).toLocaleString();
-};
-
-const AchievementListItem: FC<AchievementListItemProps> = ({ ach, globalPercentages }) => {
-  const currentAch = (ach as any).CurrentAch;
-  const earned = currentAch?.earned;
-  const hasProgress = (currentAch?.max_progress || 0) > 1;
-  const progress = currentAch?.progress || 0;
-  const maxProgress = currentAch?.max_progress || 1;
-  const displayProgress = earned && progress !== maxProgress ? progress + 1 : progress;
-
-  return (
-    <motion.li className='game-details-ach-item' variants={itemVariants}>
-      <div className='game-details-ach-icon'>
-        <img src={ach.Icon} alt={ach.DisplayName} width={64} height={64} />
-      </div>
-      <div className='game-details-ach-info'>
-        <span className='game-details-ach-title'>{ach.DisplayName}</span>
-        <span className='game-details-ach-desc'>
-          <span className={`${ach.Hidden === 1 ? 'blur' : ''}`}>{ach.Description || ''}</span>
-          {ach.Hidden === 1 && <EyeOff width={18} height={18} />}
-        </span>
-        {hasProgress && (
-          <div className='game-details-ach-progress'>
-            <progress value={displayProgress} max={maxProgress} />
-            <span className='game-details-ach-progress-text'>
-              {displayProgress} / {maxProgress}
-            </span>
-          </div>
-        )}
-      </div>
-      <div className='game-details-ach-meta'>
-        <code className='game-details-ach-unlocktime'>
-          {currentAch?.earned_time ? formatUnlockTime(currentAch.earned_time) : 'Locked'}
-        </code>
-        {globalPercentages.has(ach.Name) && (
-          <code className='game-details-ach-global-percent fade-in'>
-            {globalPercentages.get(ach.Name)}% of players have this
-          </code>
-        )}
-      </div>
-    </motion.li>
-  );
 };
 
 const GameDetails: FC = () => {
