@@ -320,23 +320,6 @@ func (r *Router) handleGetGlobalAchievementPercentages(w http.ResponseWriter, re
 	return JSON(w, http.StatusOK, percentages)
 }
 
-// handlePlaySound plays a notification sound
-func (r *Router) handlePlaySound(w http.ResponseWriter, req *http.Request) error {
-	var body struct {
-		Filename string `json:"filename"`
-	}
-
-	if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
-		return AppError{Status: http.StatusBadRequest, Message: "Invalid request body"}
-	}
-
-	if err := r.Notifier.PlaySound(body.Filename); err != nil {
-		return AppError{Status: http.StatusInternalServerError, Message: err.Error()}
-	}
-
-	return JSON(w, http.StatusOK, map[string]string{"status": "success"})
-}
-
 // handleTestNotification sends a test notification
 func (r *Router) handleTestNotification(w http.ResponseWriter, req *http.Request) error {
 	if err := r.Notifier.TestNotification(); err != nil {

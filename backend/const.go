@@ -11,7 +11,6 @@ const AppName = "sentinel"
 var Version = "0.0.0"
 
 const (
-	EventPrefix               = AppName
 	EventFetchStatus          = AppName + "::fetch-status"
 	EventDataUpdated          = AppName + "::data-updated"
 	EventRefreshGameRequested = AppName + "::refresh-game-requested"

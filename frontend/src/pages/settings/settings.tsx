@@ -47,18 +47,6 @@ import { Start, Stop } from '@wa/sentinel/backend/watcher/service';
 import AboutDialog from './about-dialog';
 import { HeaderPortal } from '@/shared/components/header/header';
 
-declare global {
-  interface Window {
-    ot: {
-      toast: (
-        message: string,
-        title?: string,
-        options?: { variant?: 'success' | 'danger' | 'info' | 'warning' }
-      ) => void;
-    };
-  }
-}
-
 interface EmulatorItem {
   emu: Emulator;
   index: number;

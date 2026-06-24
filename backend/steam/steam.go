@@ -1110,11 +1110,6 @@ func (s *Service) toVirtualPath(absPath string) string {
 	return "/api/media/" + filepath.ToSlash(rel)
 }
 
-// TestAssetServer returns a hardcoded path for frontend testing
-func (s *Service) TestAssetServer() string {
-	return "/api/media/icon/241930/portrait-image.jpg"
-}
-
 func (s *Service) loadCachedAchievementIcon(appID string, iconURL string) (string, error) {
 	if iconURL == "" {
 		return "", errors.New("empty icon URL")
