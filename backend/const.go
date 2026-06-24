@@ -17,7 +17,10 @@ const (
 	EventRefreshGameRequested = AppName + "::refresh-game-requested"
 )
 
-var EmuDir = filepath.Join("AppData", "Roaming", "GSE Saves")
+var EmuDir = filepath.Join("users", "steamuser", "AppData", "Roaming", "GSE Saves")
+var GoldbergSteamEmuDir = filepath.Join("users", "steamuser", "AppData", "Roaming", "Goldberg SteamEmu Saves")
+var CodexEmuDir = filepath.Join("users", "Public", "Documents", "Steam", "CODEX")
+var RuneEmuDir = filepath.Join("users", "Public", "Documents", "Steam", "RUNE")
 
 var UserCacheDir, _ = os.UserCacheDir()
 var UserConfigDir, _ = os.UserConfigDir()

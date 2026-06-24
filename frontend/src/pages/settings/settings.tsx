@@ -75,6 +75,13 @@ const achievementProgressUpdateModes: { name: string; value: AchievementProgress
   { name: 'Disabled', value: AchievementProgressUpdateMode.AchievementProgressUpdateModeDisabled }
 ];
 
+const emulatorSearchPaths: Record<string, string> = {
+  gse: 'users/steamuser/AppData/Roaming/GSE Saves',
+  'goldberg-steamemu': 'users/steamuser/AppData/Roaming/Goldberg SteamEmu Saves',
+  codex: 'users/Public/Documents/Steam/CODEX',
+  rune: 'users/Public/Documents/Steam/RUNE'
+};
+
 const Settings: FC = () => {
   const [appConfig, setAppConfig] = useState<File | null>(null);
   const [stmSrc, setStmSrc] = useState<SteamSource>();
@@ -337,22 +344,22 @@ const Settings: FC = () => {
         <div className='card settings-section'>
           <div className='flex justify-between items-center'>
             <h4 className='settings-section-title'>
-              <FolderOpen /> <span>Emulator Paths</span>
+              <FolderOpen /> <span>Emulators</span>
             </h4>
           </div>
           <hr className='divider' />
           <div className='settings-grid'>
             {allEmulators.length === 0 ? (
-              <EmptyState message='No emulator paths configured' />
+              <EmptyState message='No emulators configured' />
             ) : (
               <>
                 {allEmulators.map((record) => (
                   <div key={record.index} className='settings-grid-item'>
-                    <span className='badge success'>Path</span>
+                    <span className='badge success'>Emulator</span>
 
-                    <code>{record.emu.path}</code>
+                    <code>{emulatorSearchPaths[record.emu.id] ?? record.emu.id}</code>
 
-                    <label className='switch' title={'Toggle Notification for this path'}>
+                    <label className='switch' title={'Toggle Notification for this emulator'}>
                       <input
                         type='checkbox'
                         role='switch'
