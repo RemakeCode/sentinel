@@ -121,6 +121,7 @@ func (r *Router) Handler() http.Handler {
 
 		// Games service endpoints
 		api.Get("/games", Wrap(r.handleGetAllGames))
+		api.Post("/games/{id}/refresh", Wrap(r.handleRefreshGame))
 		api.Get("/games/{id}/global-achievement-percentages", Wrap(r.handleGetGlobalAchievementPercentages))
 
 		// Notifier service endpoints
@@ -290,6 +291,21 @@ func (r *Router) handleGetAllGames(w http.ResponseWriter, req *http.Request) err
 	}
 
 	return JSON(w, http.StatusOK, games)
+}
+
+// handleRefreshGame refetches one cached game and returns the updated payload
+func (r *Router) handleRefreshGame(w http.ResponseWriter, req *http.Request) error {
+	id := strings.TrimSpace(chi.URLParam(req, "id"))
+	if id == "" {
+		return AppError{Status: http.StatusBadRequest, Message: "Missing game id"}
+	}
+
+	game, err := r.Steam.RefetchGameData(id)
+	if err != nil {
+		return AppError{Status: http.StatusInternalServerError, Message: err.Error()}
+	}
+
+	return JSON(w, http.StatusOK, game)
 }
 
 // handleGetGlobalAchievementPercentages returns global achievement percentages
