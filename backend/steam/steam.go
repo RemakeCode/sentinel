@@ -16,6 +16,7 @@ import (
 	"sentinel/backend/steam/types"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/PuerkitoBio/goquery"
 )
@@ -40,6 +41,12 @@ type GameBasics struct {
 		Total int
 		List  []achievement
 	}
+}
+
+type LibrarySyncStatus struct {
+	State   string
+	Current uint32
+	Total   uint32
 }
 
 type gameBasicsResponse struct {
@@ -69,6 +76,21 @@ type Config interface {
 type Service struct {
 	Config Config
 	Ach    *ach.Service
+
+	syncStatusMu sync.RWMutex
+	syncStatus   LibrarySyncStatus
+
+	clientOnce       sync.Once
+	client           *http.Client
+	assetLimiterOnce sync.Once
+	assetLimiter     chan struct{}
+}
+
+type assetCacheTask struct {
+	Kind    string
+	AppID   string
+	URL     string
+	CacheFn func() error
 }
 
 // Response struct for ISteamUserStats/GetSchemaForGame
@@ -139,15 +161,68 @@ func (s *Service) RefetchGameData(appID string) (*GameBasics, error) {
 	return game, nil
 }
 
+func (s *Service) GetLibrarySyncStatus() LibrarySyncStatus {
+	s.syncStatusMu.RLock()
+	defer s.syncStatusMu.RUnlock()
+
+	if s.syncStatus.State == "" {
+		return LibrarySyncStatus{State: "idle"}
+	}
+
+	return s.syncStatus
+}
+
+func (s *Service) startLibrarySync(total uint32) {
+	s.syncStatusMu.Lock()
+	defer s.syncStatusMu.Unlock()
+
+	s.syncStatus = LibrarySyncStatus{
+		State:   "running",
+		Current: 0,
+		Total:   total,
+	}
+}
+
+func (s *Service) advanceLibrarySync() LibrarySyncStatus {
+	s.syncStatusMu.Lock()
+	defer s.syncStatusMu.Unlock()
+
+	if s.syncStatus.State == "" || s.syncStatus.State == "idle" {
+		s.syncStatus.State = "running"
+	}
+	if s.syncStatus.Current < s.syncStatus.Total {
+		s.syncStatus.Current++
+	}
+
+	return s.syncStatus
+}
+
+func (s *Service) completeLibrarySync() {
+	s.syncStatusMu.Lock()
+	defer s.syncStatusMu.Unlock()
+
+	s.syncStatus.State = "done"
+	s.syncStatus.Current = s.syncStatus.Total
+}
+
+func (s *Service) failLibrarySync() {
+	s.syncStatusMu.Lock()
+	defer s.syncStatusMu.Unlock()
+
+	s.syncStatus.State = "error"
+}
+
 //wails:internal
 func (s *Service) FetchAppDetailsBulk(appIDs []string, language types.Language) ([]*GameBasics, error) {
 	total := len(appIDs)
+	s.startLibrarySync(uint32(total))
 
 	// Emit 0% immediately to signal fetch is starting (even if no appIDs)
 	s.emitFetchStatus(0, uint32(total))
 
 	if len(appIDs) == 0 {
 		// Emit 100% for "no games" case so frontend knows to load from cache
+		s.completeLibrarySync()
 		s.emitFetchStatus(100, 100)
 		return []*GameBasics{}, nil
 	}
@@ -177,6 +252,7 @@ func (s *Service) FetchAppDetailsBulk(appIDs []string, language types.Language) 
 				results = append(results, cached)
 				completed++
 				mu.Unlock()
+				s.advanceLibrarySync()
 				s.emitFetchStatus(completed, uint32(total))
 				return
 			}
@@ -186,6 +262,7 @@ func (s *Service) FetchAppDetailsBulk(appIDs []string, language types.Language) 
 				mu.Lock()
 				completed++
 				mu.Unlock()
+				s.advanceLibrarySync()
 				s.emitFetchStatus(completed, uint32(total))
 				return
 			}
@@ -195,11 +272,13 @@ func (s *Service) FetchAppDetailsBulk(appIDs []string, language types.Language) 
 			completed++
 			mu.Unlock()
 
+			s.advanceLibrarySync()
 			s.emitFetchStatus(completed, uint32(total))
 		}(id)
 	}
 
 	wg.Wait()
+	s.completeLibrarySync()
 
 	return results, nil
 }
@@ -274,13 +353,62 @@ func (s *Service) applyAchievementProgress(game *GameBasics, achData *ach.Achiev
 	}
 }
 
+func (s *Service) httpClient() *http.Client {
+	s.clientOnce.Do(func() {
+		s.client = &http.Client{Timeout: 15 * time.Second}
+	})
+
+	return s.client
+}
+
+func (s *Service) assetDownloadLimiter() chan struct{} {
+	s.assetLimiterOnce.Do(func() {
+		s.assetLimiter = make(chan struct{}, 8)
+	})
+
+	return s.assetLimiter
+}
+
+func (s *Service) runAssetCacheTasks(tasks []assetCacheTask) {
+	seen := make(map[string]struct{}, len(tasks))
+	var wg sync.WaitGroup
+
+	for _, task := range tasks {
+		if task.URL == "" {
+			continue
+		}
+
+		key := task.Kind + "|" + task.AppID + "|" + task.URL
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+
+		wg.Add(1)
+
+		go func(task assetCacheTask) {
+			defer wg.Done()
+
+			limiter := s.assetDownloadLimiter()
+			limiter <- struct{}{}
+			defer func() { <-limiter }()
+
+			if err := task.CacheFn(); err != nil {
+				slog.Warn("Failed to cache asset", "kind", task.Kind, "appID", task.AppID, "url", task.URL, "error", err)
+			}
+		}(task)
+	}
+
+	wg.Wait()
+}
+
 func (s *Service) fetchAchievementsFromOfficialAPI(appID string, language string) ([]achievement, error) {
 	url := fmt.Sprintf(
 		"https://api.steampowered.com/IPlayerService/GetGameAchievements/v1/?appid=%s&language=%s",
 		appID, language,
 	)
 
-	resp, err := http.Get(url)
+	resp, err := s.httpClient().Get(url)
 
 	if err != nil {
 		return nil, err
@@ -318,6 +446,9 @@ func (s *Service) fetchAchievementsFromOfficialAPI(appID string, language string
 		achievements = append(achievements, achievement)
 	}
 
+	s.runAssetCacheTasks(s.achievementIconTasks(appID, achievements))
+	s.localizeAchievementIcons(appID, achievements)
+
 	return achievements, nil
 }
 
@@ -332,24 +463,66 @@ func (s *Service) resolveKeyAchievementIconURL(appID string, icon string) string
 	return steamCDN + strings.TrimLeft(icon, "/")
 }
 
-func (s *Service) localizeKeySourceAchievementIcon(appID string, icon string, field string) string {
+func (s *Service) localizeKeySourceAchievementIcon(appID string, icon string, _ string) string {
 	iconURL := s.resolveKeyAchievementIconURL(appID, icon)
 	if iconURL == "" {
 		return ""
 	}
+	return iconURL
+}
 
-	if err := s.cacheAchievementIcon(appID, iconURL); err != nil {
-		slog.Warn("Failed to cache key-source achievement icon", "appID", appID, "field", field, "iconURL", iconURL, "error", err)
-		return ""
+func (s *Service) achievementIconTasks(appID string, achievements []achievement) []assetCacheTask {
+	tasks := make([]assetCacheTask, 0, len(achievements)*2)
+
+	for _, item := range achievements {
+		if item.Icon != "" {
+			iconURL := item.Icon
+			tasks = append(tasks, assetCacheTask{
+				Kind:  "icon",
+				AppID: appID,
+				URL:   iconURL,
+				CacheFn: func() error {
+					return s.cacheAchievementIcon(appID, iconURL)
+				},
+			})
+		}
+
+		if item.IconGray != "" {
+			iconGrayURL := item.IconGray
+			tasks = append(tasks, assetCacheTask{
+				Kind:  "iconGray",
+				AppID: appID,
+				URL:   iconGrayURL,
+				CacheFn: func() error {
+					return s.cacheAchievementIcon(appID, iconGrayURL)
+				},
+			})
+		}
 	}
 
-	path, err := s.loadCachedAchievementIcon(appID, iconURL)
-	if err != nil {
-		slog.Warn("Failed to load cached key-source achievement icon", "appID", appID, "field", field, "iconURL", iconURL, "error", err)
-		return ""
-	}
+	return tasks
+}
 
-	return path
+func (s *Service) localizeAchievementIcons(appID string, achievements []achievement) {
+	for i, item := range achievements {
+		if item.Icon != "" {
+			if path, err := s.loadCachedAchievementIcon(appID, item.Icon); err == nil {
+				item.Icon = path
+			} else {
+				item.Icon = ""
+			}
+		}
+
+		if item.IconGray != "" {
+			if path, err := s.loadCachedAchievementIcon(appID, item.IconGray); err == nil {
+				item.IconGray = path
+			} else {
+				item.IconGray = ""
+			}
+		}
+
+		achievements[i] = item
+	}
 }
 
 // fetchAchievementsWithKeyLegacy is a fallback using GetSchemaForGame API
@@ -409,7 +582,7 @@ func (s *Service) fetchAchievementsFromThirdParty(appID string, language string)
 	}
 	shReq.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36")
 
-	shResp, err := http.DefaultClient.Do(shReq)
+	shResp, err := s.httpClient().Do(shReq)
 	if err != nil {
 		return nil, err
 	}
@@ -436,7 +609,7 @@ func (s *Service) fetchAchievementsFromThirdParty(appID string, language string)
 	}
 	cReq.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36")
 
-	cResp, err := http.DefaultClient.Do(cReq)
+	cResp, err := s.httpClient().Do(cReq)
 	if err != nil {
 		return nil, err
 	}
@@ -472,7 +645,12 @@ func (s *Service) fetchAchievementsFromThirdParty(appID string, language string)
 	})
 
 	// 3. Merge data
-	return s.mergeAchievements(shItems, communityMap, appID), nil
+	achievements := s.mergeAchievements(shItems, communityMap, appID)
+	s.applyCommunityIcons(achievements, communityMap)
+	s.runAssetCacheTasks(s.achievementIconTasks(appID, achievements))
+	s.localizeAchievementIcons(appID, achievements)
+
+	return achievements, nil
 }
 
 func (s *Service) mergeAchievements(shItems []struct {
@@ -490,20 +668,21 @@ func (s *Service) mergeAchievements(shItems []struct {
 
 		if data, ok := communityMap[item.Name]; ok {
 			a.Hidden = data.Hidden
-
-			// Cache the achievement icon
-			_ = s.cacheAchievementIcon(appID, data.Icon)
-
-			// Use cached icon if available
-			if path, err := s.loadCachedAchievementIcon(appID, data.Icon); err == nil {
-				a.Icon = path
-			}
 		}
 
 		achievements = append(achievements, a)
 	}
 
 	return achievements
+}
+
+func (s *Service) applyCommunityIcons(achievements []achievement, communityMap map[string]communityData) {
+	for i, item := range achievements {
+		if data, ok := communityMap[item.DisplayName]; ok {
+			item.Icon = data.Icon
+			achievements[i] = item
+		}
+	}
 }
 
 // fetchAchievements fetches achievements using the configured data source
@@ -547,19 +726,10 @@ func (s *Service) fetchGameDataFresh(appID string, language string) (*GameBasics
 	return details, nil
 }
 
-func (s *Service) fetchGameDetails(appID string, language string) (*GameBasics, error) {
-	// 1. Check unified game cache first
-	if cached, err := s.loadCachedGameData(appID, language); err == nil {
-		return cached, nil
-	}
-
-	return s.fetchGameDetailsFresh(appID, language)
-}
-
 func (s *Service) fetchGameDetailsFresh(appID string, language string) (*GameBasics, error) {
 	url := fmt.Sprintf("https://store.steampowered.com/api/appdetails?appids=%s&l=%s", appID, language)
 
-	resp, err := http.Get(url)
+	resp, err := s.httpClient().Get(url)
 
 	if err != nil {
 		return nil, err
@@ -584,13 +754,27 @@ func (s *Service) fetchGameDetailsFresh(appID string, language string) (*GameBas
 	}
 
 	portraitImageURL := s.primaryPortraitImageURL(appID)
-
-	// Cache game images
-	_ = s.cacheGameImage(appID, appData.Data.HeaderImage, "headerImage")
-	_ = s.cacheGameImage(appID, portraitImageURL, "portraitImage")
-
 	headerImage := ""
 	portraitImage := ""
+
+	s.runAssetCacheTasks([]assetCacheTask{
+		{
+			Kind:  "headerImage",
+			AppID: appID,
+			URL:   appData.Data.HeaderImage,
+			CacheFn: func() error {
+				return s.cacheGameImage(appID, appData.Data.HeaderImage, "headerImage")
+			},
+		},
+		{
+			Kind:  "portraitImage",
+			AppID: appID,
+			URL:   portraitImageURL,
+			CacheFn: func() error {
+				return s.cacheGameImage(appID, portraitImageURL, "portraitImage")
+			},
+		},
+	})
 
 	if headerImagePath, err := s.loadCachedGameImage(appID, "headerImage"); err == nil {
 		headerImage = headerImagePath
@@ -714,7 +898,7 @@ func (s *Service) cacheAchievementIcon(appID string, iconURL string) error {
 	}
 
 	// Download the image
-	resp, err := http.Get(iconURL)
+	resp, err := s.httpClient().Get(iconURL)
 	if err != nil {
 		return fmt.Errorf("failed to download icon: %w", err)
 	}
@@ -794,7 +978,7 @@ func (s *Service) primaryPortraitImageURL(appID string) string {
 
 func (s *Service) downloadImageToCache(appID string, imageURL string, cachePath string) error {
 	// Download the image
-	resp, err := http.Get(imageURL)
+	resp, err := s.httpClient().Get(imageURL)
 	if err != nil {
 		return fmt.Errorf("failed to download image: %w", err)
 	}
@@ -820,7 +1004,7 @@ func (s *Service) downloadImageToCache(appID string, imageURL string, cachePath 
 func (s *Service) fallbackPortraitURL(appID string) string {
 	fallbackAPIURL := fmt.Sprintf("https://steam-asset-proxy.steampoacher.workers.dev/?appid=%s", appID)
 
-	resp, err := http.Get(fallbackAPIURL)
+	resp, err := s.httpClient().Get(fallbackAPIURL)
 	if err != nil {
 		slog.Warn("Failed to call fallback API", "appID", appID, "error", err)
 		return ""
@@ -889,7 +1073,7 @@ func (s *Service) GetGlobalAchievementPercentages(appID string) ([]GlobalAchieve
 		appID,
 	)
 
-	resp, err := http.Get(url)
+	resp, err := s.httpClient().Get(url)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch global achievement percentages: %w", err)
 	}

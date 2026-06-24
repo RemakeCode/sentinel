@@ -144,6 +144,37 @@ func TestFetchAppDetailsBulk_Cached(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, results, 1)
 	assert.Equal(t, "Test Game", results[0].Name)
+	assert.Equal(t, LibrarySyncStatus{State: "done", Current: 1, Total: 1}, svc.GetLibrarySyncStatus())
+}
+
+func TestLibrarySyncStatus_DefaultsToIdle(t *testing.T) {
+	svc := &Service{}
+
+	assert.Equal(t, LibrarySyncStatus{State: "idle", Current: 0, Total: 0}, svc.GetLibrarySyncStatus())
+}
+
+func TestLibrarySyncStatus_ProgressAndCompletion(t *testing.T) {
+	svc := &Service{}
+
+	svc.startLibrarySync(2)
+	assert.Equal(t, LibrarySyncStatus{State: "running", Current: 0, Total: 2}, svc.GetLibrarySyncStatus())
+
+	status := svc.advanceLibrarySync()
+	assert.Equal(t, LibrarySyncStatus{State: "running", Current: 1, Total: 2}, status)
+	assert.Equal(t, LibrarySyncStatus{State: "running", Current: 1, Total: 2}, svc.GetLibrarySyncStatus())
+
+	svc.completeLibrarySync()
+	assert.Equal(t, LibrarySyncStatus{State: "done", Current: 2, Total: 2}, svc.GetLibrarySyncStatus())
+}
+
+func TestLibrarySyncStatus_Error(t *testing.T) {
+	svc := &Service{}
+
+	svc.startLibrarySync(3)
+	svc.advanceLibrarySync()
+	svc.failLibrarySync()
+
+	assert.Equal(t, LibrarySyncStatus{State: "error", Current: 1, Total: 3}, svc.GetLibrarySyncStatus())
 }
 
 func TestFetchAchievementsFromOfficialAPI_CachesFilenameIconsAsLocalMediaPaths(t *testing.T) {
