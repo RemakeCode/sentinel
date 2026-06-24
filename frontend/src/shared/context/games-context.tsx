@@ -180,6 +180,7 @@ export const GamesProvider: FC<GamesProviderProps> = ({ children }) => {
     }
 
     let active = true;
+    let intervalID: number;
 
     const pollSyncStatus = async () => {
       try {
@@ -207,6 +208,8 @@ export const GamesProvider: FC<GamesProviderProps> = ({ children }) => {
             setLoading(false);
           }
           setIsInitialized(true);
+          active = false;
+          window.clearInterval(intervalID);
         }
       } catch (error) {
         console.error(error);
@@ -214,13 +217,13 @@ export const GamesProvider: FC<GamesProviderProps> = ({ children }) => {
     };
 
     void pollSyncStatus();
-    const intervalID = window.setInterval(pollSyncStatus, SYNC_POLL_INTERVAL_MS);
+    intervalID = window.setInterval(pollSyncStatus, SYNC_POLL_INTERVAL_MS);
 
     return () => {
       active = false;
       window.clearInterval(intervalID);
     };
-  }, [loadCachedGames, syncStatus.State]);
+  }, [loadCachedGames]);
 
   useEffect(() => {
     const unsubscribe = Events.On('sentinel::refresh-game-requested', (event: { data: string }) => {
