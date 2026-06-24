@@ -117,9 +117,6 @@ func (s *Service) scan(paths []string) scanResult {
 	}
 }
 
-//TODO Start method should be refactored into watchPathForNotification
-//TODO Create a new method that watches the Emupaths.
-
 // Start initializes the file system watcher and begins monitoring paths
 func (s *Service) Start() error {
 	prefixPaths, err := s.Config.GetPrefixPaths()
@@ -440,7 +437,7 @@ func (s *Service) handleAchievementsWriteEvent(path, appId string) {
 
 	oldAch, err := s.Ach.LoadCachedAch(appId)
 	if err != nil {
-		return
+		oldAch = nil
 	}
 
 	diff := newAch.Diff(oldAch)
@@ -461,6 +458,9 @@ func (s *Service) handleAchievementsWriteEvent(path, appId string) {
 			}
 		}
 
+	}
+
+	if oldAch == nil || len(diff.NewlyEarned) > 0 || len(diff.ProgressUpdated) > 0 {
 		if err := s.Ach.SaveAch(filepath.Dir(path)); err != nil {
 			slog.Error("Failed to save achievements", "error", err)
 		}
