@@ -426,6 +426,10 @@ func (s *Service) PlaySound(filename string) error {
 	return nil
 }
 
+func (s *Service) GetNotificationExpireTime() int {
+	return int(backend.NotificationExpireTime / time.Millisecond)
+}
+
 // RegisterClient registers a new SSE client
 func (s *Service) RegisterClient(clientID string, notifications chan string) {
 	s.mu.Lock()
