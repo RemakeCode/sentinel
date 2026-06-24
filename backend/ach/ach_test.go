@@ -101,6 +101,130 @@ func TestParseAch_InvalidJSON(t *testing.T) {
 	}
 }
 
+func TestParseAch_UnsupportedExtension(t *testing.T) {
+	tempDir := t.TempDir()
+	achievementsPath := filepath.Join(tempDir, "achievements.txt")
+	require.NoError(t, os.WriteFile(achievementsPath, []byte("test"), 0644))
+
+	_, err := svc.ParseAch(achievementsPath)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unsupported achievement file format")
+}
+
+func TestParseAch_CodexINI(t *testing.T) {
+	tempDir := t.TempDir()
+	achievementsPath := filepath.Join(tempDir, "achievements.ini")
+	data := []byte(`[ACH02]
+Achieved=1
+CurProgress=0
+MaxProgress=0
+UnlockTime=1721215291
+
+[ACH_PROGRESS]
+Achieved=0
+CurProgress=4
+MaxProgress=10
+UnlockTime=0
+
+[SteamAchievements]
+00000=ACH02
+00001=ACH_PROGRESS
+Count=2
+`)
+	require.NoError(t, os.WriteFile(achievementsPath, data, 0644))
+
+	result, err := svc.ParseAch(achievementsPath)
+	require.NoError(t, err)
+
+	require.Len(t, result.Achievements, 2)
+	assert.True(t, result.Achievements["ACH02"].Earned)
+	assert.Equal(t, int64(1721215291), result.Achievements["ACH02"].EarnedTime)
+	assert.False(t, result.Achievements["ACH_PROGRESS"].Earned)
+	assert.Equal(t, 4, result.Achievements["ACH_PROGRESS"].Progress)
+	assert.Equal(t, 10, result.Achievements["ACH_PROGRESS"].MaxProgress)
+	assert.NotContains(t, result.Achievements, "SteamAchievements")
+}
+
+func TestParseAch_RuneINI_NumericAchievementIDs(t *testing.T) {
+	tempDir := t.TempDir()
+	achievementsPath := filepath.Join(tempDir, "achievements.ini")
+	data := []byte(`[13]
+Achieved=1
+CurProgress=0
+MaxProgress=0
+UnlockTime=1724340111
+
+[23]
+Achieved=0
+CurProgress=2
+MaxProgress=5
+UnlockTime=0
+
+[SteamAchievements]
+00000=13
+00001=23
+Count=2
+`)
+	require.NoError(t, os.WriteFile(achievementsPath, data, 0644))
+
+	result, err := svc.ParseAch(achievementsPath)
+	require.NoError(t, err)
+
+	require.Len(t, result.Achievements, 2)
+	assert.True(t, result.Achievements["13"].Earned)
+	assert.Equal(t, int64(1724340111), result.Achievements["13"].EarnedTime)
+	assert.False(t, result.Achievements["23"].Earned)
+	assert.Equal(t, 2, result.Achievements["23"].Progress)
+	assert.Equal(t, 5, result.Achievements["23"].MaxProgress)
+}
+
+func TestParseAch_INIIgnoresMalformedLinesAndDefaultsInvalidNumbers(t *testing.T) {
+	tempDir := t.TempDir()
+	achievementsPath := filepath.Join(tempDir, "achievements.ini")
+	data := []byte(`
+ignored-before-section=1
+; comment
+# comment
+
+[ACH_SAFE]
+MalformedLine
+Achieved=yes
+CurProgress=not-a-number
+MaxProgress=12
+UnlockTime=bad
+UnknownKey=999
+
+[SteamAchievements]
+00000=ACH_SAFE
+Count=1
+`)
+	require.NoError(t, os.WriteFile(achievementsPath, data, 0644))
+
+	result, err := svc.ParseAch(achievementsPath)
+	require.NoError(t, err)
+
+	require.Len(t, result.Achievements, 1)
+	achievement := result.Achievements["ACH_SAFE"]
+	assert.False(t, achievement.Earned)
+	assert.Equal(t, 0, achievement.Progress)
+	assert.Equal(t, 12, achievement.MaxProgress)
+	assert.Equal(t, int64(0), achievement.EarnedTime)
+	assert.NotContains(t, result.Achievements, "SteamAchievements")
+}
+
+func TestParseAch_INIMetadataOnlyDoesNotCrash(t *testing.T) {
+	tempDir := t.TempDir()
+	achievementsPath := filepath.Join(tempDir, "achievements.ini")
+	data := []byte(`[SteamAchievements]
+Count=0
+`)
+	require.NoError(t, os.WriteFile(achievementsPath, data, 0644))
+
+	result, err := svc.ParseAch(achievementsPath)
+	require.NoError(t, err)
+	assert.Empty(t, result.Achievements)
+}
+
 func TestSaveAch(t *testing.T) {
 	tempDir := t.TempDir()
 	appID := "123456"
@@ -211,6 +335,35 @@ func TestSaveAch_CreatesDirectory(t *testing.T) {
 	// Clean up
 	cachePath := filepath.Join(backend.ACHCacheDataDir, appID+".json")
 	os.Remove(cachePath)
+}
+
+func TestSaveAch_NormalizesINIToJSONCache(t *testing.T) {
+	tempDir := t.TempDir()
+	appID := "814380"
+	achievementsDir := filepath.Join(tempDir, appID)
+	require.NoError(t, os.MkdirAll(achievementsDir, 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(achievementsDir, "achievements.ini"), []byte(`[ACH02]
+Achieved=1
+CurProgress=0
+MaxProgress=0
+UnlockTime=1721215291
+`), 0644))
+
+	oldCacheDir := backend.ACHCacheDataDir
+	backend.ACHCacheDataDir = t.TempDir()
+	defer func() { backend.ACHCacheDataDir = oldCacheDir }()
+
+	require.NoError(t, svc.SaveAch(achievementsDir))
+
+	cachePath := filepath.Join(backend.ACHCacheDataDir, appID+".json")
+	fileData, err := os.ReadFile(cachePath)
+	require.NoError(t, err)
+
+	var cachedAchievements map[string]Achievement
+	require.NoError(t, json.Unmarshal(fileData, &cachedAchievements))
+	require.Contains(t, cachedAchievements, "ACH02")
+	assert.True(t, cachedAchievements["ACH02"].Earned)
+	assert.Equal(t, int64(1721215291), cachedAchievements["ACH02"].EarnedTime)
 }
 
 func TestLoadCachedAch_ValidFile(t *testing.T) {
@@ -332,6 +485,25 @@ func TestDiff_ProgressUpdated(t *testing.T) {
 	assert.Empty(t, diff.NewlyEarned)
 	assert.Len(t, diff.ProgressUpdated, 1)
 	assert.Contains(t, diff.ProgressUpdated, "ACH1")
+}
+
+func TestDiff_EarnedTransitionTakesPriorityOverProgress(t *testing.T) {
+	current := &AchievementData{
+		Achievements: map[string]Achievement{
+			"ACH1": {Earned: true, EarnedTime: 1000, Progress: 10, MaxProgress: 10},
+		},
+	}
+	old := &AchievementData{
+		Achievements: map[string]Achievement{
+			"ACH1": {Earned: false, Progress: 9, MaxProgress: 10},
+		},
+	}
+
+	diff := current.Diff(old)
+
+	assert.Len(t, diff.NewlyEarned, 1)
+	assert.Contains(t, diff.NewlyEarned, "ACH1")
+	assert.Empty(t, diff.ProgressUpdated)
 }
 
 func TestDiff_NoChanges(t *testing.T) {
