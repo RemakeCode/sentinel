@@ -12,6 +12,9 @@ permissions:
   issues: write
   pull-requests: write
 
+env:
+  WAILS_VERSION: v3.0.0-alpha2.105
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -30,7 +33,9 @@ jobs:
         with:
           node-version: '24'
           cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: |
+            frontend/package-lock.json
+            decky-plugin/package-lock.json
 
       - name: Install Task
         uses: go-task/setup-task@v1
@@ -44,10 +49,10 @@ jobs:
           version: 1.0
 
       - name: Install Wails v3 CLI
-        run: go install github.com/wailsapp/wails/v3/cmd/wails3@latest
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@${WAILS_VERSION}
 
       - name: Run tests
-        run: go test ./backend/... -v -short -coverprofile=coverage.out
+        run: go test ./backend/... ./cmd/decky -v -short -coverprofile=coverage.out
 
   build-check:
     needs: test
@@ -66,7 +71,9 @@ jobs:
         with:
           node-version: '24'
           cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: |
+            frontend/package-lock.json
+            decky-plugin/package-lock.json
 
       - name: Install Task
         uses: go-task/setup-task@v1
@@ -80,10 +87,16 @@ jobs:
           version: 1.0
 
       - name: Install Wails CLI
-        run: go install github.com/wailsapp/wails/v3/cmd/wails3@latest
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@${WAILS_VERSION}
 
       - name: Build Check
         run: task linux:build
+
+      - name: Install decky-plugin dependencies
+        run: task linux:decky:install:deps
+
+      - name: Build decky plugin
+        run: task linux:decky:package
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
@@ -94,6 +107,13 @@ jobs:
             bin/*.deb
             bin/*.rpm
             bin/*.pkg.tar.zst
+          retention-days: 30
+
+      - name: Upload decky build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: decky-plugin
+          path: bin/sentinel-decky-plugin.zip
           retention-days: 30
 
   semantic-dry-run:
@@ -116,7 +136,9 @@ jobs:
         with:
           node-version: '24'
           cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: |
+            frontend/package-lock.json
+            decky-plugin/package-lock.json
 
       - name: Install Task
         uses: go-task/setup-task@v1
@@ -168,7 +190,9 @@ jobs:
         with:
           node-version: '24'
           cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: |
+            frontend/package-lock.json
+            decky-plugin/package-lock.json
 
       - name: Install Task
         uses: go-task/setup-task@v1
@@ -182,7 +206,13 @@ jobs:
           version: 1.0
 
       - name: Install Wails CLI
-        run: go install github.com/wailsapp/wails/v3/cmd/wails3@latest
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@${WAILS_VERSION}
+
+      - name: Build Go binary
+        run: task linux:build
+
+      - name: Install decky-plugin dependencies
+        run: task linux:decky:install:deps
 
       - name: Semantic Release
         id: semantic

@@ -14,14 +14,11 @@ import (
 	"os"
 	"path/filepath"
 	"sentinel/backend"
-	"sentinel/backend/autostart"
 	"sentinel/backend/logger"
-	"sentinel/backend/migrate"
 	"sentinel/backend/steam/types"
 	"strings"
 	"sync"
 
-	"github.com/wailsapp/wails/v3/pkg/application"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )
@@ -30,6 +27,19 @@ type Prefix struct {
 	Path string `json:"path"`
 }
 type Emulator struct {
+	ID           string `json:"id"`
+	ShouldNotify bool   `json:"shouldNotify"`
+}
+
+type EmulatorSource struct {
+	ID              string
+	Path            string
+	AchievementFile string
+	ShouldNotify    bool
+}
+
+type legacyEmulator struct {
+	ID           string `json:"id"`
 	Path         string `json:"path"`
 	ShouldNotify bool   `json:"shouldNotify"`
 }
@@ -59,6 +69,10 @@ type LogLevelOption struct {
 	Value string `json:"value"`
 }
 
+type Autostarter interface {
+	SetEnabled(enabled bool) error
+}
+
 type AppInfo struct {
 	Name        string `json:"name"`
 	Version     string `json:"version"`
@@ -70,7 +84,7 @@ type AppInfo struct {
 
 //wails:internal
 type File struct {
-	app                           *application.App
+	autostart                     Autostarter
 	Language                      types.Language                `json:"language"`
 	Emulators                     []Emulator                    `json:"emulators"`
 	Prefixes                      []Prefix                      `json:"prefixes"`
@@ -83,9 +97,34 @@ type File struct {
 	StartOnLogin                  bool                          `json:"startOnLogin"`
 }
 
-var defaultEmulatorPaths = []Emulator{
-	{Path: backend.EmuDir, ShouldNotify: true},
+var defaultEmulatorSources = []EmulatorSource{
+	{
+		ID:              "gse",
+		Path:            backend.EmuDir,
+		AchievementFile: "achievements.json",
+		ShouldNotify:    true,
+	},
+	{
+		ID:              "goldberg-steamemu",
+		Path:            backend.GoldbergSteamEmuDir,
+		AchievementFile: "achievements.json",
+		ShouldNotify:    true,
+	},
+	{
+		ID:              "codex",
+		Path:            backend.CodexEmuDir,
+		AchievementFile: "achievements.ini",
+		ShouldNotify:    true,
+	},
+	{
+		ID:              "rune",
+		Path:            backend.RuneEmuDir,
+		AchievementFile: "achievements.ini",
+		ShouldNotify:    true,
+	},
 }
+
+var defaultEmulators = emulatorsFromSources(defaultEmulatorSources)
 
 // Not a secure Key. Left this way intentionally.
 var encryptionKey = []byte("sentinel-app-secret-key-32bytes!")
@@ -128,13 +167,8 @@ func ResetSingleton() {
 	instanceErr = nil
 }
 
-func (c *File) ServiceStartup(ctx context.Context, options application.ServiceOptions) error {
+func (c *File) Start(ctx context.Context) error {
 	slog.Info("Starting config initialization")
-
-	// Run migration from old XDG locations if needed
-	if err := migrate.MigrateAll(); err != nil {
-		slog.Error("Migration failed", "error", err)
-	}
 
 	// Ensure config directory exists
 	if err := os.MkdirAll(backend.ConfigDir, 0755); err != nil {
@@ -152,7 +186,7 @@ func (c *File) ServiceStartup(ctx context.Context, options application.ServiceOp
 		langDir := filepath.Join(backend.GameCacheDir, lang.API)
 		if _, err := os.Stat(langDir); os.IsNotExist(err) {
 			if err := os.MkdirAll(langDir, 0755); err != nil {
-				slog.Info("Warning: Failed to create language directory %s: %v", lang.API, err)
+				slog.Warn("Failed to create language directory", "lang", lang.API, "error", err)
 			}
 		}
 	}
@@ -162,7 +196,7 @@ func (c *File) ServiceStartup(ctx context.Context, options application.ServiceOp
 	if os.IsNotExist(err) {
 		// File doesn't exist - initialize default config
 		defaultConfig := File{
-			Emulators:                     defaultEmulatorPaths,
+			Emulators:                     defaultEmulators,
 			SteamDataSource:               "external",
 			NotificationSound:             "steam-deck.wav",
 			AchievementProgressUpdateMode: AchievementProgressUpdateModeDefault,
@@ -197,11 +231,6 @@ func (c *File) ServiceStartup(ctx context.Context, options application.ServiceOp
 		slog.Error("Failed to load config into service", "error", err)
 	}
 
-	// Sync autostart file state with config preference
-	if err := autostart.SetAutostartEnabled(c.StartOnLogin); err != nil {
-		slog.Error("Failed to sync autostart state", "error", err)
-	}
-
 	slog.Info("Config initialization complete")
 	return nil
 }
@@ -217,7 +246,20 @@ func (c *File) LoadConfig() (*File, error) {
 		return nil, errors.New("unable to unmarshal config")
 	}
 
-	c.applyProgressModeDefaults()
+	raw, err := legacyConfigFromJSON(data)
+	if err != nil {
+		return nil, errors.New("unable to unmarshal config")
+	}
+
+	changed := c.migrateLegacyEmulators(raw.Emulators)
+	if c.applyDefaults() {
+		changed = true
+	}
+	if changed {
+		if err := c.SaveConfig(); err != nil {
+			return nil, err
+		}
+	}
 
 	return c, nil
 }
@@ -246,6 +288,117 @@ func (c *File) applyProgressModeDefaults() {
 	if c.AchievementProgressUpdateMode == "" {
 		c.AchievementProgressUpdateMode = AchievementProgressUpdateModeDefault
 	}
+}
+
+func legacyConfigFromJSON(data []byte) (*struct {
+	Emulators []legacyEmulator `json:"emulators"`
+}, error) {
+	raw := &struct {
+		Emulators []legacyEmulator `json:"emulators"`
+	}{}
+	if err := json.Unmarshal(data, raw); err != nil {
+		return nil, err
+	}
+	return raw, nil
+}
+
+func (c *File) migrateLegacyEmulators(rawEmulators []legacyEmulator) bool {
+	if len(rawEmulators) == 0 {
+		return false
+	}
+
+	changed := false
+	migrated := make([]Emulator, 0, len(rawEmulators))
+	for _, raw := range rawEmulators {
+		id := raw.ID
+		if raw.Path != "" {
+			changed = true
+			if id == "" {
+				id = legacySourceIDForPath(raw.Path)
+			}
+		}
+		migrated = append(migrated, Emulator{
+			ID:           id,
+			ShouldNotify: raw.ShouldNotify,
+		})
+	}
+
+	if !changed {
+		return false
+	}
+	c.Emulators = migrated
+	return true
+}
+
+func (c *File) applyDefaults() bool {
+	changed := false
+	if c.AchievementProgressUpdateMode == "" {
+		c.AchievementProgressUpdateMode = AchievementProgressUpdateModeDefault
+		changed = true
+	}
+	if c.normalizeKnownEmulators() {
+		changed = true
+	}
+	if c.ensureDefaultEmulators() {
+		changed = true
+	}
+	return changed
+}
+
+func (c *File) normalizeKnownEmulators() bool {
+	changed := false
+	known := make([]Emulator, 0, len(c.Emulators))
+	seen := make(map[string]struct{}, len(c.Emulators))
+
+	for _, emu := range c.Emulators {
+		if _, ok := sourceForID(emu.ID); !ok {
+			changed = true
+			continue
+		}
+		if _, ok := seen[emu.ID]; ok {
+			changed = true
+			continue
+		}
+		seen[emu.ID] = struct{}{}
+		known = append(known, emu)
+	}
+
+	if len(known) != len(c.Emulators) {
+		changed = true
+	}
+	c.Emulators = known
+	return changed
+}
+
+func (c *File) ensureDefaultEmulators() bool {
+	changed := false
+	for _, emu := range defaultEmulators {
+		if !c.hasEmulatorID(emu.ID) {
+			c.Emulators = append(c.Emulators, emu)
+			changed = true
+		}
+	}
+	return changed
+}
+
+func (c *File) hasEmulatorID(id string) bool {
+	for _, emu := range c.Emulators {
+		if emu.ID == id {
+			return true
+		}
+	}
+	return false
+}
+
+func emulatorsFromSources(sources []EmulatorSource) []Emulator {
+	emulators := make([]Emulator, 0, len(sources))
+	for _, source := range sources {
+		emulators = append(emulators, Emulator{
+			ID:           source.ID,
+			ShouldNotify: source.ShouldNotify,
+		})
+	}
+	return emulators
 }
 
 // SetSteamAPIKey sets the Steam API key in the configuration
@@ -321,28 +474,6 @@ func (c *File) SetAchievementProgressUpdateMode(mode AchievementProgressUpdateMo
 	}
 
 	c.AchievementProgressUpdateMode = mode
-	return c.SaveConfig()
-}
-
-func (c *File) AddEmulator(path string) error {
-	emulator := Emulator{Path: path, ShouldNotify: true}
-
-	for _, e := range c.Emulators {
-		if e.Path == emulator.Path {
-			return nil
-		}
-	}
-
-	c.Emulators = append(c.Emulators, emulator)
-	return c.SaveConfig()
-}
-
-func (c *File) RemoveEmulator(index int) error {
-	if index < 0 || index >= len(c.Emulators) {
-		return nil
-	}
-
-	c.Emulators = append(c.Emulators[:index], c.Emulators[index+1:]...)
 	return c.SaveConfig()
 }
 
@@ -428,13 +559,57 @@ func decrypt(ciphertext string) (string, error) {
 	return string(plaintext), nil
 }
 
-// GetEmulatorPaths returns all emulator paths from the configuration
+// GetEmulatorPaths returns the internal source paths for configured emulator IDs.
 func (c *File) GetEmulatorPaths() ([]string, error) {
 	var paths []string
 	for _, emulator := range c.Emulators {
-		paths = append(paths, emulator.Path)
+		source, ok := sourceForID(emulator.ID)
+		if !ok {
+			continue
+		}
+		paths = append(paths, source.Path)
 	}
 	return paths, nil
+}
+
+// GetEmulatorSources returns source metadata for configured emulator IDs.
+//
+//wails:internal
+func (c *File) GetEmulatorSources() ([]EmulatorSource, error) {
+	sources := make([]EmulatorSource, 0, len(c.Emulators))
+	for _, emulator := range c.Emulators {
+		source, ok := sourceForID(emulator.ID)
+		if !ok {
+			continue
+		}
+		source.ShouldNotify = emulator.ShouldNotify
+		sources = append(sources, source)
+	}
+	return sources, nil
+}
+
+func sourceForID(id string) (EmulatorSource, bool) {
+	for _, source := range defaultEmulatorSources {
+		if source.ID == id {
+			return source, true
+		}
+	}
+	return EmulatorSource{}, false
+}
+
+func legacySourceIDForPath(path string) string {
+	switch path {
+	case filepath.Join("AppData", "Roaming", "GSE Saves"), backend.EmuDir:
+		return "gse"
+	case filepath.Join("AppData", "Roaming", "Goldberg SteamEmu Saves"), backend.GoldbergSteamEmuDir:
+		return "goldberg-steamemu"
+	case backend.CodexEmuDir:
+		return "codex"
+	case backend.RuneEmuDir:
+		return "rune"
+	default:
+		return ""
+	}
 }
 
 // ToggleEmulatorNotification toggles the notification setting for an emulator by index
@@ -554,7 +729,11 @@ func (c *File) SetLoggingEnabled(enabled bool) error {
 //wails:internal
 func (c *File) CheckShouldNotify(path string) bool {
 	for _, emulator := range c.Emulators {
-		if emulator.Path != "" && strings.Contains(path, emulator.Path) {
+		source, ok := sourceForID(emulator.ID)
+		if !ok {
+			continue
+		}
+		if source.Path != "" && strings.Contains(path, source.Path) {
 			return emulator.ShouldNotify
 		}
 	}
@@ -572,6 +751,10 @@ func (c *File) GetAppInfo() AppInfo {
 	}
 }
 
+func (c *File) SetAutostart(a Autostarter) {
+	c.autostart = a
+}
+
 func (c *File) GetStartOnLogin() bool {
 	return c.StartOnLogin
 }
@@ -581,5 +764,15 @@ func (c *File) SetStartOnLogin(enabled bool) error {
 	if err := c.SaveConfig(); err != nil {
 		return err
 	}
-	return autostart.SetAutostartEnabled(enabled)
+	if c.autostart != nil {
+		return c.autostart.SetEnabled(enabled)
+	}
+	return nil
+}
+
+func (c *File) SyncAutostart() error {
+	if c.autostart != nil {
+		return c.autostart.SetEnabled(c.StartOnLogin)
+	}
+	return nil
 }

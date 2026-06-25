@@ -21,7 +21,6 @@ import (
 	"github.com/gopxl/beep/v2"
 	"github.com/gopxl/beep/v2/speaker"
 	"github.com/gopxl/beep/v2/wav"
-	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 //go:embed media
@@ -38,11 +37,21 @@ type NotificationPayload struct {
 	IsProgress  bool
 }
 
+type DeliveryMode int
+
+const (
+	DeliveryDesktop DeliveryMode = iota
+	DeliveryDecky
+)
+
 type Service struct {
 	notificationQueue chan *NotificationPayload
 	ctx               context.Context
 	cancel            context.CancelFunc
 	Config            *config.File
+	deliveryMode      DeliveryMode
+	clients           map[string]chan string
+	mu                sync.RWMutex
 }
 
 var queueCap = 100
@@ -82,7 +91,7 @@ func init() {
 	}
 }
 
-func (s *Service) ServiceStartup(ctx context.Context, options application.ServiceOptions) error {
+func (s *Service) Start(ctx context.Context) error {
 	// Config must be injected before startup
 	if s.Config == nil {
 		slog.Error("Config not injected into notifier service")
@@ -91,11 +100,16 @@ func (s *Service) ServiceStartup(ctx context.Context, options application.Servic
 
 	s.notificationQueue = make(chan *NotificationPayload, queueCap)
 	s.ctx, s.cancel = context.WithCancel(context.Background())
+	s.clients = make(map[string]chan string)
 
 	go s.notificationWorker()
 
 	slog.Info("Notification service initialized")
 	return nil
+}
+
+func (s *Service) SetDeliveryMode(mode DeliveryMode) {
+	s.deliveryMode = mode
 }
 
 func (s *Service) notificationWorker() {
@@ -107,7 +121,11 @@ func (s *Service) notificationWorker() {
 			return
 		case payload := <-s.notificationQueue:
 			slog.Info("Worker received payload", "title", payload.Title, "game", payload.GameName, "isProgress", payload.IsProgress)
-			s.sendNotificationDesktop(payload)
+			if s.deliveryMode == DeliveryDecky {
+				s.sendNotificationSSE(payload)
+			} else {
+				s.sendNotificationDesktop(payload)
+			}
 			time.Sleep(notificationDelay(payload.IsProgress))
 		}
 	}
@@ -212,13 +230,17 @@ func (s *Service) SendNotification(appId string, achievements map[string]ach.Ach
 
 			var title string
 			if strings.EqualFold(achievement.Name, id) {
-				icon := strings.Split(strings.Replace(achievement.Icon, "https://", "", 1), "/")
-
+				iconPath := ""
+				if achievement.Icon != "" {
+					candidate := filepath.Join(backend.ACHCacheIconDir, appId, filepath.Base(achievement.Icon))
+					if info, err := os.Stat(candidate); err == nil && !info.IsDir() {
+						iconPath = candidate
+					}
+				}
 				title = achievement.DisplayName
 				message := achievement.Description
-				imagePath := filepath.Join(backend.ACHCacheIconDir, appId, icon[len(icon)-1])
 
-				if isProgress && a.MaxProgress > 0 {
+				if isProgress && a.MaxProgress > 0 && s.deliveryMode == DeliveryDesktop {
 					title = achievement.Description
 					message = progressBar(a.Progress, a.MaxProgress, 22)
 				}
@@ -236,7 +258,7 @@ func (s *Service) SendNotification(appId string, achievements map[string]ach.Ach
 				payload := &NotificationPayload{
 					Title:       title,
 					Message:     message,
-					IconPath:    imagePath,
+					IconPath:    iconPath,
 					SoundFile:   soundFile,
 					GameName:    gameName,
 					Progress:    a.Progress,
@@ -287,7 +309,7 @@ func (s *Service) TestNotificationProgress() error {
 
 	payload := &NotificationPayload{
 		Title:       "For those who come after",
-		Message:     progressBar(7, 10, 22),
+		Message:     "Play 10 games",
 		IconPath:    filepath.Join(backend.MediaDir, "sentinel.png"),
 		SoundFile:   s.Config.NotificationSound,
 		GameName:    "Sentinel",
@@ -406,6 +428,49 @@ func (s *Service) PlaySound(filename string) error {
 
 func (s *Service) GetNotificationExpireTime() int {
 	return int(backend.NotificationExpireTime / time.Millisecond)
+}
+
+// RegisterClient registers a new SSE client
+func (s *Service) RegisterClient(clientID string, notifications chan string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.clients[clientID] = notifications
+}
+
+// UnregisterClient removes a client from the notifier service
+func (s *Service) UnregisterClient(clientID string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.clients, clientID)
+}
+
+// sendNotificationSSE sends a notification to all connected SSE clients
+func (s *Service) sendNotificationSSE(payload *NotificationPayload) {
+	slog.Info("SSE Notification sent")
+
+	// Convert local icon path to virtual path for Decky frontend
+	if payload.IconPath != "" && filepath.IsAbs(payload.IconPath) {
+		if relPath, err := filepath.Rel(backend.DataDir, payload.IconPath); err == nil {
+			payload.IconPath = "/api/media/" + filepath.ToSlash(relPath)
+		}
+	}
+
+	jsonData, err := json.Marshal(payload)
+	if err != nil {
+		slog.Error("Failed to marshal SSE notification", "error", err)
+		return
+	}
+
+	// Send to all clients
+	s.mu.RLock()
+	for _, ch := range s.clients {
+		select {
+		case ch <- string(jsonData):
+		default:
+			// Skip if channel is full
+		}
+	}
+	s.mu.RUnlock()
 }
 
 //wails:internal

@@ -47,15 +47,6 @@ const Dashboard: FC = () => {
             <div className='logo-text-meta'>An achievement watcher</div>
           </div>
         </div>
-        {/*<div className='dashboard-header-search-bar'>*/}
-        {/* <fieldset className='group'>*/}
-        {/* <input type='text' placeholder='search...' />*/}
-        {/* <button className='outline'>*/}
-        {/* <Search />*/}
-        {/* </button>*/}
-        {/* </fieldset>*/}
-        {/*</div>*/}
-
         <Link to='/settings' className='dashboard-header-settings-link'>
           <Settings className='dashboard-header-settings-link-icon' />
         </Link>
@@ -64,13 +55,7 @@ const Dashboard: FC = () => {
         <h2 className='dashboard-section-header'>Library</h2>
 
         {loading ? (
-          <div className='dashboard-loader'>
-            {Array(100)
-              .fill(1)
-              .map((_, i) => (
-                <div role='status' className='skeleton box' key={i} />
-              ))}
-          </div>
+          <div className='dashboard-loader' aria-busy='true' data-spinner='large' />
         ) : games.length === 0 && status === 0 ? (
           <div className='dashboard-empty-state'>
             <EmptyState message='No games found.' icon={<Gamepad2 />} />
@@ -101,7 +86,13 @@ const Dashboard: FC = () => {
                         <div className='games-item-progress'>
                           <progress value={progress} max={100} />
                         </div>
-                        <img src={game.PortraitImage} alt={game.Name || ''} onError={(e) => { e.currentTarget.src = missingCover; }} />
+                        <img
+                          src={game.PortraitImage}
+                          alt={game.Name || ''}
+                          onError={(e) => {
+                            e.currentTarget.src = missingCover;
+                          }}
+                        />
 
                         <div className='games-item-overlay'>
                           <div className='games-item-title'>{game.Name}</div>
@@ -109,8 +100,7 @@ const Dashboard: FC = () => {
                       </div>
                     </Link>
                     {isRefreshing && (
-                      <div className='games-item-refreshing' aria-live='polite'>
-                        <span className='spinner' aria-hidden='true'></span>
+                      <div className='games-item-refreshing' aria-live='polite' aria-busy='true' data-spinner='small'>
                         <span>Refreshing...</span>
                       </div>
                     )}

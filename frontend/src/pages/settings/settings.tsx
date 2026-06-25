@@ -47,18 +47,6 @@ import { Start, Stop } from '@wa/sentinel/backend/watcher/service';
 import AboutDialog from './about-dialog';
 import { HeaderPortal } from '@/shared/components/header/header';
 
-declare global {
-  interface Window {
-    ot: {
-      toast: (
-        message: string,
-        title?: string,
-        options?: { variant?: 'success' | 'danger' | 'info' | 'warning' }
-      ) => void;
-    };
-  }
-}
-
 interface EmulatorItem {
   emu: Emulator;
   index: number;
@@ -74,6 +62,13 @@ const achievementProgressUpdateModes: { name: string; value: AchievementProgress
   { name: 'Silent', value: AchievementProgressUpdateMode.AchievementProgressUpdateModeSilent },
   { name: 'Disabled', value: AchievementProgressUpdateMode.AchievementProgressUpdateModeDisabled }
 ];
+
+const emulatorSearchPaths: Record<string, string> = {
+  gse: 'users/steamuser/AppData/Roaming/GSE Saves',
+  'goldberg-steamemu': 'users/steamuser/AppData/Roaming/Goldberg SteamEmu Saves',
+  codex: 'users/Public/Documents/Steam/CODEX',
+  rune: 'users/Public/Documents/Steam/RUNE'
+};
 
 const Settings: FC = () => {
   const [appConfig, setAppConfig] = useState<File | null>(null);
@@ -324,7 +319,6 @@ const Settings: FC = () => {
                   <div key={record.index} className='settings-grid-item'>
                     <span className='badge success'>Prefix</span>
                     <code>{record.prefix.path}</code>
-
                     <div className='settings-grid-actions' title={'Delete Prefix'}>
                       <Trash2 size={20} onClick={() => handleRemovePrefix(record.index)} />
                     </div>
@@ -338,22 +332,22 @@ const Settings: FC = () => {
         <div className='card settings-section'>
           <div className='flex justify-between items-center'>
             <h4 className='settings-section-title'>
-              <FolderOpen /> <span>Emulator Paths</span>
+              <FolderOpen /> <span>Emulators</span>
             </h4>
           </div>
           <hr className='divider' />
           <div className='settings-grid'>
             {allEmulators.length === 0 ? (
-              <EmptyState message='No emulator paths configured' />
+              <EmptyState message='No emulators configured' />
             ) : (
               <>
                 {allEmulators.map((record) => (
                   <div key={record.index} className='settings-grid-item'>
-                    <span className='badge success'>Path</span>
+                    <span className='badge success'>Emulator</span>
 
-                    <code>{record.emu.path}</code>
+                    <code>{emulatorSearchPaths[record.emu.id] ?? record.emu.id}</code>
 
-                    <label className='switch' title={'Toggle Notification for this path'}>
+                    <label className='switch' title={'Toggle Notification for this emulator'}>
                       <input
                         type='checkbox'
                         role='switch'

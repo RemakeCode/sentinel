@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@knadh/oat": "^0.4.2",
-    "@wailsio/runtime": "^3.0.0-alpha.79",
+    "@wailsio/runtime": "^3.0.0-alpha.94",
     "framer-motion": "^12.38.0",
     "lucide-react": "^0.574.0",
     "react": "^19.1.0",
@@ -33,7 +33,7 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "prettier": "^3.8.1",
     "sass-embedded": "^1.97.3",
-    "typescript": "^5.9.3",
-    "vite": "^8.0.3"
+    "typescript": "^6.0.2",
+    "vite": "^8.0.16"
   }
 }

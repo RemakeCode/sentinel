@@ -1,20 +1,21 @@
 package ach
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
 	"sentinel/backend"
+	"strconv"
 	"strings"
-
-	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 type Service struct{}
 
-func (s *Service) ServiceStartup(ctx context.Context, options application.ServiceOptions) error {
+func (s *Service) Start(ctx context.Context) error {
 	return nil
 }
 
@@ -37,19 +38,93 @@ type AchievementDiff struct {
 	ProgressUpdated map[string]Achievement
 }
 
-// ParseAch reads and parses achievements.json from the given path without saving to cache
+// ParseAch reads and parses an achievement file from the given path without saving to cache.
 func (s *Service) ParseAch(path string) (*AchievementData, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
 
+	switch strings.ToLower(filepath.Ext(path)) {
+	case ".json":
+		return parseJSONAchievements(data)
+	case ".ini":
+		return parseSteamEmuINIAchievements(data)
+	default:
+		return nil, fmt.Errorf("unsupported achievement file format: %s", path)
+	}
+}
+
+func parseJSONAchievements(data []byte) (*AchievementData, error) {
 	var achievements map[string]Achievement
 	if err := json.Unmarshal(data, &achievements); err != nil {
 		return nil, err
 	}
 
 	return &AchievementData{Achievements: achievements}, nil
+}
+
+func parseSteamEmuINIAchievements(data []byte) (*AchievementData, error) {
+	achievements := make(map[string]Achievement)
+	scanner := bufio.NewScanner(strings.NewReader(string(data)))
+	currentSection := ""
+
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || strings.HasPrefix(line, ";") || strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
+			currentSection = strings.TrimSpace(strings.TrimSuffix(strings.TrimPrefix(line, "["), "]"))
+			if currentSection != "" && !isMetadataSection(currentSection) {
+				if _, ok := achievements[currentSection]; !ok {
+					achievements[currentSection] = Achievement{}
+				}
+			}
+			continue
+		}
+
+		if currentSection == "" || isMetadataSection(currentSection) {
+			continue
+		}
+
+		key, value, ok := strings.Cut(line, "=")
+		if !ok {
+			continue
+		}
+
+		achievement := achievements[currentSection]
+		switch strings.TrimSpace(key) {
+		case "Achieved":
+			achievement.Earned = strings.TrimSpace(value) == "1"
+		case "CurProgress":
+			achievement.Progress = parseIntValue(value)
+		case "MaxProgress":
+			achievement.MaxProgress = parseIntValue(value)
+		case "UnlockTime":
+			achievement.EarnedTime, _ = strconv.ParseInt(strings.TrimSpace(value), 10, 64)
+		}
+		achievements[currentSection] = achievement
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+
+	return &AchievementData{Achievements: achievements}, nil
+}
+
+func isMetadataSection(section string) bool {
+	return strings.EqualFold(section, "SteamAchievements")
+}
+
+func parseIntValue(value string) int {
+	parsed, err := strconv.Atoi(strings.TrimSpace(value))
+	if err != nil {
+		return 0
+	}
+	return parsed
 }
 
 // LoadCachedAch loads the cached achievement data for a given appId
@@ -106,10 +181,14 @@ func (s *Service) SaveAch(path string) error {
 		return err
 	}
 
-	// Extract appId from path
 	appId := filepath.Base(path)
 
-	file, err := os.ReadFile(filepath.Join(path, "achievements.json"))
+	achData, err := s.parseFromDirectory(path)
+	if err != nil {
+		return err
+	}
+
+	file, err := json.MarshalIndent(achData.Achievements, "", "  ")
 	if err != nil {
 		return err
 	}
@@ -117,6 +196,21 @@ func (s *Service) SaveAch(path string) error {
 	cachePath := filepath.Join(backend.ACHCacheDataDir, appId+".json")
 
 	return os.WriteFile(cachePath, file, 0644)
+}
+
+func (s *Service) parseFromDirectory(path string) (*AchievementData, error) {
+	candidates := []string{
+		filepath.Join(path, "achievements.json"),
+		filepath.Join(path, "achievements.ini"),
+	}
+
+	for _, candidate := range candidates {
+		if _, err := os.Stat(candidate); err == nil {
+			return s.ParseAch(candidate)
+		}
+	}
+
+	return nil, os.ErrNotExist
 }
 
 // Diff compares two AchievementData and returns newly earned achievements and progress updates

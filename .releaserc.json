@@ -21,7 +21,7 @@
     [
       "@semantic-release/exec",
       {
-        "prepareCmd": "APP_VERSION=${nextRelease.version} task linux:package"
+        "prepareCmd": "APP_VERSION=${nextRelease.version} task linux:package linux:decky:package"
       }
     ],
     [
@@ -36,6 +36,12 @@
           },
           {
             "path": "bin/*.pkg.tar.zst"
+          },
+          {
+            "path": "bin/*decky-plugin.zip"
+          },
+          {
+            "path": "bin/*.AppImage"
           }
         ]
       }

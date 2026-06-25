@@ -14,6 +14,9 @@ permissions:
   issues: write
   pull-requests: write
 
+env:
+  WAILS_VERSION: v3.0.0-alpha2.105
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -48,10 +51,10 @@ jobs:
           version: 1.0
 
       - name: Install Wails v3 CLI
-        run: go install github.com/wailsapp/wails/v3/cmd/wails3@latest
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@${WAILS_VERSION}
 
       - name: Run tests
-        run: go test ./backend/... -v -short -coverprofile=coverage.out
+        run: go test ./backend/... ./cmd/decky -v -short -coverprofile=coverage.out
 
   build-check:
     needs: test
@@ -86,7 +89,7 @@ jobs:
           version: 1.0
 
       - name: Install Wails CLI
-        run: go install github.com/wailsapp/wails/v3/cmd/wails3@latest
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@${WAILS_VERSION}
 
       - name: Build Check
         run: task linux:build
@@ -200,7 +203,13 @@ jobs:
           version: 1.0
 
       - name: Install Wails CLI
-        run: go install github.com/wailsapp/wails/v3/cmd/wails3@latest
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@${WAILS_VERSION}
+
+      - name: Build Go binary
+        run: task linux:build
+
+      - name: Install decky-plugin dependencies
+        run: task linux:decky:install:deps
 
       - name: Semantic Release
         id: semantic
@@ -216,15 +225,6 @@ jobs:
             @semantic-release/github
         env:
           GITHUB_TOKEN: ${{steps.app-token.outputs.token }}
-
-      - name: Install decky-plugin dependencies
-        run: task linux:decky:install:deps
-
-      - name: Build Go backend
-        run: task build
-
-      - name: Build decky plugin
-        run: task linux:decky:package
 
       - name: Upload decky build artifact
         uses: actions/upload-artifact@v4

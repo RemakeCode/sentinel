@@ -40,6 +40,23 @@ tasks:
       HAS_CC:
         sh: '(command -v gcc >/dev/null 2>&1 || command -v clang >/dev/null 2>&1) && echo "true" || echo "false"'
 
+  decky:backend:
+    summary: Builds the headless Decky backend for Linux
+    deps:
+      - task: common:go:mod:tidy
+    cmds:
+      - mkdir -p {{.BIN_DIR}}
+      - go build {{.BUILD_FLAGS}} -o {{.OUTPUT}} ./cmd/decky
+    vars:
+      DEFAULT_OUTPUT: '{{.BIN_DIR}}/{{.APP_NAME}}-decky'
+      OUTPUT: '{{ .OUTPUT | default .DEFAULT_OUTPUT }}'
+      BUILD_FLAGS: '-tags decky -trimpath -buildvcs=false -ldflags="-w -s -X {{.MODULE}}/backend.Version={{.APP_VERSION}}"'
+    env:
+      GOOS: linux
+      CGO_ENABLED: 1
+      GOARCH: '{{.ARCH | default ARCH}}'
+      VERSION: "{{.APP_VERSION}}"
+
   build:native:
     summary: Builds the application natively on Linux
     internal: true
@@ -138,8 +155,7 @@ tasks:
     deps:
       - task: build
     cmds:
-      - task: generate:dotdesktop:title
-      - task: generate:dotdesktop:autostart
+      - task: generate:dotdesktop
       - task: generate:deb
 
   create:rpm:
@@ -147,8 +163,7 @@ tasks:
     deps:
       - task: build
     cmds:
-      - task: generate:dotdesktop:title
-      - task: generate:dotdesktop:autostart
+      - task: generate:dotdesktop
       - task: generate:rpm
 
   create:aur:
@@ -156,8 +171,7 @@ tasks:
     deps:
       - task: build
     cmds:
-      - task: generate:dotdesktop:title
-      - task: generate:dotdesktop:autostart
+      - task: generate:dotdesktop
       - task: generate:aur
 
   generate:deb:
@@ -182,49 +196,107 @@ tasks:
       - mkdir -p {{.ROOT_DIR}}/build/linux/appimage
       - wails3 generate .desktop -name "{{.NAME}}" -exec "{{.EXEC}}" -icon "{{.ICON}}" -outputfile "{{.OUTPUTFILE}}" -categories "{{.CATEGORIES}}" -comment "{{.COMMENT}}" -keywords "{{.KEYWORDS}}"
     vars:
-      NAME: '{{.APP_NAME}}'
+      NAME: 'Sentinel'
       EXEC: '{{.APP_NAME}}'
       ICON: '{{.APP_NAME}}'
       CATEGORIES: 'Game;'
       OUTPUTFILE: '{{.ROOT_DIR}}/build/linux/{{.APP_NAME}}.desktop'
       COMMENT: 'An Achievement Watcher for Linux'
       KEYWORDS: 'steam, achievements, watcher, trophy'
-
-  generate:dotdesktop:title:
-    summary: Generates a `.desktop` file
-    dir: build
-    cmds:
-      - mkdir -p {{.ROOT_DIR}}/build/linux/appimage
-      - wails3 generate .desktop -name "{{.NAME | title}}" -exec "{{.EXEC}}" -icon "{{.ICON}}" -outputfile "{{.OUTPUTFILE}}" -categories "{{.CATEGORIES}}" -comment "{{.COMMENT}}" -keywords "{{.KEYWORDS}}"
-      - sed -i 's/^Name=sentinel/Name=Sentinel/' "{{.OUTPUTFILE}}"
-    vars:
-      NAME: '{{.APP_NAME}}'
-      EXEC: '{{.APP_NAME}}'
-      ICON: '{{.APP_NAME}}'
-      CATEGORIES: 'Game;'
-      OUTPUTFILE: '{{.ROOT_DIR}}/build/linux/{{.APP_NAME}}.desktop'
-      COMMENT: 'An Achievement Watcher for Linux'
-      KEYWORDS: 'steam, achievements, watcher, trophy'
-
-  generate:dotdesktop:autostart:
-    summary: Generates an autostart `.desktop` file for XDG autostart
-    dir: build
-    cmds:
-      - wails3 generate .desktop -name "{{.NAME | title}}" -exec "{{.EXEC}}" -icon "{{.ICON}}" -outputfile "{{.OUTPUTFILE}}" -categories "{{.CATEGORIES}}" -comment "{{.COMMENT}}"
-      - sed -i 's/^Name=sentinel/Name=Sentinel/' "{{.OUTPUTFILE}}"
-      - echo 'X-GNOME-Autostart-enabled=true' >> "{{.OUTPUTFILE}}"
-      - cp {{.OUTPUTFILE}} {{.ROOT_DIR}}/backend/autostart/sentinel-autostart.desktop
-    vars:
-      NAME: '{{.APP_NAME}}'
-      EXEC: '{{.APP_NAME}} --startminimized'
-      ICON: '{{.APP_NAME}}'
-      CATEGORIES: 'Game;'
-      OUTPUTFILE: '{{.ROOT_DIR}}/build/linux/sentinel-autostart.desktop'
-      COMMENT: 'An Achievement Watcher for Linux'
 
   run:
     cmds:
       - '{{.BIN_DIR}}/{{.APP_NAME}}'
+
+
+  decky:install:deps:
+    summary: Install frontend dep for decky
+    dir: ./decky-plugin
+    sources:
+      - package.json
+      - package-lock.json
+    generates:
+      - node_modules
+    cmds:
+      - |
+        if [ "$CI" = "true" ]; then
+          rm -rf node_modules
+          npm ci
+        else
+          npm install
+        fi
+
+
+  decky:dev:
+    summary: Build and watch decky
+    dir: decky-plugin
+    sources:
+      - package.json
+      - package-lock.json
+    generates:
+      - dist
+    cmds:
+      - npm run dev
+
+  decky:frontend:
+    summary: Build Decky Frontend
+    dir: decky-plugin
+    sources:
+      - package.json
+      - package-lock.json
+    generates:
+      - dist
+    cmds:
+       - npm run build
+
+  decky:package:
+    summary: Bundles the Decky plugin (dist + binary + manifest) and zips it for distribution
+    dir: decky-plugin
+    deps:
+      - task: decky:frontend
+      - task: decky:backend
+    cmds:
+      - mkdir -p out/bin
+      - mkdir -p out/dist/
+      - cp -r ./dist ./out/
+      - cp ../bin/{{.APP_NAME}}-decky out/bin/{{.APP_NAME}}-decky
+      - cp ./plugin.json ./package.json ./main.py ./out/
+      - |
+        if [ -n "${APP_VERSION}" ]; then
+          jq --arg v "$APP_VERSION" '.version = $v' out/package.json > out/package.json.tmp \
+            && mv out/package.json.tmp out/package.json
+        fi
+      - chmod +x out/bin/{{.APP_NAME}}-decky
+      - mkdir -p {{.ROOT_DIR}}/bin
+      - cd out && zip -r {{.ROOT_DIR}}/bin/{{.APP_NAME}}-decky-plugin.zip .
+
+   # add to visudo
+   # deck ALL=(root) NOPASSWD: /bin/chown -R deck /home/deck/homebrew/plugins/sentinel, /bin/mkdir -p /home/deck/homebrew/plugins/sentinel, /bin/mv /home/deck/homebrew/plugins/sentinel/bin/sentinel /home/deck/homebrew/plugins/sentinel/bin/sentinel.old, /bin/cp -R * /home/deck/homebrew/plugins/sentinel, /bin/rm -f /home/deck/homebrew/plugins/sentinel/bin/sentinel.old, /bin/touch /home/deck/homebrew/plugins/sentinel/main.py
+
+  decky:deploy:local:
+    summary: Builds and deploys the plugin to Decky Loader via SSH
+    dir: decky-plugin
+    sources:
+      - "./dist/index.js"
+      - "../bin/"
+    vars:
+      DECK_DIR: "~/homebrew/plugins"
+      PLUGINNAME: "sentinel"
+    cmds:
+      - pkill -f ~/homebrew/plugins/sentinel/bin/sentinel-decky || true
+      - sleep 1
+      - mkdir -p out/bin
+      - mkdir -p out/dist/
+      - cp -r ./dist ./out/
+      - task: decky:backend
+      - cp ../bin/{{.APP_NAME}}-decky out/bin/{{.APP_NAME}}-decky
+      - cp ./plugin.json ./package.json ./main.py ./out/
+      - chmod +x out/bin/{{.APP_NAME}}-decky
+      - sudo mkdir -p {{.DECK_DIR}}/{{.PLUGINNAME}}
+      - sudo chown -R $(whoami) {{.DECK_DIR}}/{{.PLUGINNAME}}
+      - sudo cp -R out/* {{.DECK_DIR}}/{{.PLUGINNAME}}
+     # - sudo touch {{.DECK_DIR}}/{{.PLUGINNAME}}/main.py
+     # - sudo touch {{.DECK_DIR}}/{{.PLUGINNAME}}/dist/index.js
 
   sign:deb:
     summary: Signs the DEB package

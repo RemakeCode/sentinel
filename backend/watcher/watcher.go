@@ -10,6 +10,7 @@ import (
 	"sentinel/backend"
 	"sentinel/backend/steam/types"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -18,7 +19,6 @@ import (
 	"sentinel/backend/steam"
 
 	"github.com/fsnotify/fsnotify"
-	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 type SteamService interface {
@@ -36,16 +36,17 @@ type Notifier interface {
 }
 
 type Service struct {
-	watcher     *fsnotify.Watcher
-	done        chan struct{}
-	failedPaths []string // Tracks paths that failed to watch
-	retryTimer  *time.Timer
-	Steam       SteamService
-	Ach         AchService
-	Config      *config.File
-	Notifier    Notifier // Injected dependency for notifications
-	prefixPaths []string // Top-level prefix paths from config to watch for new games
-	appIDPaths  []string // All appId paths being watched
+	watcher         *fsnotify.Watcher
+	done            chan struct{}
+	failedPaths     []string // Tracks paths that failed to watch
+	retryTimer      *time.Timer
+	Steam           SteamService
+	Ach             AchService
+	Config          *config.File
+	Notifier        Notifier // Injected dependency for notifications
+	prefixPaths     []string // Top-level prefix paths from config to watch for new games
+	appIDPaths      []string // All appId paths being watched
+	sourceByAppPath map[string]config.EmulatorSource
 }
 
 var numericRegex = regexp.MustCompile(`^\d+$`)
@@ -54,9 +55,15 @@ var numericRegex = regexp.MustCompile(`^\d+$`)
 type scanResult struct {
 	AppIDs     []string // Array of app IDs (numeric strings)
 	AppIDPaths []string // Array of full paths to app ID folders
+	Sources    []config.EmulatorSource
 }
 
-func (s *Service) ServiceStartup(ctx context.Context, options application.ServiceOptions) error {
+type resolvedSource struct {
+	Path   string
+	Source config.EmulatorSource
+}
+
+func (s *Service) Startup(ctx context.Context) error {
 	if s.Config == nil {
 		c, err := config.Get()
 		if err != nil {
@@ -110,9 +117,6 @@ func (s *Service) scan(paths []string) scanResult {
 	}
 }
 
-//TODO Start method should be refactored into watchPathForNotification
-//TODO Create a new method that watches the Emupaths.
-
 // Start initializes the file system watcher and begins monitoring paths
 func (s *Service) Start() error {
 	prefixPaths, err := s.Config.GetPrefixPaths()
@@ -123,18 +127,30 @@ func (s *Service) Start() error {
 
 	s.prefixPaths = prefixPaths
 
-	var scanPaths []string
+	var allAppIDs []string
+	var allAppIDPaths []string
+	var allSources []config.EmulatorSource
 
 	if len(prefixPaths) > 0 {
 		for _, prefix := range prefixPaths {
-			fullPaths, err := s.computeFullPath(prefix)
+			sources, err := s.computeSourceRoots(prefix)
 
 			if err != nil {
 				slog.Warn("Failed to compute additional path", "prefix", prefix, "error", err)
 				continue
 			}
-			for _, fullPath := range fullPaths {
-				scanPaths = append(scanPaths, fullPath)
+
+			result := s.scanSources(sources)
+
+			isCompatdata := filepath.Base(prefix) == "compatdata"
+
+			for i, appID := range result.AppIDs {
+				if isCompatdata && isShortcutAppID(appID) {
+					continue
+				}
+				allAppIDs = append(allAppIDs, appID)
+				allAppIDPaths = append(allAppIDPaths, result.AppIDPaths[i])
+				allSources = append(allSources, result.Sources[i])
 			}
 		}
 		slog.Info("Prefix paths configured, scanning prefix × emulator paths", "prefixes", len(prefixPaths))
@@ -142,7 +158,7 @@ func (s *Service) Start() error {
 		slog.Info("No prefix paths configured, scanning emulator paths directly")
 	}
 
-	scanResult := s.scan(scanPaths)
+	scanResult := scanResult{AppIDs: allAppIDs, AppIDPaths: allAppIDPaths, Sources: allSources}
 
 	// Fetch metadata for all discovered appIds
 	if len(scanResult.AppIDs) > 0 {
@@ -161,11 +177,20 @@ func (s *Service) Start() error {
 	s.watcher = fswatcher
 	s.done = make(chan struct{})
 	s.failedPaths = nil
+	s.sourceByAppPath = make(map[string]config.EmulatorSource)
 
 	// Add all appId paths to the watcher
-	for _, path := range scanResult.AppIDPaths {
-		if err := s.Ach.SaveAch(path); err != nil {
-			slog.Warn("Could not cache ach from path", "path", path, "error", err)
+	for i, path := range scanResult.AppIDPaths {
+		source := config.EmulatorSource{}
+		if i < len(scanResult.Sources) {
+			source = scanResult.Sources[i]
+			s.sourceByAppPath[path] = source
+		}
+
+		if achievementFileExists(path, source) {
+			if err := s.Ach.SaveAch(path); err != nil {
+				slog.Warn("Could not cache ach from path", "path", path, "error", err)
+			}
 		}
 
 		if err := s.watchPath(path); err != nil {
@@ -230,7 +255,16 @@ func (s *Service) PathWalker() {
 	}
 }
 
-// scanAndWatchPrefix walks a prefix directory and watches any new game directories found
+// isShortcutAppID returns true if the given app ID is in the non-Steam shortcut range
+func isShortcutAppID(appID string) bool {
+	id, err := strconv.ParseUint(appID, 10, 64)
+	if err != nil {
+		return false
+	}
+	return id >= 2147483648
+}
+
+// scanAndWatchPrefix scans the emulator save paths for new game directories and watches them
 func (s *Service) scanAndWatchPrefix(prefix string) {
 	if _, err := os.Stat(prefix); err != nil {
 		slog.Warn("Prefix path no longer exists, skipping", "prefix", prefix, "error", err)
@@ -239,32 +273,45 @@ func (s *Service) scanAndWatchPrefix(prefix string) {
 
 	watchlist := s.watcher.WatchList()
 
-	err := filepath.WalkDir(prefix, func(path string, d os.DirEntry, err error) error {
-		if d.IsDir() && strings.EqualFold(d.Name(), "drive_c") && slices.ContainsFunc(watchlist, func(s string) bool { return strings.Contains(s, path) }) {
-			return filepath.SkipDir
+	sourceRoots, err := s.computeSourceRoots(prefix)
+	if err != nil {
+		slog.Debug("Failed to compute full path", "prefix", prefix, "error", err)
+		return
+	}
+
+	result := s.scanSources(sourceRoots)
+
+	isCompatdata := filepath.Base(prefix) == "compatdata"
+
+	for i, appID := range result.AppIDs {
+		if isCompatdata && isShortcutAppID(appID) {
+			continue
 		}
 
-		if d.IsDir() && numericRegex.MatchString(d.Name()) {
-			if err := s.watchPath(path); err != nil {
-				slog.Warn("Failed to watch path", "path", path, "error", err)
-				return nil
-			}
+		path := result.AppIDPaths[i]
+		if slices.Contains(watchlist, path) {
+			continue
+		}
 
+		if s.sourceByAppPath == nil {
+			s.sourceByAppPath = make(map[string]config.EmulatorSource)
+		}
+		if i < len(result.Sources) {
+			s.sourceByAppPath[path] = result.Sources[i]
+		}
+
+		if err := s.watchPath(path); err != nil {
+			slog.Warn("Failed to watch path", "path", path, "error", err)
+			continue
+		}
+
+		if i < len(result.Sources) && achievementFileExists(path, result.Sources[i]) {
 			if err := s.Ach.SaveAch(path); err != nil {
 				slog.Warn("Failed to cache ach from path", "path", path, "error", err)
-				return nil
 			}
-
-			s.triggerMetadataFetch([]string{filepath.Base(path)})
-
 		}
 
-		return nil
-
-	})
-
-	if err != nil {
-		return
+		s.triggerMetadataFetch([]string{appID})
 	}
 }
 
@@ -363,16 +410,24 @@ func (s *Service) handleEvent(event fsnotify.Event) {
 		"operation", event.Op.String(),
 	)
 
-	// Handle Create/WRITE events for achievements.json files
-	if (event.Has(fsnotify.Write) || event.Has(fsnotify.Create)) && strings.HasSuffix(path, "achievements.json") {
+	if (event.Has(fsnotify.Write) || event.Has(fsnotify.Create)) && s.isAchievementFileEvent(path) {
 		s.handleAchievementsWriteEvent(path, appId)
 	}
 }
 
+func (s *Service) isAchievementFileEvent(path string) bool {
+	fileName := filepath.Base(path)
+	appPath := filepath.Dir(path)
+	if s.sourceByAppPath != nil {
+		if source, ok := s.sourceByAppPath[appPath]; ok {
+			return fileName == source.AchievementFile
+		}
+	}
+	return fileName == "achievements.json" || fileName == "achievements.ini"
+}
+
 // handleAchievementsWriteEvent processes write events on achievements.json files
 func (s *Service) handleAchievementsWriteEvent(path, appId string) {
-	app := application.Get()
-
 	newAch, err := s.Ach.ParseAch(path)
 
 	if err != nil {
@@ -382,7 +437,7 @@ func (s *Service) handleAchievementsWriteEvent(path, appId string) {
 
 	oldAch, err := s.Ach.LoadCachedAch(appId)
 	if err != nil {
-		return
+		oldAch = nil
 	}
 
 	diff := newAch.Diff(oldAch)
@@ -403,15 +458,15 @@ func (s *Service) handleAchievementsWriteEvent(path, appId string) {
 			}
 		}
 
+	}
+
+	if oldAch == nil || len(diff.NewlyEarned) > 0 || len(diff.ProgressUpdated) > 0 {
 		if err := s.Ach.SaveAch(filepath.Dir(path)); err != nil {
 			slog.Error("Failed to save achievements", "error", err)
 		}
 	}
 
-	// Only emit event if application is running (not in tests)
-	if app != nil {
-		app.Event.Emit(backend.EventDataUpdated)
-	}
+	s.emitDataUpdated()
 }
 
 // triggerMetadataFetch fetches Steam metadata for the given appIds in a background goroutine
@@ -435,33 +490,78 @@ func (s *Service) triggerMetadataFetch(appIDs []string) {
 	}()
 }
 
+func (s *Service) scanSources(sources []resolvedSource) scanResult {
+	var appIDs []string
+	var appIDPaths []string
+	var sourceResults []config.EmulatorSource
+
+	for _, source := range sources {
+		entries, err := os.ReadDir(source.Path)
+		if err != nil {
+			continue
+		}
+
+		for _, entry := range entries {
+			if !entry.IsDir() || !numericRegex.MatchString(entry.Name()) {
+				continue
+			}
+
+			appPath := filepath.Join(source.Path, entry.Name())
+			appIDs = append(appIDs, entry.Name())
+			appIDPaths = append(appIDPaths, appPath)
+			sourceResults = append(sourceResults, source.Source)
+		}
+	}
+
+	return scanResult{
+		AppIDs:     appIDs,
+		AppIDPaths: appIDPaths,
+		Sources:    sourceResults,
+	}
+}
+
 func (s *Service) computeFullPath(prefixPath string) ([]string, error) {
-	emuPaths, err := s.Config.GetEmulatorPaths()
+	sources, err := s.computeSourceRoots(prefixPath)
 	if err != nil {
 		return nil, err
 	}
 
-	var search func(dir string) []string
-	search = func(dir string) []string {
+	paths := make([]string, 0, len(sources))
+	for _, source := range sources {
+		paths = append(paths, source.Path)
+	}
+	return paths, nil
+}
+
+func (s *Service) computeSourceRoots(prefixPath string) ([]resolvedSource, error) {
+	emuSources, err := s.Config.GetEmulatorSources()
+	if err != nil {
+		return nil, err
+	}
+	if len(emuSources) == 0 {
+		return nil, errors.New("no configured emulator sources")
+	}
+
+	var search func(dir string) []resolvedSource
+	search = func(dir string) []resolvedSource {
 		entries, err := os.ReadDir(dir)
 		if err != nil {
 			return nil
 		}
 
-		var results []string
+		var results []resolvedSource
 		for _, entry := range entries {
 			if !entry.IsDir() {
 				continue
 			}
 
 			if strings.EqualFold(entry.Name(), "drive_c") {
-				basePath := filepath.Join(dir, entry.Name(), "users", "steamuser")
-				if len(emuPaths) > 0 {
-					for _, emuPath := range emuPaths {
-						results = append(results, filepath.Join(basePath, emuPath))
-					}
-				} else {
-					results = append(results, basePath)
+				driveC := filepath.Join(dir, entry.Name())
+				for _, source := range emuSources {
+					results = append(results, resolvedSource{
+						Path:   resolveSourceRoot(driveC, source),
+						Source: source,
+					})
 				}
 			}
 
@@ -477,4 +577,16 @@ func (s *Service) computeFullPath(prefixPath string) ([]string, error) {
 		return nil, errors.New("could not find drive_c in prefix path")
 	}
 	return result, nil
+}
+
+func resolveSourceRoot(driveC string, source config.EmulatorSource) string {
+	return filepath.Join(driveC, source.Path)
+}
+
+func achievementFileExists(appPath string, source config.EmulatorSource) bool {
+	if source.AchievementFile == "" {
+		return false
+	}
+	_, err := os.Stat(filepath.Join(appPath, source.AchievementFile))
+	return err == nil
 }
