@@ -1,5 +1,5 @@
 import type { FC } from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   achievementListClasses,
   ButtonItem,
@@ -174,6 +174,9 @@ const MainPage: FC = () => {
   const [playingKey, setPlayingKey] = useState<string | null>(null);
   const [revealedHidden, setRevealedHidden] = useState<Record<string, boolean>>({});
 
+  const gamesRef = useRef(games);
+  gamesRef.current = games;
+
   const playMarquee = (key: string, play: boolean) => {
     setPlayingKey((prev) => (play ? key : prev === key ? null : prev));
   };
@@ -245,7 +248,7 @@ const MainPage: FC = () => {
   useEffect(() => {
     matchRunningGame(games);
     const unsubscribe = subscribeToGameChanges(() => {
-      matchRunningGame(games);
+      matchRunningGame(gamesRef.current);
     });
     return unsubscribe;
   }, [games]);
