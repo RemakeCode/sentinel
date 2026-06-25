@@ -1,5 +1,6 @@
 import { FC, useEffect, useState } from 'react';
-import { DialogBody, DialogHeader, Focusable, Navigation } from '@decky/ui';
+import { DialogBody, DialogHeader, Focusable, Menu, MenuItem, Navigation, showContextMenu } from '@decky/ui';
+import { toaster } from '@decky/api';
 import { LibraryImage } from '@/shared/components/library-image';
 import { EmptyState } from '@/shared/components/empty-state';
 import { BASE_URL, Fetcher } from '@/shared/utils/fetcher';
@@ -25,6 +26,7 @@ const fetcher = new Fetcher();
 const LibraryPage: FC = () => {
   const [games, setGames] = useState<GameBasics[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshingGameIds, setRefreshingGameIds] = useState<string[]>([]);
 
   useEffect(() => {
     const load = async () => {
@@ -39,6 +41,48 @@ const LibraryPage: FC = () => {
     };
     load();
   }, []);
+
+  const handleRefreshGame = async (appId: string) => {
+    if (!appId || refreshingGameIds.includes(appId)) {
+      return;
+    }
+
+    setRefreshingGameIds((current) => [...current, appId]);
+
+    try {
+      const refreshedGame = await fetcher.post<GameBasics>(`${BASE_URL}/games/${appId}/refresh`, {});
+      setGames((current) =>
+        current.map((game) => {
+          if (game.AppID !== refreshedGame.AppID) {
+            return game;
+          }
+
+          return refreshedGame;
+        })
+      );
+      toaster.toast({ title: 'Success', body: `${refreshedGame.Name || 'Game'} refreshed` });
+    } catch {
+      toaster.toast({ title: 'Error', body: 'Failed to refresh game' });
+    } finally {
+      setRefreshingGameIds((current) => current.filter((id) => id !== appId));
+    }
+  };
+
+  const openGameContextMenu = (appId: string, parent?: EventTarget | null) => {
+    showContextMenu(
+      <Menu label='Game Actions'>
+        <MenuItem
+          disabled={refreshingGameIds.includes(appId)}
+          onClick={() => {
+            void handleRefreshGame(appId);
+          }}
+        >
+          {refreshingGameIds.includes(appId) ? 'Refreshing...' : 'Refresh game'}
+        </MenuItem>
+      </Menu>,
+      parent ?? undefined
+    );
+  };
 
   return (
     <DialogBody style={styles.wrapper}>
@@ -62,6 +106,7 @@ const LibraryPage: FC = () => {
           <Focusable className='sentinel-library-grid'>
             {games.map((game) => {
               const progress = computeProgress(game.Achievement.List);
+              const isRefreshing = refreshingGameIds.includes(game.AppID);
               return (
                 <LibraryImage
                   key={game.AppID}
@@ -69,7 +114,9 @@ const LibraryPage: FC = () => {
                   alt={game.Name}
                   name={game.Name}
                   progress={progress}
+                  isRefreshing={isRefreshing}
                   onActivate={() => Navigation.Navigate(`/sentinel/games/${game.AppID}`)}
+                  onOpenContextMenu={(parent) => openGameContextMenu(game.AppID, parent)}
                 />
               );
             })}

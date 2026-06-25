@@ -1,5 +1,5 @@
 import './dashboard.scss';
-import type { FC } from 'react';
+import type { CSSProperties, FC } from 'react';
 import { motion } from 'framer-motion';
 
 import { Gamepad2, Settings } from 'lucide-react';
@@ -35,7 +35,7 @@ const itemVariants = {
 };
 
 const Dashboard: FC = () => {
-  const { games, loading, status } = useGames();
+  const { games, loading, status, isRefreshingGame } = useGames();
 
   return (
     <main className='full-layout'>
@@ -47,15 +47,6 @@ const Dashboard: FC = () => {
             <div className='logo-text-meta'>An achievement watcher</div>
           </div>
         </div>
-        {/*<div className='dashboard-header-search-bar'>*/}
-        {/* <fieldset className='group'>*/}
-        {/* <input type='text' placeholder='search...' />*/}
-        {/* <button className='outline'>*/}
-        {/* <Search />*/}
-        {/* </button>*/}
-        {/* </fieldset>*/}
-        {/*</div>*/}
-
         <Link to='/settings' className='dashboard-header-settings-link'>
           <Settings className='dashboard-header-settings-link-icon' />
         </Link>
@@ -64,13 +55,7 @@ const Dashboard: FC = () => {
         <h2 className='dashboard-section-header'>Library</h2>
 
         {loading ? (
-          <div className='dashboard-loader'>
-            {Array(100)
-              .fill(1)
-              .map((_, i) => (
-                <div role='status' className='skeleton box' key={i} />
-              ))}
-          </div>
+          <div className='dashboard-loader' aria-busy='true' data-spinner='large' />
         ) : games.length === 0 && status === 0 ? (
           <div className='dashboard-empty-state'>
             <EmptyState message='No games found.' icon={<Gamepad2 />} />
@@ -78,22 +63,48 @@ const Dashboard: FC = () => {
         ) : (
           <motion.div className='games-container' variants={containerVariants} initial='hidden' animate='visible'>
             {games.map((game, idx) => {
+              if (!game) {
+                return null;
+              }
+
               const progress = computeProgress(game?.Achievement.List);
+              const isRefreshing = isRefreshingGame(game.AppID);
 
               return (
-                <motion.div key={`${game?.Name}#${idx}`} variants={itemVariants}>
-                  <Link to={`/game/${game?.AppID}`} state={{ game, idx }} className='games-item'>
-                    <div className='games-item-card card'>
-                      <div className='games-item-progress'>
-                        <progress value={progress} max={100} />
-                      </div>
-                      <img src={game?.PortraitImage} alt={game?.Name || ''} onError={(e) => { e.currentTarget.src = missingCover; }} />
+                <motion.div key={game.AppID || `${game.Name}#${idx}`} variants={itemVariants} className='games-item'>
+                  <div
+                    className={`games-item-shell ${isRefreshing ? 'is-refreshing' : ''}`}
+                    style={
+                      {
+                        '--custom-contextmenu': 'game-card-menu',
+                        '--custom-contextmenu-data': game.AppID
+                      } as CSSProperties
+                    }
+                  >
+                    <Link to={`/game/${game.AppID}`} state={{ game, idx }} className='games-item-link'>
+                      <div className='games-item-card card'>
+                        <div className='games-item-progress'>
+                          <progress value={progress} max={100} />
+                        </div>
+                        <img
+                          src={game.PortraitImage}
+                          alt={game.Name || ''}
+                          onError={(e) => {
+                            e.currentTarget.src = missingCover;
+                          }}
+                        />
 
-                      <div className='games-item-overlay'>
-                        <div className='games-item-title'>{game?.Name}</div>
+                        <div className='games-item-overlay'>
+                          <div className='games-item-title'>{game.Name}</div>
+                        </div>
                       </div>
-                    </div>
-                  </Link>
+                    </Link>
+                    {isRefreshing && (
+                      <div className='games-item-refreshing' aria-live='polite' aria-busy='true' data-spinner='small'>
+                        <span>Refreshing...</span>
+                      </div>
+                    )}
+                  </div>
                 </motion.div>
               );
             })}

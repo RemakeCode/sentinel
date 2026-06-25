@@ -315,14 +315,14 @@ const MainPage: FC = () => {
               <Focusable
                 key={key}
                 onActivate={() => {
-                  if (ach.Hidden === 1) {
+                  if (ach.Hidden === 1 && !earnedAch) {
                     setRevealedHidden((prev) => ({ ...prev, [key]: true }));
                   }
                 }}
                 onFocus={() => playMarquee(key, true)}
                 onBlur={() => {
                   playMarquee(key, false);
-                  if (ach.Hidden === 1) {
+                  if (ach.Hidden === 1 && !earnedAch) {
                     setRevealedHidden((prev) => ({ ...prev, [key]: false }));
                   }
                 }}
@@ -344,7 +344,7 @@ const MainPage: FC = () => {
                       </span>
                       <ProgressBar nProgress={Math.round((currentProgress / maxProgress) * 100)} focusable={false} />
                     </div>
-                  ) : ach.Hidden === 1 ? (
+                  ) : ach.Hidden === 1 && !earnedAch ? (
                     <div
                       className={joinClassNames(
                         'sentinel-qam-ach-description',

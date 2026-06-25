@@ -1,7 +1,6 @@
 package notifier
 
 import (
-	"bytes"
 	"context"
 	"embed"
 	"encoding/json"
@@ -9,17 +8,19 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"sentinel/backend"
 	"sentinel/backend/ach"
 	"sentinel/backend/config"
 	"sentinel/backend/steam"
-	"strconv"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
+
+	"github.com/godbus/dbus/v5"
+	"github.com/gopxl/beep/v2"
+	"github.com/gopxl/beep/v2/speaker"
+	"github.com/gopxl/beep/v2/wav"
 )
 
 //go:embed media
@@ -54,6 +55,11 @@ type Service struct {
 }
 
 var queueCap = 100
+
+var (
+	speakerMu          sync.Mutex
+	speakerInitialized bool
+)
 
 func init() {
 	err := os.MkdirAll(backend.MediaDir, 0755)
@@ -118,67 +124,100 @@ func (s *Service) notificationWorker() {
 			if s.deliveryMode == DeliveryDecky {
 				s.sendNotificationSSE(payload)
 			} else {
-				s.sendNotificationSync(payload)
+				s.sendNotificationDesktop(payload)
 			}
-			time.Sleep(backend.NotificationDelay)
+			time.Sleep(notificationDelay(payload.IsProgress))
 		}
 	}
 }
 
-func (s *Service) sendNotificationSync(payload *NotificationPayload) {
-	args := []string{payload.Title, payload.Message, "--urgency", "critical", "--transient", "-p", "-a", payload.GameName}
+func (s *Service) sendNotificationDesktop(payload *NotificationPayload) {
+	conn, err := dbus.ConnectSessionBus()
+	if err != nil {
+		slog.Warn("Failed to connect to session bus", "error", err)
+		return
+	}
+	defer conn.Close()
+
+	hints := map[string]dbus.Variant{
+		"urgency":   dbus.MakeVariant(byte(2)),
+		"transient": dbus.MakeVariant(true),
+	}
 
 	if payload.IconPath != "" {
 		if _, err := os.Stat(payload.IconPath); err == nil {
-			args = append(args, "-h", fmt.Sprintf("%s%s", "string:image-path:", payload.IconPath))
+			hints["image-path"] = dbus.MakeVariant(payload.IconPath)
 		}
 	}
 
-	cmd := exec.Command("notify-send", args...)
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		Setsid: true, // Creates a new session, detaching from the terminal
+	obj := conn.Object("org.freedesktop.Notifications", "/org/freedesktop/Notifications")
+	call := obj.Call("org.freedesktop.Notifications.Notify", 0,
+		payload.GameName,
+		uint32(0),
+		"",
+		payload.Title,
+		payload.Message,
+		[]string{},
+		hints,
+		int32(-1),
+	)
+	if call.Err != nil {
+		slog.Warn("Failed to send notification", "error", call.Err)
+		return
 	}
-	var stdout bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = nil
-	go func() {
-		if err := cmd.Run(); err != nil {
-			slog.Warn("Failed to send notification", "error", err)
-			return
-		}
 
-		if payload.SoundFile != "" {
-			s.PlaySound(payload.SoundFile)
-		}
+	var notificationID uint32
+	if err := call.Store(&notificationID); err != nil {
+		slog.Warn("Failed to read notification ID", "error", err)
+		return
+	}
 
-		idStr := strings.TrimSpace(stdout.String())
-		id, err := strconv.Atoi(idStr)
-		if err != nil {
-			slog.Warn("Failed to parse notification ID", "raw", idStr, "error", err)
-			return
-		}
+	if payload.SoundFile != "" {
+		s.PlaySound(payload.SoundFile)
+	}
 
-		time.AfterFunc(backend.NotificationExpireTime, func() {
-			closeCmd := exec.Command("busctl", "--user", "call",
-				"org.freedesktop.Notifications",
-				"/org/freedesktop/Notifications",
-				"org.freedesktop.Notifications",
-				"CloseNotification", "u", strconv.Itoa(id))
-			if err := closeCmd.Run(); err != nil {
-				slog.Warn("Failed to close notification", "id", id, "error", err)
-			}
-		})
-	}()
+	time.AfterFunc(notificationExpireTime(payload.IsProgress), func() {
+		s.closeNotification(notificationID)
+	})
 
 	slog.Info("Sent notification", "title", payload.Title, "game", payload.GameName)
 }
 
+func notificationExpireTime(isProgress bool) time.Duration {
+	if isProgress {
+		return backend.ProgressNotificationExpireTime
+	}
+	return backend.NotificationExpireTime
+}
+
+func notificationDelay(isProgress bool) time.Duration {
+	if isProgress {
+		return backend.ProgressNotificationDelay
+	}
+	return backend.NotificationDelay
+}
+
+func (s *Service) closeNotification(notificationID uint32) {
+	conn, err := dbus.ConnectSessionBus()
+	if err != nil {
+		slog.Warn("Failed to connect to session bus for notification close", "id", notificationID, "error", err)
+		return
+	}
+	defer conn.Close()
+
+	obj := conn.Object("org.freedesktop.Notifications", "/org/freedesktop/Notifications")
+	if call := obj.Call("org.freedesktop.Notifications.CloseNotification", 0, notificationID); call.Err != nil {
+		slog.Warn("Failed to close notification", "id", notificationID, "error", call.Err)
+	}
+}
+
 func (s *Service) SendNotification(appId string, achievements map[string]ach.Achievement, isProgress bool, shouldNotify bool) error {
 	slog.Info("SendNotification called", "appId", appId, "achievementsCount", len(achievements))
-	if s.deliveryMode == DeliveryDesktop && !isAvailable() {
-		err := fmt.Errorf("notify-send not found in PATH")
-		slog.Warn("Failed to send notification", "error", err)
-		return err
+
+	progressUpdateMode := s.Config.GetAchievementProgressUpdateMode()
+	if isProgress && progressUpdateMode == config.AchievementProgressUpdateModeDisabled {
+		slog.Info("Achievement progress update notification disabled", "appId", appId, "achievementsCount", len(achievements))
+		return nil
 	}
 
 	for id, a := range achievements {
@@ -191,7 +230,13 @@ func (s *Service) SendNotification(appId string, achievements map[string]ach.Ach
 
 			var title string
 			if strings.EqualFold(achievement.Name, id) {
-				iconPath := filepath.Join(backend.ACHCacheIconDir, appId, filepath.Base(achievement.Icon))
+				iconPath := ""
+				if achievement.Icon != "" {
+					candidate := filepath.Join(backend.ACHCacheIconDir, appId, filepath.Base(achievement.Icon))
+					if info, err := os.Stat(candidate); err == nil && !info.IsDir() {
+						iconPath = candidate
+					}
+				}
 				title = achievement.DisplayName
 				message := achievement.Description
 
@@ -201,7 +246,7 @@ func (s *Service) SendNotification(appId string, achievements map[string]ach.Ach
 				}
 
 				var soundFile string
-				if shouldNotify && s.Config.NotificationSound != "" {
+				if shouldNotify && s.Config.NotificationSound != "" && !(isProgress && progressUpdateMode == config.AchievementProgressUpdateModeSilent) {
 					soundFile = s.Config.NotificationSound
 					soundPath := filepath.Join(backend.MediaDir, soundFile)
 					if _, err := os.Stat(soundPath); err != nil {
@@ -303,11 +348,6 @@ func progressBar(progress, max, width int) string {
 	return fmt.Sprintf("%s %d/%d (%.1f%%)", barStr, progress, max, percent)
 }
 
-func isAvailable() bool {
-	_, err := exec.LookPath("notify-send")
-	return err == nil
-}
-
 func (s *Service) getAchDataForNotification(appId string) (*steam.GameBasics, string, error) {
 	language := s.Config.Language.API
 
@@ -328,7 +368,25 @@ func (s *Service) getAchDataForNotification(appId string) (*steam.GameBasics, st
 	return &gb, gb.Name, nil
 }
 
-// PlaySound plays a sound file asynchronously using paplay or aplay
+func initSpeaker() bool {
+	speakerMu.Lock()
+	defer speakerMu.Unlock()
+
+	if speakerInitialized {
+		return true
+	}
+
+	sampleRate := beep.SampleRate(44100)
+	if err := speaker.Init(sampleRate, sampleRate.N(time.Second/10)); err != nil {
+		slog.Warn("Failed to initialize audio speaker", "error", err)
+		return false
+	}
+
+	speakerInitialized = true
+	return true
+}
+
+// PlaySound plays a sound file asynchronously.
 func (s *Service) PlaySound(filename string) error {
 	if filename == "" {
 		return nil
@@ -340,24 +398,29 @@ func (s *Service) PlaySound(filename string) error {
 	}
 
 	go func() {
-		var cmd *exec.Cmd
-		if _, err := exec.LookPath("pw-play"); err == nil {
-			cmd = exec.Command("pw-play", soundPath)
-		} else if _, err := exec.LookPath("paplay"); err == nil {
-			cmd = exec.Command("paplay", soundPath)
-		} else if _, err := exec.LookPath("aplay"); err == nil {
-			cmd = exec.Command("aplay", soundPath)
-		} else {
-			slog.Warn("No audio playback utility available (pw-play/paplay/aplay)")
+		if !initSpeaker() {
 			return
 		}
 
-		var stderr bytes.Buffer
-		cmd.Stderr = &stderr
-
-		if err := cmd.Run(); err != nil {
-			slog.Warn("Failed to play sound", "filename", filename, "soundPath", soundPath, "error", err, "stderr", stderr.String())
+		file, err := os.Open(soundPath)
+		if err != nil {
+			slog.Warn("Failed to open sound file", "filename", filename, "error", err)
+			return
 		}
+		defer file.Close()
+
+		streamer, _, err := wav.Decode(file)
+		if err != nil {
+			slog.Warn("Failed to decode sound file", "filename", filename, "error", err)
+			return
+		}
+		defer streamer.Close()
+
+		done := make(chan struct{})
+		speaker.Play(beep.Seq(streamer, beep.Callback(func() {
+			close(done)
+		})))
+		<-done
 	}()
 
 	return nil
@@ -392,7 +455,11 @@ func (s *Service) sendNotificationSSE(payload *NotificationPayload) {
 		}
 	}
 
-	jsonData, _ := json.Marshal(payload)
+	jsonData, err := json.Marshal(payload)
+	if err != nil {
+		slog.Error("Failed to marshal SSE notification", "error", err)
+		return
+	}
 
 	// Send to all clients
 	s.mu.RLock()

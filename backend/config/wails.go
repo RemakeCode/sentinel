@@ -14,6 +14,10 @@ type AutostartManager struct {
 	app *application.App
 }
 
+func NewAutostartManager(app *application.App) AutostartManager {
+	return AutostartManager{app: app}
+}
+
 func (m AutostartManager) SetEnabled(enabled bool) error {
 	if m.app == nil {
 		return nil

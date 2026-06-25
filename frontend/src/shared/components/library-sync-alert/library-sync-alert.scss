@@ -1,0 +1,30 @@
+.library-sync-alert {
+  position: fixed;
+  inset-block-start: var(--space-4);
+  inset-inline: 0;
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  pointer-events: none;
+
+  .alert {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    width: fit-content;
+    max-width: min(90vw, 420px);
+    margin: 0;
+    box-shadow: var(--shadow-3);
+    pointer-events: auto;
+  }
+
+  &-message {
+    font-weight: 600;
+  }
+
+  &-count {
+    font-variant-numeric: tabular-nums;
+    color: var(--muted-foreground);
+  }
+}

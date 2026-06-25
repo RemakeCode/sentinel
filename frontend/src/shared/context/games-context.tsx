@@ -1,14 +1,17 @@
 import type { FC, ReactNode } from 'react';
-import { createContext, useContext, useEffect, useState } from 'react';
-import { GameBasics } from '@wa/sentinel/backend/steam';
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { LibrarySyncStatus, type GameBasics } from '@wa/sentinel/backend/steam';
 import { Events } from '@wailsio/runtime';
-import { LoadAllCachedGameData } from '@wa/sentinel/backend/steam/service';
+import { GetLibrarySyncStatus, LoadAllCachedGameData, RefetchGameData } from '@wa/sentinel/backend/steam/service';
+import LibrarySyncAlert from '@/shared/components/library-sync-alert';
 
 interface GamesContextType {
   games: (GameBasics | null)[];
   loading: boolean;
   status: number;
   refresh: () => Promise<void>;
+  refreshGame: (appID: string) => Promise<void>;
+  isRefreshingGame: (appID: string) => boolean;
 }
 
 const GamesContext = createContext<GamesContextType | undefined>(undefined);
@@ -25,35 +28,109 @@ interface GamesProviderProps {
   children: ReactNode;
 }
 
+const SYNC_POLL_INTERVAL_MS = 1000;
+
+const emptySyncStatus = new LibrarySyncStatus({ State: 'idle', Current: 0, Total: 0 });
+
+const getSyncPercentage = (syncStatus: LibrarySyncStatus) => {
+  if (syncStatus.Total === 0) {
+    return syncStatus.State === 'done' ? 100 : 0;
+  }
+
+  const percentage = Math.floor((syncStatus.Current / syncStatus.Total) * 100);
+  return syncStatus.State === 'running' ? Math.max(1, percentage) : percentage;
+};
+
 export const GamesProvider: FC<GamesProviderProps> = ({ children }) => {
   const [games, setGames] = useState<(GameBasics | null)[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState<number>(0);
+  const [syncStatus, setSyncStatus] = useState<LibrarySyncStatus>(emptySyncStatus);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [refreshingGameIDs, setRefreshingGameIDs] = useState<string[]>([]);
+  const refreshingGameIDsRef = useRef<Set<string>>(new Set());
+  const lastSyncCurrentRef = useRef(0);
 
-  const refresh = async () => {
-    setLoading(true);
-    const data = await LoadAllCachedGameData();
-    setGames(data);
-    setLoading(false);
+  const setRefreshingState = (updater: (current: Set<string>) => Set<string>) => {
+    const next = updater(new Set(refreshingGameIDsRef.current));
+    refreshingGameIDsRef.current = next;
+    setRefreshingGameIDs(Array.from(next));
   };
+
+  const replaceGame = (updatedGame: GameBasics) => {
+    setGames((current) =>
+      current.map((game) => {
+        if (!game || game.AppID !== updatedGame.AppID) {
+          return game;
+        }
+
+        return updatedGame;
+      })
+    );
+  };
+
+  const loadCachedGames = useCallback(async (showLoading = false) => {
+    if (showLoading) {
+      setLoading(true);
+    }
+
+    try {
+      const data = await LoadAllCachedGameData();
+      setGames(data);
+      return data;
+    } catch (error) {
+      console.error(error);
+      return [];
+    } finally {
+      if (showLoading) {
+        setLoading(false);
+      }
+    }
+  }, []);
+
+  const refresh = useCallback(async () => { await loadCachedGames(true); }, [loadCachedGames]);
+
+  const refreshGame = async (appID: string) => {
+    if (!appID || refreshingGameIDsRef.current.has(appID)) {
+      return;
+    }
+
+    setRefreshingState((current) => {
+      current.add(appID);
+      return current;
+    });
+
+    try {
+      const refreshedGame = await RefetchGameData(appID);
+
+      if (!refreshedGame) {
+        throw new Error(`No refreshed game data returned for appID ${appID}`);
+      }
+
+      replaceGame(refreshedGame);
+      window.ot?.toast(`${refreshedGame.Name || 'Game'} refreshed`, 'Success', { variant: 'success' });
+    } catch (error) {
+      console.error(`Failed to refresh game ${appID}:`, error);
+      window.ot?.toast('Failed to refresh game', 'Error', { variant: 'danger' });
+      throw error;
+    } finally {
+      setRefreshingState((current) => {
+        current.delete(appID);
+        return current;
+      });
+    }
+  };
+
+  const isRefreshingGame = (appID: string) => refreshingGameIDs.includes(appID);
+
+  const refreshGameRef = useRef(refreshGame);
+
+  useEffect(() => {
+    refreshGameRef.current = refreshGame;
+  });
 
   useEffect(() => {
     const unsubscribers: (() => void)[] = [];
-
-    const handleFetchStatus = async (event: { data: { Current: number; Total: number } }) => {
-      const current = event.data.Current;
-      const total = event.data.Total;
-      const percentage = Math.floor((current / total) * 100);
-      setStatus(percentage);
-      setLoading(true);
-
-      if (current === total) {
-        await refresh();
-        setLoading(false);
-        setIsInitialized(true);
-      }
-    };
 
     const handleDataUpdated = async () => {
       if (isInitialized) {
@@ -61,29 +138,105 @@ export const GamesProvider: FC<GamesProviderProps> = ({ children }) => {
       }
     };
 
-    unsubscribers.push(Events.On('sentinel::fetch-status', handleFetchStatus));
     unsubscribers.push(Events.On('sentinel::data-updated', handleDataUpdated));
 
     return () => {
       unsubscribers.forEach((unsub) => unsub());
     };
-  }, [isInitialized]);
+  }, [isInitialized, refresh]);
 
   useEffect(() => {
     const handleInitialLoad = async () => {
       try {
-        const data = await LoadAllCachedGameData();
+        const [data, currentSyncStatus] = await Promise.all([
+          LoadAllCachedGameData().catch((error) => {
+            console.error(error);
+            return [];
+          }),
+          GetLibrarySyncStatus()
+        ]);
+
         setGames(data);
-        setLoading(false);
-        setIsInitialized(true);
+        setSyncStatus(currentSyncStatus);
+        setStatus(getSyncPercentage(currentSyncStatus));
+        lastSyncCurrentRef.current = currentSyncStatus.Current;
+        setIsInitialized(currentSyncStatus.State !== 'running');
+
+        if (data.length > 0 || currentSyncStatus.State !== 'running') {
+          setLoading(false);
+        }
       } catch (e) {
         console.error(e);
-        setLoading(false);
         setIsInitialized(true);
+        setLoading(false);
       }
     };
     handleInitialLoad();
   }, []);
 
-  return <GamesContext.Provider value={{ games, loading, status, refresh }}>{children}</GamesContext.Provider>;
+  useEffect(() => {
+    if (syncStatus.State !== 'running' && syncStatus.State !== 'idle') {
+      return;
+    }
+
+    let active = true;
+    let intervalID: number;
+
+    const pollSyncStatus = async () => {
+      try {
+        const currentSyncStatus = await GetLibrarySyncStatus();
+
+        if (!active) {
+          return;
+        }
+
+        const previousCurrent = lastSyncCurrentRef.current;
+        setSyncStatus(currentSyncStatus);
+        setStatus(getSyncPercentage(currentSyncStatus));
+
+        if (currentSyncStatus.State === 'running' && currentSyncStatus.Current > previousCurrent) {
+          lastSyncCurrentRef.current = currentSyncStatus.Current;
+          const data = await loadCachedGames(false);
+          if (data.length > 0) {
+            setLoading(false);
+          }
+        }
+
+        if (currentSyncStatus.State === 'done' || currentSyncStatus.State === 'error') {
+          const data = await loadCachedGames(false);
+          if (data.length > 0) {
+            setLoading(false);
+          }
+          setIsInitialized(true);
+          active = false;
+          window.clearInterval(intervalID);
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    };
+
+    void pollSyncStatus();
+    intervalID = window.setInterval(pollSyncStatus, SYNC_POLL_INTERVAL_MS);
+
+    return () => {
+      active = false;
+      window.clearInterval(intervalID);
+    };
+  }, [loadCachedGames]);
+
+  useEffect(() => {
+    const unsubscribe = Events.On('sentinel::refresh-game-requested', (event: { data: string }) => {
+      void refreshGameRef.current(event.data);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  return (
+    <GamesContext.Provider value={{ games, loading, status, refresh, refreshGame, isRefreshingGame }}>
+      <LibrarySyncAlert syncStatus={syncStatus} />
+      {children}
+    </GamesContext.Provider>
+  );
 };

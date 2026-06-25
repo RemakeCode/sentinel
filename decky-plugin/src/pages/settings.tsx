@@ -7,7 +7,6 @@ import {
   Dropdown,
   Field,
   SidebarNavigation,
-  TextField,
   Toggle
 } from '@decky/ui';
 import { openFilePicker, toaster } from '@decky/api';
@@ -17,7 +16,7 @@ import { clearMapping, type GameMapping, getAllMappings } from '@/shared/utils/g
 import { showConfirmModal } from '@/shared/components/confirm';
 import { BsTrash } from 'react-icons/bs';
 import { FaVolumeHigh, FaVolumeOff } from 'react-icons/fa6';
-import { FaBook, FaCircle, FaCog, FaLink, FaSave } from 'react-icons/fa';
+import { FaBook, FaCircle, FaCog, FaLink } from 'react-icons/fa';
 
 const fetcher = new Fetcher();
 
@@ -37,6 +36,7 @@ interface AppConfig {
   steamApiKeyMasked: string;
   notificationSound: string;
   logLevel: string;
+  achievementProgressUpdateMode: string;
 }
 
 interface SoundOption {
@@ -94,12 +94,10 @@ const MappingsContent: FC = () => {
 const SettingsPage: FC = () => {
   const [config, setConfig] = useState<AppConfig | null>(null);
   const [availableSounds, setAvailableSounds] = useState<SoundOption[]>([]);
-  const [steamAPIKey, setSteamAPIKey] = useState('');
-  const [steamAPIKeyHasError, setSteamAPIKeyHasError] = useState(false);
   const [stmSrc, setStmSrc] = useState<string>('');
   const [testNotificationDisabled, setTestNotificationDisabled] = useState(false);
+  const [achievementProgressUpdateMode, setAchievementProgressUpdateMode] = useState<string>('');
   const [serviceStatus, setServiceStatus] = useState<'loading' | 'online' | 'offline'>('loading');
-  const steamAPIKeyTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const testNotificationTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { play } = usePlayAudio();
@@ -109,6 +107,7 @@ const SettingsPage: FC = () => {
       const cfg = await fetcher.get<AppConfig>(`${BASE_URL}/config`);
       setConfig(cfg);
       setStmSrc(cfg.steamDataSource);
+      setAchievementProgressUpdateMode(cfg.achievementProgressUpdateMode);
     } catch {
       // config load failed
     }
@@ -138,34 +137,11 @@ const SettingsPage: FC = () => {
 
   const handleSteamDataSourceChange = async (source: string) => {
     setStmSrc(source);
-    if (source === 'external') {
-      try {
-        await fetcher.put(`${BASE_URL}/config/steam-data-source`, { source: 'external' });
-        await loadConfig();
-      } catch {
-        // failed to save data source
-      }
-    }
-  };
-
-  const handleSaveSteamAPIKey = async () => {
-    if (steamAPIKeyTimeout.current) {
-      clearTimeout(steamAPIKeyTimeout.current);
-    }
-
-    if (!steamAPIKey) {
-      setSteamAPIKeyHasError(true);
-      steamAPIKeyTimeout.current = setTimeout(() => setSteamAPIKeyHasError(false), 5000);
-      return;
-    }
     try {
-      await fetcher.put(`${BASE_URL}/config/steam-api-key`, { apiKey: steamAPIKey });
-      await fetcher.put(`${BASE_URL}/config/steam-data-source`, { source: 'key' });
+      await fetcher.put(`${BASE_URL}/config/steam-data-source`, { source });
       await loadConfig();
-      setSteamAPIKey('');
-      toaster.toast({ title: 'Success', body: 'Steam API key saved' });
     } catch {
-      toaster.toast({ title: 'Error', body: 'Failed to save Steam API key' });
+      // failed to save data source
     }
   };
 
@@ -237,6 +213,16 @@ const SettingsPage: FC = () => {
     }
   };
 
+  const handleAchievementProgressUpdateModeChange = async (option: { data: string }) => {
+    const value = option.data;
+    try {
+      await fetcher.put(`${BASE_URL}/config/achievement-progress-update-mode`, { mode: value });
+      setAchievementProgressUpdateMode(value);
+    } catch {
+      toaster.toast({ title: 'Error', body: 'Failed to save achievement progress update mode' });
+    }
+  };
+
   const handleLoggingToggle = async (enabled: boolean) => {
     try {
       await fetcher.put(`${BASE_URL}/config/logging`, { enabled });
@@ -300,38 +286,12 @@ const SettingsPage: FC = () => {
                   <Dropdown
                     rgOptions={[
                       { data: 'external', label: 'External Source' },
-                      { data: 'key', label: 'Steam Key' }
+                      { data: 'key', label: 'Steam API' }
                     ]}
                     selectedOption={stmSrc}
                     onChange={(option) => handleSteamDataSourceChange(option.data)}
                   />
                 </Field>
-                {stmSrc === 'key' && (
-                  <Field
-                    label='API Key'
-                    description={
-                      <>
-                        {steamAPIKeyHasError && <span>Please enter a Steam API key</span>}
-                        {config?.steamApiKeyMasked && <span>Current: {config.steamApiKeyMasked}</span>}
-                      </>
-                    }
-                  >
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                      <TextField
-                        style={{ minWidth: '20rem', width: '20rem' }}
-                        value={steamAPIKey}
-                        onChange={(e) => {
-                          setSteamAPIKey(e.target.value);
-                          setSteamAPIKeyHasError(false);
-                        }}
-                      />
-
-                      <DialogButton style={{ minWidth: 0 }} onClick={handleSaveSteamAPIKey}>
-                        <FaSave />
-                      </DialogButton>
-                    </div>
-                  </Field>
-                )}
               </DialogControlsSection>
               <DialogControlsSection>
                 <DialogControlsSectionHeader>Notification Sound</DialogControlsSectionHeader>
@@ -341,6 +301,21 @@ const SettingsPage: FC = () => {
                     selectedOption={config?.notificationSound || ''}
                     onChange={handleSoundChange}
                     strDefaultLabel='Select a sound'
+                  />
+                </Field>
+              </DialogControlsSection>
+              <DialogControlsSection>
+                <DialogControlsSectionHeader>Achievement Progress Updates</DialogControlsSectionHeader>
+                <Field label='Mode' childrenContainerWidth='fixed'>
+                  <Dropdown
+                    rgOptions={[
+                      { data: 'default', label: 'Default (Sound & Notification)' },
+                      { data: 'silent', label: 'Silent (No Sound)' },
+                      { data: 'disabled', label: 'Disabled' }
+                    ]}
+                    selectedOption={achievementProgressUpdateMode}
+                    onChange={handleAchievementProgressUpdateModeChange}
+                    strDefaultLabel='Select mode'
                   />
                 </Field>
               </DialogControlsSection>

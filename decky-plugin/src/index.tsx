@@ -15,6 +15,9 @@ import { PiTrophy } from 'react-icons/pi';
 import { playAudio } from '@/shared/utils/usePlayAudio';
 
 let sse: EventSource | null = null;
+let sseRetryCount = 0;
+let sseRetryTimer: ReturnType<typeof setTimeout> | null = null;
+const MAX_RETRY_DELAY = 30000;
 
 initTracker().catch((error) => {
   console.error(error);
@@ -94,10 +97,12 @@ const toasterStyles = `
 
 let cssId: string | undefined;
 
-async function connectSSE() {
-  sse = new EventSource(NOTIFICATION_SSE_URL);
+const duration = 7000;
 
-  const duration = 7000;
+function connectSSE() {
+  if (sse) sse.close();
+
+  sse = new EventSource(NOTIFICATION_SSE_URL);
 
   sse.addEventListener('message', async (ev) => {
     const message: Notification = JSON?.parse(ev?.data);
@@ -127,16 +132,23 @@ async function connectSSE() {
     }
   });
 
-  sse.addEventListener('open', async () => {
+  sse.addEventListener('open', () => {
     console.log('Sentinel SSE is open for business');
+    sseRetryCount = 0;
   });
-  sse.addEventListener('error', (error) => {
-    console.log('Sentinel SSE error', error);
+
+  sse.addEventListener('error', () => {
+    console.log('Sentinel SSE connection error, reconnecting...');
+    sse?.close();
+
+    const delay = Math.min(1000 * Math.pow(2, sseRetryCount), MAX_RETRY_DELAY);
+    sseRetryCount++;
+    sseRetryTimer = setTimeout(connectSSE, delay);
   });
 }
 
 export default definePlugin(() => {
-  connectSSE().then(() => console.log('Connecting to SSE'));
+  connectSSE();
 
   routerHook.addRoute('/sentinel/settings', () => <SettingsPage />);
   routerHook.addRoute('/sentinel/library', () => <LibraryPage />);
@@ -170,6 +182,9 @@ export default definePlugin(() => {
       console.log('unmounting sentinel');
       if (cssId) {
         removeCssFromTab(notificationTab!, cssId);
+      }
+      if (sseRetryTimer) {
+        clearTimeout(sseRetryTimer);
       }
       if (sse) {
         sse.close();

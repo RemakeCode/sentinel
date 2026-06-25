@@ -113,6 +113,7 @@ func (r *Router) Handler() http.Handler {
 		api.Put("/config/steam-api-key", Wrap(r.handleSetSteamAPIKey))
 		api.Put("/config/steam-data-source", Wrap(r.handleSetSteamDataSource))
 		api.Put("/config/logging", Wrap(r.handleSetLogging))
+		api.Put("/config/achievement-progress-update-mode", Wrap(r.handleSetAchievementProgressUpdateMode))
 		api.Post("/config/notification-sound", Wrap(r.handleSetSound))
 		api.Patch("/config/emulator-notification/{index}", Wrap(r.handleToggleEmulatorNotification))
 		api.Post("/config/prefix", Wrap(r.handleAddPrefix))
@@ -120,6 +121,7 @@ func (r *Router) Handler() http.Handler {
 
 		// Games service endpoints
 		api.Get("/games", Wrap(r.handleGetAllGames))
+		api.Post("/games/{id}/refresh", Wrap(r.handleRefreshGame))
 		api.Get("/games/{id}/global-achievement-percentages", Wrap(r.handleGetGlobalAchievementPercentages))
 
 		// Notifier service endpoints
@@ -232,6 +234,23 @@ func (r *Router) handleToggleEmulatorNotification(w http.ResponseWriter, req *ht
 	return JSON(w, http.StatusOK, map[string]string{"status": "success"})
 }
 
+// handleSetAchievementProgressUpdateMode sets the achievement progress update mode
+func (r *Router) handleSetAchievementProgressUpdateMode(w http.ResponseWriter, req *http.Request) error {
+	var body struct {
+		Mode config.AchievementProgressUpdateMode `json:"mode"`
+	}
+
+	if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
+		return AppError{Status: http.StatusBadRequest, Message: "Invalid request body"}
+	}
+
+	if err := r.Config.SetAchievementProgressUpdateMode(body.Mode); err != nil {
+		return AppError{Status: http.StatusBadRequest, Message: err.Error()}
+	}
+
+	return JSON(w, http.StatusOK, map[string]string{"status": "success"})
+}
+
 // handleAddPrefix adds a prefix path
 func (r *Router) handleAddPrefix(w http.ResponseWriter, req *http.Request) error {
 	var body struct {
@@ -274,6 +293,21 @@ func (r *Router) handleGetAllGames(w http.ResponseWriter, req *http.Request) err
 	return JSON(w, http.StatusOK, games)
 }
 
+// handleRefreshGame refetches one cached game and returns the updated payload
+func (r *Router) handleRefreshGame(w http.ResponseWriter, req *http.Request) error {
+	id := strings.TrimSpace(chi.URLParam(req, "id"))
+	if id == "" {
+		return AppError{Status: http.StatusBadRequest, Message: "Missing game id"}
+	}
+
+	game, err := r.Steam.RefetchGameData(id)
+	if err != nil {
+		return AppError{Status: http.StatusInternalServerError, Message: err.Error()}
+	}
+
+	return JSON(w, http.StatusOK, game)
+}
+
 // handleGetGlobalAchievementPercentages returns global achievement percentages
 func (r *Router) handleGetGlobalAchievementPercentages(w http.ResponseWriter, req *http.Request) error {
 	id := chi.URLParam(req, "id")
@@ -284,23 +318,6 @@ func (r *Router) handleGetGlobalAchievementPercentages(w http.ResponseWriter, re
 	}
 
 	return JSON(w, http.StatusOK, percentages)
-}
-
-// handlePlaySound plays a notification sound
-func (r *Router) handlePlaySound(w http.ResponseWriter, req *http.Request) error {
-	var body struct {
-		Filename string `json:"filename"`
-	}
-
-	if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
-		return AppError{Status: http.StatusBadRequest, Message: "Invalid request body"}
-	}
-
-	if err := r.Notifier.PlaySound(body.Filename); err != nil {
-		return AppError{Status: http.StatusInternalServerError, Message: err.Error()}
-	}
-
-	return JSON(w, http.StatusOK, map[string]string{"status": "success"})
 }
 
 // handleTestNotification sends a test notification

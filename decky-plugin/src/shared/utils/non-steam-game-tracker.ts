@@ -1,8 +1,5 @@
 import { findModuleExport } from '@decky/ui';
-
-const EAppType_Shortcut = 1 << 30; // 1073741824 // 2^30
-
-const EDisplayStatus_Running = 4;
+import { EDisplayStatus, EAppType } from '@decky/ui/dist/globals/steam-client/App';
 
 interface NonSteamGame {
   appId: number;
@@ -36,10 +33,10 @@ export function processAppOverviewChange(change: any) {
 
   if (change.app_overview) {
     for (const app of change.app_overview) {
-      if (app.app_type === EAppType_Shortcut) {
+      if (app.app_type === EAppType.Shortcut) {
         const isRunning =
           app.per_client_data?.find((client: any) => client.is_available_on_current_platform)?.display_status ===
-          EDisplayStatus_Running;
+          EDisplayStatus.Running;
 
         cache.set(app.appid, {
           appId: app.appid,

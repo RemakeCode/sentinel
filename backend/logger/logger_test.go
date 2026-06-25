@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"bytes"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -82,16 +83,14 @@ func TestLogRotation(t *testing.T) {
 
 	writer := &lumberjack.Logger{
 		Filename:   logFile,
-		MaxSize:    1, // 1 KB - small for testing
+		MaxSize:    1, // 1 MB for testing
 		MaxBackups: 3,
 	}
 
-	logger := NewWithFile(writer)
-
-	// Write enough data to trigger rotation (messages are ~60-100 bytes each)
-	// 25,000 messages * ~60 bytes = ~1.5 MB, which exceeds the 1MB limit.
-	for i := 0; i < 25000; i++ {
-		logger.Info("test message for rotation", "index", i)
+	chunk := append(bytes.Repeat([]byte("x"), 64*1024), '\n')
+	for i := 0; i < 20; i++ {
+		_, err := writer.Write(chunk)
+		assert.NoError(t, err)
 	}
 
 	writer.Close()

@@ -6,8 +6,11 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"unicode"
+
 	"sentinel/backend"
 	"sentinel/backend/bootstrap"
+	"sentinel/backend/config"
 	"sentinel/backend/logger"
 
 	"path/filepath"
@@ -29,10 +32,10 @@ func init() {
 	flag.BoolVar(&startMinimized, "startminimized", false, "Start with window minimized (systray only)")
 	application.RegisterEvent[backend.FetchStatusEvt](backend.EventFetchStatus)
 	application.RegisterEvent[application.Void](backend.EventDataUpdated)
+	application.RegisterEvent[string](backend.EventRefreshGameRequested)
 }
 
 func main() {
-
 	flag.Parse()
 	var window *application.WebviewWindow
 
@@ -40,7 +43,7 @@ func main() {
 	services := bootstrap.NewServices()
 
 	options := application.Options{
-		Name:        "dev.sentinel.app",
+		Name:        "Sentinel",
 		Description: "An Achievement Watcher",
 		Logger:      appLogger,
 		LogLevel:    logger.ParseLevel(logLevel),
@@ -82,6 +85,23 @@ func main() {
 
 	app := application.New(options)
 
+	services.Config.SetAutostart(config.NewAutostartManager(app))
+	if err := services.Config.SyncAutostart(); err != nil {
+		slog.Error("Failed to sync autostart", "error", err)
+	}
+
+	gameMenu := application.NewContextMenu("game-card-menu")
+	gameMenu.Add("Refresh Metadata").OnClick(func(ctx *application.Context) {
+		appID := strings.TrimSpace(ctx.ContextMenuData())
+		if !isValidSteamAppID(appID) {
+			slog.Warn("Ignoring invalid game context menu data", "appID", appID)
+			return
+		}
+
+		app.Event.Emit(backend.EventRefreshGameRequested, appID)
+	})
+	gameMenu.Update()
+
 	window = app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title:                      "Sentinel",
 		MinWidth:                   1280,
@@ -91,7 +111,7 @@ func main() {
 		URL:                        "/",
 		Hidden:                     startMinimized,
 		UseApplicationMenu:         false,
-		DefaultContextMenuDisabled: false,
+		DefaultContextMenuDisabled: true,
 		BackgroundColour:           application.NewRGB(18, 18, 18),
 		Linux: application.LinuxWindow{
 			WebviewGpuPolicy: application.WebviewGpuPolicyOnDemand,
@@ -106,6 +126,7 @@ func main() {
 	tray := app.SystemTray.New()
 	tray.SetIcon(trayIcon)
 	tray.SetTooltip("Sentinel")
+	tray.SetLabel("Sentinel")
 
 	menu := application.NewMenu()
 	showItem := menu.Add("Show")
@@ -128,4 +149,18 @@ func main() {
 	if err := app.Run(); err != nil {
 		slog.Error("Application failed", "error", err)
 	}
+}
+
+func isValidSteamAppID(appID string) bool {
+	if appID == "" {
+		return false
+	}
+
+	for _, r := range appID {
+		if !unicode.IsDigit(r) {
+			return false
+		}
+	}
+
+	return true
 }

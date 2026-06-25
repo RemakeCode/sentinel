@@ -22,11 +22,11 @@ import {
   GetSteamLanguages,
   LoadConfig,
   RemovePrefix,
+  SetAchievementProgressUpdateMode,
   SetLanguage,
   SetLoggingEnabled,
   SetNotificationSound,
   SetStartOnLogin,
-  SetSteamAPIKey,
   SetSteamDataSource,
   ToggleEmulatorNotification
 } from '@wa/sentinel/backend/config/file';
@@ -38,7 +38,7 @@ import {
 } from '@wa/sentinel/backend/notifier/service';
 
 import type { AppInfo } from '@wa/sentinel/backend/config/models';
-import { Emulator, File, Prefix, SteamSource } from '@wa/sentinel/backend/config/models';
+import { AchievementProgressUpdateMode, Emulator, File, Prefix, SteamSource } from '@wa/sentinel/backend/config/models';
 
 import EmptyState from '@/shared/components/empty-state';
 
@@ -46,18 +46,6 @@ import { Dialogs } from '@wailsio/runtime';
 import { Start, Stop } from '@wa/sentinel/backend/watcher/service';
 import AboutDialog from './about-dialog';
 import { HeaderPortal } from '@/shared/components/header/header';
-
-declare global {
-  interface Window {
-    ot: {
-      toast: (
-        message: string,
-        title?: string,
-        options?: { variant?: 'success' | 'danger' | 'info' | 'warning' }
-      ) => void;
-    };
-  }
-}
 
 interface EmulatorItem {
   emu: Emulator;
@@ -69,22 +57,34 @@ interface PrefixItem {
   index: number;
 }
 
+const achievementProgressUpdateModes: { name: string; value: AchievementProgressUpdateMode }[] = [
+  { name: 'Default', value: AchievementProgressUpdateMode.AchievementProgressUpdateModeDefault },
+  { name: 'Silent', value: AchievementProgressUpdateMode.AchievementProgressUpdateModeSilent },
+  { name: 'Disabled', value: AchievementProgressUpdateMode.AchievementProgressUpdateModeDisabled }
+];
+
+const emulatorSearchPaths: Record<string, string> = {
+  gse: 'users/steamuser/AppData/Roaming/GSE Saves',
+  'goldberg-steamemu': 'users/steamuser/AppData/Roaming/Goldberg SteamEmu Saves',
+  codex: 'users/Public/Documents/Steam/CODEX',
+  rune: 'users/Public/Documents/Steam/RUNE'
+};
+
 const Settings: FC = () => {
   const [appConfig, setAppConfig] = useState<File | null>(null);
-  const [steamAPIKey, setSteamAPIKey] = useState('');
-  const [steamAPIKeyHasError, setSteamAPIKeyHasError] = useState<boolean>(false);
   const [stmSrc, setStmSrc] = useState<SteamSource>();
   const [selectedLanguage, setSelectedLanguage] = useState<string>('');
   const [languages, setLanguages] = useState<{ api: string; displayName: string }[]>([]);
   const [availableSounds, setAvailableSounds] = useState<{ name: string; value: string }[]>([]);
   const [selectedSound, setSelectedSound] = useState<string>('');
+  const [selectedAchievementProgressUpdateMode, setSelectedAchievementProgressUpdateMode] =
+    useState<AchievementProgressUpdateMode>(AchievementProgressUpdateMode.AchievementProgressUpdateModeDefault);
   const [selectedLogLevel, setSelectedLogLevel] = useState<string>('');
   const [aboutDialogOpen, setAboutDialogOpen] = useState(false);
   const [appInfo, setAppInfo] = useState<AppInfo | null>(null);
   const [testNotificationDisabled, setTestNotificationDisabled] = useState(false);
   const [startOnLogin, setStartOnLogin] = useState(false);
   const testNotificationTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const steamAPIKeyTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     Promise.all([loadConfig(), loadLanguages(), loadAvailableSounds()]);
@@ -93,37 +93,12 @@ const Settings: FC = () => {
   const handleSteamDataSourceChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value as SteamSource;
     setStmSrc(value);
-    if (value === SteamSource.External) {
-      try {
-        await SetSteamDataSource(value);
-        window.ot?.toast('Steam data source updated', 'Success', { variant: 'success' });
-      } catch (err) {
-        console.error('Failed to save Steam data source:', err);
-        window.ot?.toast('Failed to save Steam data source', 'Error', { variant: 'danger' });
-      }
-    }
-  };
-
-  const handleSaveSteamAPIKey = async () => {
-    if (steamAPIKeyTimeout.current) {
-      clearTimeout(steamAPIKeyTimeout.current);
-    }
-
     try {
-      if (steamAPIKey === '') {
-        setSteamAPIKeyHasError(true);
-        steamAPIKeyTimeout.current = setTimeout(() => setSteamAPIKeyHasError(false), 5000);
-        return;
-      }
-      await Promise.all([SetSteamDataSource(SteamSource.Key), SetSteamAPIKey(steamAPIKey)]);
-
-      await loadConfig();
-
-      window.ot?.toast('Steam API key saved', 'Success', { variant: 'success' });
-
-      setSteamAPIKey('');
+      await SetSteamDataSource(value);
+      window.ot?.toast('Steam data source updated', 'Success', { variant: 'success' });
     } catch (err) {
-      window.ot?.toast('Failed to save Steam API key', 'Error', { variant: 'danger' });
+      console.error('Failed to save Steam data source:', err);
+      window.ot?.toast('Failed to save Steam data source', 'Error', { variant: 'danger' });
     }
   };
 
@@ -134,6 +109,9 @@ const Settings: FC = () => {
       setStmSrc(cfg?.steamDataSource);
       setSelectedLanguage(cfg?.language?.api || 'english');
       setSelectedSound(cfg?.notificationSound || '');
+      setSelectedAchievementProgressUpdateMode(
+        cfg?.achievementProgressUpdateMode || AchievementProgressUpdateMode.AchievementProgressUpdateModeDefault
+      );
       setSelectedLogLevel(cfg?.logLevel || 'info');
       setStartOnLogin(cfg?.startOnLogin ?? false);
     } catch (err) {
@@ -203,6 +181,18 @@ const Settings: FC = () => {
       }
     } catch (err) {}
   };
+
+  const handleAchievementProgressUpdateModeChange = async (e: ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value as AchievementProgressUpdateMode;
+    try {
+      setSelectedAchievementProgressUpdateMode(value);
+      await SetAchievementProgressUpdateMode(value);
+      window.ot?.toast('Achievement progress updates updated', 'Success', { variant: 'success' });
+    } catch (err) {
+      window.ot?.toast('Failed to update achievement progress updates', 'Error', { variant: 'danger' });
+    }
+  };
+
   const handlePlaySound = async (soundValue: string) => {
     if (!soundValue) return;
     try {
@@ -342,22 +332,22 @@ const Settings: FC = () => {
         <div className='card settings-section'>
           <div className='flex justify-between items-center'>
             <h4 className='settings-section-title'>
-              <FolderOpen /> <span>Emulator Paths</span>
+              <FolderOpen /> <span>Emulators</span>
             </h4>
           </div>
           <hr className='divider' />
           <div className='settings-grid'>
             {allEmulators.length === 0 ? (
-              <EmptyState message='No emulator paths configured' />
+              <EmptyState message='No emulators configured' />
             ) : (
               <>
                 {allEmulators.map((record) => (
                   <div key={record.index} className='settings-grid-item'>
-                    <span className='badge success'>Path</span>
+                    <span className='badge success'>Emulator</span>
 
-                    <code>{record.emu.path}</code>
+                    <code>{emulatorSearchPaths[record.emu.id] ?? record.emu.id}</code>
 
-                    <label className='switch' title={'Toggle Notification for this path'}>
+                    <label className='switch' title={'Toggle Notification for this emulator'}>
                       <input
                         type='checkbox'
                         role='switch'
@@ -391,7 +381,7 @@ const Settings: FC = () => {
                   checked={stmSrc === SteamSource.Key}
                   onChange={handleSteamDataSourceChange}
                 />
-                Steam Key
+                Steam API
               </label>
               <label className='radio-option'>
                 <input
@@ -404,33 +394,7 @@ const Settings: FC = () => {
                 External Source
               </label>
             </fieldset>
-            {stmSrc === SteamSource.Key && (
-              <>
-                <div data-field={steamAPIKeyHasError ? 'error' : ''}>
-                  <label>Steam API Key</label>
-                  <div className={'form-inline'}>
-                    <input
-                      placeholder='Enter your Steam API key'
-                      value={steamAPIKey}
-                      onChange={(e) => setSteamAPIKey(e.target.value)}
-                      aria-invalid={steamAPIKeyHasError}
-                    />
-                    <button onClick={handleSaveSteamAPIKey}>Save</button>
-                  </div>
-                  <div>
-                    <div className='error' role='status'>
-                      Please enter a Steam API key, if you need one
-                    </div>
-                  </div>
-                </div>
-                {appConfig?.steamApiKeyMasked && (
-                  <div className='settings-table-form-display'>
-                    <span>Current API Key:</span>
-                    <code>{appConfig.steamApiKeyMasked}</code>
-                  </div>
-                )}
-              </>
-            )}
+            {/* TODO: restore API key input and masked key display if Steam ever requires key auth */}
           </div>
         </div>
 
@@ -447,6 +411,22 @@ const Settings: FC = () => {
                   {availableSounds.map((sound) => (
                     <option key={sound.value} value={sound.value}>
                       {sound.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </fieldset>
+            <fieldset className='hstack'>
+              <legend>Achievement Progress Updates</legend>
+              <label>
+                <select
+                  className='settings-select'
+                  value={selectedAchievementProgressUpdateMode}
+                  onChange={handleAchievementProgressUpdateModeChange}
+                >
+                  {achievementProgressUpdateModes.map((mode) => (
+                    <option key={mode.value} value={mode.value}>
+                      {mode.name}
                     </option>
                   ))}
                 </select>

@@ -11,12 +11,15 @@ const AppName = "sentinel"
 var Version = "0.0.0"
 
 const (
-	EventPrefix      = AppName
-	EventFetchStatus = AppName + "::fetch-status"
-	EventDataUpdated = AppName + "::data-updated"
+	EventFetchStatus          = AppName + "::fetch-status"
+	EventDataUpdated          = AppName + "::data-updated"
+	EventRefreshGameRequested = AppName + "::refresh-game-requested"
 )
 
-var EmuDir = filepath.Join("AppData", "Roaming", "GSE Saves")
+var EmuDir = filepath.Join("users", "steamuser", "AppData", "Roaming", "GSE Saves")
+var GoldbergSteamEmuDir = filepath.Join("users", "steamuser", "AppData", "Roaming", "Goldberg SteamEmu Saves")
+var CodexEmuDir = filepath.Join("users", "Public", "Documents", "Steam", "CODEX")
+var RuneEmuDir = filepath.Join("users", "Public", "Documents", "Steam", "RUNE")
 
 var UserCacheDir, _ = os.UserCacheDir()
 var UserConfigDir, _ = os.UserConfigDir()
@@ -58,3 +61,5 @@ var WalkerInterval = 5 * time.Second
 // Notification timing
 var NotificationExpireTime = 7 * time.Second
 var NotificationDelay = NotificationExpireTime + 1*time.Second
+var ProgressNotificationExpireTime = time.Duration(float64(NotificationExpireTime) * 0.7)
+var ProgressNotificationDelay = time.Duration(float64(NotificationDelay) * 0.7)
