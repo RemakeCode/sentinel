@@ -25,7 +25,7 @@ interface Prefix {
 }
 
 interface Emulator {
-  path: string;
+  id: string;
   shouldNotify: boolean;
 }
 
@@ -43,6 +43,13 @@ interface SoundOption {
   name: string;
   value: string;
 }
+
+const emulatorSearchPaths: Record<string, string> = {
+  gse: 'users/steamuser/AppData/Roaming/GSE Saves',
+  'goldberg-steamemu': 'users/steamuser/AppData/Roaming/Goldberg SteamEmu Saves',
+  codex: 'users/Public/Documents/Steam/CODEX',
+  rune: 'users/Public/Documents/Steam/RUNE'
+};
 
 const MappingsContent: FC = () => {
   const [mappings, setMappings] = useState<Record<number, GameMapping>>({});
@@ -270,7 +277,7 @@ const SettingsPage: FC = () => {
                   emulators.map((emu, index) => (
                     <Field
                       key={index}
-                      label={emu.path}
+                      label={emulatorSearchPaths[emu.id] ?? emu.id}
                       icon={
                         <div style={{ display: 'block' }}>{emu.shouldNotify ? <FaVolumeHigh /> : <FaVolumeOff />}</div>
                       }
