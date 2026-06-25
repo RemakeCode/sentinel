@@ -431,6 +431,8 @@ func (s *Service) GetNotificationExpireTime() int {
 }
 
 // RegisterClient registers a new SSE client
+//
+//wails:internal
 func (s *Service) RegisterClient(clientID string, notifications chan string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()

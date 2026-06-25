@@ -751,6 +751,7 @@ func (c *File) GetAppInfo() AppInfo {
 	}
 }
 
+//wails:internal
 func (c *File) SetAutostart(a Autostarter) {
 	c.autostart = a
 }
