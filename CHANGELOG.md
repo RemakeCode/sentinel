@@ -1,3 +1,56 @@
+## [2.0.0-beta.1](https://github.com/RemakeCode/sentinel/compare/v1.1.0-beta.8...v2.0.0-beta.1) (2026-06-26)
+
+### ⚠ BREAKING CHANGES
+
+* for 2.0. Migration was only used during initial config
+load; removed as part of breaking changes.
+* The app now requires GTK4 instead of GTK3.
+
+### build
+
+* migrate runtime dependency from GTK3 to GTK4 ([7913d35](https://github.com/RemakeCode/sentinel/commit/7913d3554ba593cafb3d6a42606d108dff50a130))
+
+### 🚀 New Features
+
+* add achievement progress notification modes ([86a3be9](https://github.com/RemakeCode/sentinel/commit/86a3be9938218fdfa68eac0a701adc762c3d77f4))
+* add achievement progress update setting ([6902599](https://github.com/RemakeCode/sentinel/commit/6902599e2030ad2bd3d838977fcef6f2cc902e49))
+* add notification sse connection retries ([61a770a](https://github.com/RemakeCode/sentinel/commit/61a770a204b957ddae450ab38be0e0036f8b6bf4))
+* add per-game refresh with context menu and UI feedback ([58b97e1](https://github.com/RemakeCode/sentinel/commit/58b97e129501e92238b49ea28520801fe3eae064))
+* add Steam emulator INI achievement parsing ([cea5433](https://github.com/RemakeCode/sentinel/commit/cea5433367fe06d6e6ef1b79f546113903f34b5f))
+* **decky-plugin:** add per-game refresh from library context menu ([72c8058](https://github.com/RemakeCode/sentinel/commit/72c8058dbd2d2198927985e7265ee5caaa10701f))
+* **decky-plugin:** align settings and achievement sort parity ([43aaf31](https://github.com/RemakeCode/sentinel/commit/43aaf31d4b38b34dfae8d66a6b9c106bf8120df4))
+* **decky:** add dedicated backend entrypoint ([9fb9a00](https://github.com/RemakeCode/sentinel/commit/9fb9a0019c60285db289189755b0d0e47da02307))
+* implement achievements progress toggle setting for sentinel-decky ([a4f058b](https://github.com/RemakeCode/sentinel/commit/a4f058bfa70015b38605f5a84dc7264dc4eb2ac5))
+* remove migrate package ([be64b89](https://github.com/RemakeCode/sentinel/commit/be64b89c476c02a1bdc36fd197f7b26e907ab338))
+* support for more emus ([ca0e883](https://github.com/RemakeCode/sentinel/commit/ca0e883d3a1990ca0ff217b6c2008bdeaa5158a7))
+
+### 🐛 Bug Fixes
+
+* blank context menu item on Linux ([22f38ec](https://github.com/RemakeCode/sentinel/commit/22f38ecb317f9a96c48bca8704aabb7b9d04fc1c))
+* **ci:** install alsa headers for notifier tests ([f89072f](https://github.com/RemakeCode/sentinel/commit/f89072fc0a67e06c30cfa9a2e42e564cf5faa04a))
+* **ci:** install alsa headers for notifier tests ([9d64dcf](https://github.com/RemakeCode/sentinel/commit/9d64dcfb41d3eb3c53e82906c44a6abdc665daed))
+* **decky:** avoid backend output pipes ([32903d3](https://github.com/RemakeCode/sentinel/commit/32903d3bc312e160fd7bcf530108c7a31e527809))
+* fix crash when a prefix is suddenly removed by another process  ([6306079](https://github.com/RemakeCode/sentinel/commit/63060797488da69d47d0c71de3f4a56b35ea6d04)), closes [#39](https://github.com/RemakeCode/sentinel/issues/39)
+* game state tracker race conditions ([8511de3](https://github.com/RemakeCode/sentinel/commit/8511de3698230b389e756e87abfedba1ecab7020))
+* library sync and race condition issues ([324bc8b](https://github.com/RemakeCode/sentinel/commit/324bc8b6374c1baa23edcc355d20190dc8a54931))
+* library sync and race condition issues ([31f0aa8](https://github.com/RemakeCode/sentinel/commit/31f0aa8b09bd30abf49d976d32685c271678ae19))
+* logging from go backend into the python backend stub to be picked up by decky-plugin-service ([f85d53f](https://github.com/RemakeCode/sentinel/commit/f85d53fe88b493be278d597b484e1eff006583f4))
+* normalize achievement icon paths from Steam key source API ([dca59c0](https://github.com/RemakeCode/sentinel/commit/dca59c0a9237822b819b0668ffc42a75d2c77de6))
+* notifications missed on the first time a game creates its folder ([86da881](https://github.com/RemakeCode/sentinel/commit/86da88163093e3bb616776adddac9660dd3c0798))
+* **notifier:** normalize bundled notification sounds ([fb2a622](https://github.com/RemakeCode/sentinel/commit/fb2a622e8c3473b44b2c7ea318ad5f9a19481ca3))
+* **notifier:** normalize bundled notification sounds ([71d3e11](https://github.com/RemakeCode/sentinel/commit/71d3e11fe3d0a8a8b634de7824bcb40dd8960b1b))
+* **notifier:** omit missing achievement icons ([5456795](https://github.com/RemakeCode/sentinel/commit/5456795c81215a2ab435419c18c6360fa6a7e919))
+* **notifier:** replace shell notifications with native playback ([f0402ea](https://github.com/RemakeCode/sentinel/commit/f0402eadcb1966bc301bbc5ef937d6e85a7f0fb9))
+* **notifier:** replace shell notifications with native playback ([3f6c1f7](https://github.com/RemakeCode/sentinel/commit/3f6c1f70b46c0f9278dee9a5ce4850d6c7d397ab))
+* **notifier:** retry audio speaker initialization ([18cf34f](https://github.com/RemakeCode/sentinel/commit/18cf34fc25dc26b3317f0c948b1c2795278cbfe8))
+* **notifier:** retry audio speaker initialization ([b7a449a](https://github.com/RemakeCode/sentinel/commit/b7a449a8ba18bcddabae4b50050875af9fb8bb04))
+* optimizations of the pathWalker and fixes for the compatdata directory as prefix ([5c34abd](https://github.com/RemakeCode/sentinel/commit/5c34abd6741cb994df638ef887a462a57c8214f7))
+* polling re-render loop in games-context ([1795628](https://github.com/RemakeCode/sentinel/commit/1795628d984349a97f1fefd7aed4102cf55e3e0a))
+* restore GetNotificationExpireTime (used by frontend settings) ([10350d7](https://github.com/RemakeCode/sentinel/commit/10350d7ac23f7224575702afe867871b1c6430d7))
+* slog format string and json.Marshal error handling ([5c995ed](https://github.com/RemakeCode/sentinel/commit/5c995ed8dc3bf94df048f97eb0b27dfa79c44746))
+* **steam:** remove cache read repair ([729b95c](https://github.com/RemakeCode/sentinel/commit/729b95c6b09366d0c9e0d08d9878cf21ba6a654a))
+* unlock hidden achievements should  no longer be blurred ([40ff254](https://github.com/RemakeCode/sentinel/commit/40ff2548778d873ef616a3ebf21b12ca412c0211))
+
 ## [1.1.0-beta.8](https://github.com/RemakeCode/sentinel/compare/v1.1.0-beta.7...v1.1.0-beta.8) (2026-06-14)
 
 ### 🚀 New Features
