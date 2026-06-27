@@ -6,7 +6,7 @@ import type { Notification } from '@/shared/types/Notification';
 import { getNotificationTab } from '@/shared/utils/utils';
 import { ImgIcon } from '@/shared/components/img-icon';
 import { ToastBody, ToastTitle } from '@/shared/components/toast';
-import { initTracker } from '@/shared/utils/non-steam-game-tracker';
+import { initTracker, type TrackerCleanup } from '@/shared/utils/non-steam-game-tracker';
 import MainPage from '@/pages/main';
 import SettingsPage from '@/pages/settings';
 import LibraryPage from '@/pages/library';
@@ -18,10 +18,6 @@ let sse: EventSource | null = null;
 let sseRetryCount = 0;
 let sseRetryTimer: ReturnType<typeof setTimeout> | null = null;
 const MAX_RETRY_DELAY = 30000;
-
-initTracker().catch((error) => {
-  console.error(error);
-});
 
 const toasterClassName = `sentinel-toaster`;
 const toasterContentClassName = `sentinel-toaster-content`;
@@ -149,6 +145,7 @@ function connectSSE() {
 
 export default definePlugin(() => {
   connectSSE();
+  const cleanupTracker: TrackerCleanup = initTracker();
 
   routerHook.addRoute('/sentinel/settings', () => <SettingsPage />);
   routerHook.addRoute('/sentinel/library', () => <LibraryPage />);
@@ -189,6 +186,7 @@ export default definePlugin(() => {
       if (sse) {
         sse.close();
       }
+      cleanupTracker();
       routerHook.removeRoute('/sentinel/settings');
       routerHook.removeRoute('/sentinel/library');
       routerHook.removeRoute('/sentinel/games/:appId');
