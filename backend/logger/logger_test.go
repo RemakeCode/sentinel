@@ -5,9 +5,11 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"sentinel/backend"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
@@ -64,7 +66,7 @@ func TestNewLogFileWriter(t *testing.T) {
 	logger := NewWithFile(writer)
 	logger.Info("test message")
 
-	writer.Close()
+	require.NoError(t, writer.Close())
 
 	// Verify file was created
 	content, err := os.ReadFile(logFile)
@@ -75,6 +77,45 @@ func TestNewLogFileWriter(t *testing.T) {
 func TestNewWithFile_Fallback(t *testing.T) {
 	logger := NewWithFile(nil)
 	assert.NotNil(t, logger)
+}
+
+func TestNewWithFile_SanitizesPathsInLogOutput(t *testing.T) {
+	tmpDir := t.TempDir()
+	logFile := filepath.Join(tmpDir, "sanitized.log")
+	configDir := filepath.Join(tmpDir, "config")
+	cacheDir := filepath.Join(tmpDir, "cache")
+
+	originalConfigDir := backend.ConfigDir
+	originalCacheDir := backend.UserCacheDir
+	backend.ConfigDir = configDir
+	backend.UserCacheDir = cacheDir
+	defer func() {
+		backend.ConfigDir = originalConfigDir
+		backend.UserCacheDir = originalCacheDir
+	}()
+
+	writer := &lumberjack.Logger{
+		Filename:   logFile,
+		MaxSize:    1,
+		MaxBackups: 1,
+	}
+
+	logger := NewWithFile(writer)
+	logger.Info(
+		"paths",
+		"config", filepath.Join(configDir, "config.json"),
+		"cache", filepath.Join(cacheDir, "item"),
+	)
+	require.NoError(t, writer.Close())
+
+	content, err := os.ReadFile(logFile)
+	require.NoError(t, err)
+	logOutput := string(content)
+
+	assert.Contains(t, logOutput, "<CONFIG_DIR>")
+	assert.Contains(t, logOutput, "<CACHE_DIR>")
+	assert.NotContains(t, logOutput, configDir)
+	assert.NotContains(t, logOutput, cacheDir)
 }
 
 func TestLogRotation(t *testing.T) {
@@ -93,7 +134,7 @@ func TestLogRotation(t *testing.T) {
 		assert.NoError(t, err)
 	}
 
-	writer.Close()
+	require.NoError(t, writer.Close())
 
 	// Verify rotated files exist
 	files, err := os.ReadDir(tmpDir)
