@@ -15,7 +15,13 @@ import { FaUnlock } from 'react-icons/fa';
 import { LibraryImage } from '@/shared/components/library-image';
 import { EmptyState } from '@/shared/components/empty-state';
 import { BASE_URL, Fetcher } from '@/shared/utils/fetcher';
-import { runningGames, subscribeToGameChanges } from '@/shared/utils/non-steam-game-tracker';
+import {
+  getTrackerStatus,
+  runningGames,
+  subscribeToGameChanges,
+  subscribeToTrackerStatus,
+  type TrackerStatus
+} from '@/shared/utils/non-steam-game-tracker';
 import { getMapping, setMapping } from '@/shared/utils/game-mappings';
 import { matchGameByName } from '@/shared/utils/game-matcher';
 import { showConfirmModal } from '@/shared/components/confirm';
@@ -163,19 +169,56 @@ const mainStyles = `
     top: -15px;
     z-index: 1;
   }
+
+  .sentinel-qam-status-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    margin-block-start: 64px;
+    padding: 0 12px;
+    text-align: center;
+  }
+
+  .sentinel-qam-status-title {
+    font-size: 16px;
+    font-weight: 700;
+  }
+
+  .sentinel-qam-status-detail {
+    font-size: 12px;
+    color: #8b929a;
+    line-height: 1.3;
+  }
 `;
+
+const trackerStatusContent: Record<Exclude<TrackerStatus, 'ready'>, { title: string; detail: string }> = {
+  initializing: {
+    title: 'Game tracker starting',
+    detail: 'Waiting for Steam library data.'
+  },
+  failed: {
+    title: 'Game tracker unavailable',
+    detail: 'Steam library data could not be found.'
+  }
+};
 
 const MainPage: FC = () => {
   const [games, setGames] = useState<GameBasics[]>([]);
   const [matchedGame, setMatchedGame] = useState<GameBasics | null>(null);
   const [loading, setLoading] = useState(true);
-  const [screen, setScreen] = useState<'loading' | 'matched' | 'unmatched' | 'empty'>('loading');
+  const [screen, setScreen] = useState<
+    'loading' | 'matched' | 'unmatched' | 'empty' | 'tracker-initializing' | 'tracker-failed'
+  >('loading');
   const [runningName, setRunningName] = useState('');
   const [playingKey, setPlayingKey] = useState<string | null>(null);
   const [revealedHidden, setRevealedHidden] = useState<Record<string, boolean>>({});
+  const [trackerStatus, setTrackerStatus] = useState<TrackerStatus>(getTrackerStatus());
 
   const gamesRef = useRef(games);
+  const trackerStatusRef = useRef(trackerStatus);
   gamesRef.current = games;
+  trackerStatusRef.current = trackerStatus;
 
   const playMarquee = (key: string, play: boolean) => {
     setPlayingKey((prev) => (play ? key : prev === key ? null : prev));
@@ -197,7 +240,17 @@ const MainPage: FC = () => {
     setScreen('matched');
   };
 
-  const matchRunningGame = (gamesList: GameBasics[]) => {
+  const matchRunningGame = (gamesList: GameBasics[], status: TrackerStatus = trackerStatusRef.current) => {
+    if (status === 'initializing') {
+      setScreen('tracker-initializing');
+      return;
+    }
+
+    if (status === 'failed') {
+      setScreen('tracker-failed');
+      return;
+    }
+
     const running = runningGames();
     const current = running[0] ?? null;
 
@@ -246,12 +299,24 @@ const MainPage: FC = () => {
   }, []);
 
   useEffect(() => {
-    matchRunningGame(games);
-    const unsubscribe = subscribeToGameChanges(() => {
-      matchRunningGame(gamesRef.current);
+    matchRunningGame(games, trackerStatus);
+  }, [games, trackerStatus]);
+
+  useEffect(() => {
+    const unsubscribeGameChanges = subscribeToGameChanges(() => {
+      matchRunningGame(gamesRef.current, trackerStatusRef.current);
     });
-    return unsubscribe;
-  }, [games]);
+    const unsubscribeTrackerStatus = subscribeToTrackerStatus((status) => {
+      trackerStatusRef.current = status;
+      setTrackerStatus(status);
+      matchRunningGame(gamesRef.current, status);
+    });
+
+    return () => {
+      unsubscribeGameChanges();
+      unsubscribeTrackerStatus();
+    };
+  }, []);
 
   // DEV: seed a fake running game for testing without Steam
   // useEffect(() => {
@@ -394,6 +459,20 @@ const MainPage: FC = () => {
             Browse All Games
           </ButtonItem>
         </PanelSectionRow>
+      </PanelSection>
+    );
+  }
+
+  if (screen === 'tracker-initializing' || screen === 'tracker-failed') {
+    const content = trackerStatusContent[screen === 'tracker-initializing' ? 'initializing' : 'failed'];
+
+    return (
+      <PanelSection>
+        <style>{mainStyles}</style>
+        <div className='sentinel-qam-status-state'>
+          <div className='sentinel-qam-status-title'>{content.title}</div>
+          <div className='sentinel-qam-status-detail'>{content.detail}</div>
+        </div>
       </PanelSection>
     );
   }
