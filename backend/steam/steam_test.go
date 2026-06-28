@@ -124,6 +124,29 @@ func TestCachePersistence(t *testing.T) {
 	assert.Equal(t, appID, loaded.AppID)
 }
 
+func TestLoadAllCachedGameData_EmptyCacheDirectoryReturnsEmptySlice(t *testing.T) {
+	tmpDir := t.TempDir()
+	originalGameCacheDir := backend.GameCacheDir
+	backend.GameCacheDir = filepath.Join(tmpDir, "games")
+	t.Cleanup(func() {
+		backend.GameCacheDir = originalGameCacheDir
+	})
+
+	lang := types.Language{API: "english"}
+	assert.NoError(t, os.MkdirAll(filepath.Join(backend.GameCacheDir, lang.API), 0755))
+
+	mc := new(mockConfig)
+	mc.On("GetLanguage").Return(lang)
+	svc := &Service{Config: mc}
+
+	games, err := svc.LoadAllCachedGameData()
+
+	assert.NoError(t, err)
+	assert.NotNil(t, games)
+	assert.Empty(t, games)
+	mc.AssertExpectations(t)
+}
+
 func TestFetchAppDetailsBulk_Cached(t *testing.T) {
 	tmpDir := t.TempDir()
 	backend.GameCacheDir = filepath.Join(tmpDir, "games")
