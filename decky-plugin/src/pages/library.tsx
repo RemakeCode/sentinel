@@ -1,5 +1,14 @@
-import { FC, useEffect, useState } from 'react';
-import { DialogBody, DialogHeader, Focusable, Menu, MenuItem, Navigation, showContextMenu } from '@decky/ui';
+import { type FC, useCallback, useEffect, useRef, useState } from 'react';
+import {
+  DialogBody,
+  DialogHeader,
+  Focusable,
+  Menu,
+  MenuItem,
+  Navigation,
+  ProgressBar,
+  showContextMenu
+} from '@decky/ui';
 import { toaster } from '@decky/api';
 import { LibraryImage } from '@/shared/components/library-image';
 import { EmptyState } from '@/shared/components/empty-state';
@@ -19,28 +28,119 @@ const libraryStyles = `
   .sentinel-library-header {
     font-size: 24px;
   }
+
+  .sentinel-library-sync {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 14px;
+  }
+
+  .sentinel-library-sync-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--gpColor-LightGrey, #c7d5e0);
+  }
 `;
 
 const fetcher = new Fetcher();
+const SYNC_POLL_INTERVAL_MS = 1000;
+
+interface LibrarySyncStatus {
+  State: string;
+  Current: number;
+  Total: number;
+}
+
+const emptySyncStatus: LibrarySyncStatus = { State: 'idle', Current: 0, Total: 0 };
+
+const getSyncPercentage = (syncStatus: LibrarySyncStatus) => {
+  if (syncStatus.Total === 0) {
+    return 0;
+  }
+
+  const percentage = Math.floor((syncStatus.Current / syncStatus.Total) * 100);
+  return syncStatus.State === 'running' ? Math.max(1, percentage) : percentage;
+};
 
 const LibraryPage: FC = () => {
   const [games, setGames] = useState<GameBasics[]>([]);
   const [loading, setLoading] = useState(true);
+  const [syncStatus, setSyncStatus] = useState<LibrarySyncStatus>(emptySyncStatus);
   const [refreshingGameIds, setRefreshingGameIds] = useState<string[]>([]);
+  const lastSyncStatusRef = useRef<LibrarySyncStatus>(emptySyncStatus);
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const data = await fetcher.get<GameBasics[]>(`${BASE_URL}/games`);
-        setGames(data);
-      } catch {
+  const loadGames = useCallback(async (showLoading = false, clearOnError = false) => {
+    if (showLoading) {
+      setLoading(true);
+    }
+
+    try {
+      const data = await fetcher.get<GameBasics[]>(`${BASE_URL}/games`);
+      setGames(data);
+      return data;
+    } catch {
+      if (clearOnError) {
         setGames([]);
-      } finally {
+      }
+      return [];
+    } finally {
+      if (showLoading) {
         setLoading(false);
       }
-    };
-    load();
+    }
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    let intervalId: ReturnType<typeof setInterval> | undefined;
+
+    const loadSyncStatus = async () => {
+      try {
+        return await fetcher.get<LibrarySyncStatus>(`${BASE_URL}/games/sync-status`);
+      } catch {
+        return null;
+      }
+    };
+
+    const pollSyncStatus = async () => {
+      const syncStatus = await loadSyncStatus();
+      if (!active || !syncStatus) {
+        return;
+      }
+
+      const previous = lastSyncStatusRef.current;
+      const syncStarted = previous.State !== 'running' && syncStatus.State === 'running';
+      const progressed =
+        syncStatus.State === 'running' && (syncStarted ? syncStatus.Current > 0 : syncStatus.Current > previous.Current);
+      const reachedTerminalState =
+        (syncStatus.State === 'done' || syncStatus.State === 'error') &&
+        (previous.State !== syncStatus.State ||
+          previous.Current !== syncStatus.Current ||
+          previous.Total !== syncStatus.Total);
+
+      lastSyncStatusRef.current = syncStatus;
+      setSyncStatus(syncStatus);
+
+      if (progressed || reachedTerminalState) {
+        await loadGames(false);
+      }
+    };
+
+    void loadGames(true, true);
+    void pollSyncStatus();
+    intervalId = setInterval(pollSyncStatus, SYNC_POLL_INTERVAL_MS);
+
+    return () => {
+      active = false;
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [loadGames]);
 
   const handleRefreshGame = async (appId: string) => {
     if (!appId || refreshingGameIds.includes(appId)) {
@@ -84,9 +184,23 @@ const LibraryPage: FC = () => {
     );
   };
 
+  const isSyncRunning = syncStatus.State === 'running';
+  const syncPercentage = getSyncPercentage(syncStatus);
+
   return (
     <DialogBody style={styles.wrapper}>
       <style>{libraryStyles}</style>
+      {isSyncRunning && (
+        <div className='sentinel-library-sync' aria-live='polite' aria-busy='true'>
+          <div className='sentinel-library-sync-meta'>
+            <span>Fetching metadata</span>
+            <span>
+              {syncStatus.Current}/{syncStatus.Total}
+            </span>
+          </div>
+          <ProgressBar nProgress={syncPercentage} focusable={false} />
+        </div>
+      )}
       {loading ? (
         <div className='sentinel-library-grid'>
           {Array.from({ length: 12 }).map((_, i) => (
