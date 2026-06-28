@@ -218,15 +218,19 @@ func (s *Service) Start() error {
 func (s *Service) Stop() {
 	slog.Info("Stopping watcher")
 
+	if s.done == nil {
+		slog.Info("Watcher already stopped")
+		return
+	}
+
 	// Stop retry timer
 	if s.retryTimer != nil {
 		s.retryTimer.Stop()
 		s.retryTimer = nil
 	}
 
-	if s.done != nil {
-		close(s.done)
-	}
+	close(s.done)
+	s.done = nil
 
 	if s.watcher != nil {
 		if err := s.watcher.Close(); err != nil {

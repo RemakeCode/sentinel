@@ -20,6 +20,9 @@ import { FaBook, FaCircle, FaCog, FaLink } from 'react-icons/fa';
 
 const fetcher = new Fetcher();
 
+const startWatcher = () => fetcher.post(`${BASE_URL}/watcher/start`, {});
+const stopWatcher = () => fetcher.post(`${BASE_URL}/watcher/stop`, {});
+
 interface Prefix {
   path: string;
 }
@@ -157,8 +160,9 @@ const SettingsPage: FC = () => {
     if (result.realpath) {
       try {
         await fetcher.post(`${BASE_URL}/config/prefix`, { path: result.realpath });
-        await loadConfig();
+        await stopWatcher();
         toaster.toast({ title: 'Success', body: 'Prefix path added' });
+        await Promise.all([startWatcher(), loadConfig()]);
       } catch {
         toaster.toast({ title: 'Error', body: 'Failed to add prefix' });
       }
@@ -168,8 +172,9 @@ const SettingsPage: FC = () => {
   const handleRemovePrefix = async (index: number) => {
     try {
       await fetcher.delete(`${BASE_URL}/config/prefix/${index}`);
-      await loadConfig();
+      await stopWatcher();
       toaster.toast({ title: 'Success', body: 'Prefix removed' });
+      await Promise.all([startWatcher(), loadConfig()]);
     } catch {
       toaster.toast({ title: 'Error', body: 'Failed to remove prefix' });
     }
