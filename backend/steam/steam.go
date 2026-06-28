@@ -293,7 +293,12 @@ func (s *Service) LoadAllCachedGameData() ([]*GameBasics, error) {
 	dirs, err := os.ReadDir(schemaPath)
 
 	if err != nil {
-		slog.Error("Unable to load cached game data for FE")
+		if errors.Is(err, os.ErrNotExist) {
+			slog.Info("Game cache directory does not exist", "language", language)
+			return cached, nil
+		}
+
+		slog.Error("Unable to load cached game data for FE", "error", err)
 		return nil, errors.New("unable to load cached game data for FE")
 	}
 
