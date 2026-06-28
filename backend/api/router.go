@@ -125,6 +125,7 @@ func (r *Router) Handler() http.Handler {
 
 		// Games service endpoints
 		api.Get("/games", Wrap(r.handleGetAllGames))
+		api.Get("/games/sync-status", Wrap(r.handleGetLibrarySyncStatus))
 		api.Post("/games/{id}/refresh", Wrap(r.handleRefreshGame))
 		api.Get("/games/{id}/global-achievement-percentages", Wrap(r.handleGetGlobalAchievementPercentages))
 
@@ -317,6 +318,15 @@ func (r *Router) handleGetAllGames(w http.ResponseWriter, req *http.Request) err
 	}
 
 	return JSON(w, http.StatusOK, games)
+}
+
+// handleGetLibrarySyncStatus returns current library sync progress
+func (r *Router) handleGetLibrarySyncStatus(w http.ResponseWriter, req *http.Request) error {
+	if r.Steam == nil {
+		return AppError{Status: http.StatusInternalServerError, Message: "Steam service is unavailable"}
+	}
+
+	return JSON(w, http.StatusOK, r.Steam.GetLibrarySyncStatus())
 }
 
 // handleRefreshGame refetches one cached game and returns the updated payload
