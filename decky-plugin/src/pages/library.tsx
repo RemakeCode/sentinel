@@ -7,6 +7,7 @@ import {
   MenuItem,
   Navigation,
   ProgressBar,
+  Spinner,
   showContextMenu
 } from '@decky/ui';
 import { toaster } from '@decky/api';
@@ -27,6 +28,18 @@ const libraryStyles = `
 
   .sentinel-library-header {
     font-size: 24px;
+  }
+
+  .sentinel-library-loader {
+    min-height: 220px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .sentinel-library-loader svg {
+    width: 48px;
+    height: 48px;
   }
 
   .sentinel-library-sync {
@@ -202,10 +215,8 @@ const LibraryPage: FC = () => {
         </div>
       )}
       {loading ? (
-        <div className='sentinel-library-grid'>
-          {Array.from({ length: 12 }).map((_, i) => (
-            <div key={i} style={{ aspectRatio: '2/3', background: 'rgba(255,255,255,0.05)', borderRadius: '4px' }} />
-          ))}
+        <div className='sentinel-library-loader' aria-busy='true'>
+          <Spinner />
         </div>
       ) : games.length === 0 ? (
         <EmptyState
