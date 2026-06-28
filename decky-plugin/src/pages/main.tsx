@@ -309,7 +309,6 @@ const MainPage: FC = () => {
     const unsubscribeTrackerStatus = subscribeToTrackerStatus((status) => {
       trackerStatusRef.current = status;
       setTrackerStatus(status);
-      matchRunningGame(gamesRef.current, status);
     });
 
     return () => {
