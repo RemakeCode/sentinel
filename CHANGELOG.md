@@ -1,3 +1,5 @@
+## [2.0.0-beta.2](https://github.com/RemakeCode/sentinel/compare/v2.0.0-beta.1...v2.0.0-beta.2) (2026-06-28)
+
 ## [2.0.0-beta.1](https://github.com/RemakeCode/sentinel/compare/v1.1.0-beta.8...v2.0.0-beta.1) (2026-06-26)
 
 ### ⚠ BREAKING CHANGES
