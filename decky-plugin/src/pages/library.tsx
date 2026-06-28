@@ -6,7 +6,6 @@ import {
   Menu,
   MenuItem,
   Navigation,
-  ProgressBar,
   Spinner,
   showContextMenu
 } from '@decky/ui';
@@ -43,19 +42,28 @@ const libraryStyles = `
   }
 
   .sentinel-library-sync {
+    width: max-content;
+    height: 25px;
+    border-radius: 4px;
     display: flex;
-    flex-direction: column;
-    gap: 6px;
-    margin-bottom: 14px;
+    align-items: center;
+    justify-content: center;
+    background: #1c1f24;
+    position: fixed;
+    transform: translate(-50%, -50%);
+    left: 50%;
+    padding-inline: 8px;
   }
 
   .sentinel-library-sync-meta {
     display: flex;
     align-items: center;
+    gap: 12px;
     justify-content: space-between;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 700;
-    color: var(--gpColor-LightGrey, #c7d5e0);
+    letter-spacing: 0.03em;
+    color: var(--gpColor-Blue, #1a9fff);
   }
 `;
 
@@ -69,15 +77,6 @@ interface LibrarySyncStatus {
 }
 
 const emptySyncStatus: LibrarySyncStatus = { State: 'idle', Current: 0, Total: 0 };
-
-const getSyncPercentage = (syncStatus: LibrarySyncStatus) => {
-  if (syncStatus.Total === 0) {
-    return 0;
-  }
-
-  const percentage = Math.floor((syncStatus.Current / syncStatus.Total) * 100);
-  return syncStatus.State === 'running' ? Math.max(1, percentage) : percentage;
-};
 
 const LibraryPage: FC = () => {
   const [games, setGames] = useState<GameBasics[]>([]);
@@ -198,7 +197,6 @@ const LibraryPage: FC = () => {
   };
 
   const isSyncRunning = syncStatus.State === 'running';
-  const syncPercentage = getSyncPercentage(syncStatus);
 
   return (
     <DialogBody style={styles.wrapper}>
@@ -211,7 +209,6 @@ const LibraryPage: FC = () => {
               {syncStatus.Current}/{syncStatus.Total}
             </span>
           </div>
-          <ProgressBar nProgress={syncPercentage} focusable={false} />
         </div>
       )}
       {loading ? (
