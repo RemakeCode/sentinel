@@ -74,7 +74,7 @@ func newReplaceAttr() func([]string, slog.Attr) slog.Attr {
 
 	return func(_ []string, a slog.Attr) slog.Attr {
 		if a.Key == slog.TimeKey && a.Value.Kind() == slog.KindTime {
-			return slog.String(slog.TimeKey, a.Value.Time().Format("15:04:05"))
+			return slog.String(slog.TimeKey, a.Value.Time().Format("2006-01-02 15:04:05"))
 		}
 		if a.Value.Kind() == slog.KindString {
 			val := a.Value.String()

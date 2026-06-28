@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sentinel/backend"
 	"testing"
 
@@ -116,6 +117,7 @@ func TestNewWithFile_SanitizesPathsInLogOutput(t *testing.T) {
 	assert.Contains(t, logOutput, "<CACHE_DIR>")
 	assert.NotContains(t, logOutput, configDir)
 	assert.NotContains(t, logOutput, cacheDir)
+	assert.Regexp(t, regexp.MustCompile(`time="\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}"`), logOutput)
 }
 
 func TestLogRotation(t *testing.T) {
