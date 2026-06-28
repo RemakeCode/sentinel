@@ -285,7 +285,7 @@ func (s *Service) FetchAppDetailsBulk(appIDs []string, language types.Language) 
 
 // Used in FE
 func (s *Service) LoadAllCachedGameData() ([]*GameBasics, error) {
-	var cached []*GameBasics
+	cached := make([]*GameBasics, 0)
 	language := s.Config.GetLanguage().API
 
 	slog.Info("Loading cached game data for FE", "language", language)
@@ -299,7 +299,7 @@ func (s *Service) LoadAllCachedGameData() ([]*GameBasics, error) {
 
 	if len(dirs) == 0 {
 		slog.Info("Game cache directory is empty", "language", language)
-		return nil, err
+		return cached, nil
 	}
 
 	// Load all cached current Achievements
