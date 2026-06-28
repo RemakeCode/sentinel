@@ -199,6 +199,17 @@ func TestStop_NilWatcher(t *testing.T) {
 	service.Stop()
 }
 
+func TestStop_AlreadyStopped(t *testing.T) {
+	service := &Service{}
+	service.watcher = createTestWatcher(t)
+	service.done = make(chan struct{})
+
+	require.NotPanics(t, func() {
+		service.Stop()
+		service.Stop()
+	})
+}
+
 func TestStop_WithActiveWatcher(t *testing.T) {
 	service := &Service{}
 	service.watcher = createTestWatcher(t)

@@ -119,6 +119,10 @@ func (r *Router) Handler() http.Handler {
 		api.Post("/config/prefix", Wrap(r.handleAddPrefix))
 		api.Delete("/config/prefix/{index}", Wrap(r.handleRemovePrefix))
 
+		// Watcher service endpoints
+		api.Post("/watcher/start", Wrap(r.handleStartWatcher))
+		api.Post("/watcher/stop", Wrap(r.handleStopWatcher))
+
 		// Games service endpoints
 		api.Get("/games", Wrap(r.handleGetAllGames))
 		api.Post("/games/{id}/refresh", Wrap(r.handleRefreshGame))
@@ -278,6 +282,28 @@ func (r *Router) handleRemovePrefix(w http.ResponseWriter, req *http.Request) er
 
 	if err := r.Config.RemovePrefix(index); err != nil {
 		return AppError{Status: http.StatusInternalServerError, Message: err.Error()}
+	}
+
+	return JSON(w, http.StatusOK, map[string]string{"status": "success"})
+}
+
+// handleStartWatcher starts the watcher with the current configuration
+func (r *Router) handleStartWatcher(w http.ResponseWriter, req *http.Request) error {
+	if r.Watcher == nil {
+		return AppError{Status: http.StatusInternalServerError, Message: "Watcher service is unavailable"}
+	}
+
+	if err := r.Watcher.Start(); err != nil {
+		return AppError{Status: http.StatusInternalServerError, Message: err.Error()}
+	}
+
+	return JSON(w, http.StatusOK, map[string]string{"status": "success"})
+}
+
+// handleStopWatcher stops the watcher if it is running
+func (r *Router) handleStopWatcher(w http.ResponseWriter, req *http.Request) error {
+	if r.Watcher != nil {
+		r.Watcher.Stop()
 	}
 
 	return JSON(w, http.StatusOK, map[string]string{"status": "success"})
