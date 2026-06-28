@@ -30,7 +30,8 @@ const libraryStyles = `
   }
 
   .sentinel-library-loader {
-    min-height: 220px;
+    width: 100%;
+    min-height: 60vh;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -197,6 +198,8 @@ const LibraryPage: FC = () => {
   };
 
   const isSyncRunning = syncStatus.State === 'running';
+  const showInitialSpinner = loading || (isSyncRunning && games.length < 1);
+  const showEmptyState = !showInitialSpinner && games.length === 0;
 
   return (
     <DialogBody style={styles.wrapper}>
@@ -211,11 +214,11 @@ const LibraryPage: FC = () => {
           </div>
         </div>
       )}
-      {loading ? (
+      {showInitialSpinner ? (
         <div className='sentinel-library-loader' aria-busy='true'>
           <Spinner />
         </div>
-      ) : games.length === 0 ? (
+      ) : showEmptyState ? (
         <EmptyState
           variant='library'
           label='No games found'
