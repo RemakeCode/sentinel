@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"sentinel/backend"
 	"sentinel/backend/config"
+	"sentinel/backend/decky"
 	"sentinel/backend/notifier"
 	"sentinel/backend/steam"
 	"sentinel/backend/watcher"
@@ -114,6 +115,7 @@ func (r *Router) Handler() http.Handler {
 		api.Put("/config/steam-data-source", Wrap(r.handleSetSteamDataSource))
 		api.Put("/config/logging", Wrap(r.handleSetLogging))
 		api.Put("/config/achievement-progress-update-mode", Wrap(r.handleSetAchievementProgressUpdateMode))
+		api.Put("/config/decky/use-steam-grid", Wrap(r.handleSetDeckyUseSteamGrid))
 		api.Post("/config/notification-sound", Wrap(r.handleSetSound))
 		api.Patch("/config/emulator-notification/{index}", Wrap(r.handleToggleEmulatorNotification))
 		api.Post("/config/prefix", Wrap(r.handleAddPrefix))
@@ -137,6 +139,7 @@ func (r *Router) Handler() http.Handler {
 
 	// Serve media files under /api to keep asset paths clean and avoid
 	// confusion with the backend API routes
+	router.Get("/api/media/steamgrid/{shortcutAppId}/portrait", http.HandlerFunc(r.handleServeSteamGridPortrait))
 	router.Get("/api/media/*", http.HandlerFunc(r.handleServeMedia))
 
 	return router
@@ -251,6 +254,22 @@ func (r *Router) handleSetAchievementProgressUpdateMode(w http.ResponseWriter, r
 
 	if err := r.Config.SetAchievementProgressUpdateMode(body.Mode); err != nil {
 		return AppError{Status: http.StatusBadRequest, Message: err.Error()}
+	}
+
+	return JSON(w, http.StatusOK, map[string]string{"status": "success"})
+}
+
+func (r *Router) handleSetDeckyUseSteamGrid(w http.ResponseWriter, req *http.Request) error {
+	var body struct {
+		UseSteamGrid bool `json:"useSteamGrid"`
+	}
+
+	if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
+		return AppError{Status: http.StatusBadRequest, Message: "Invalid request body"}
+	}
+
+	if err := r.Config.SetDeckyUseSteamGrid(body.UseSteamGrid); err != nil {
+		return AppError{Status: http.StatusInternalServerError, Message: err.Error()}
 	}
 
 	return JSON(w, http.StatusOK, map[string]string{"status": "success"})
@@ -405,6 +424,22 @@ func (r *Router) handleNotifications(w http.ResponseWriter, req *http.Request) e
 	}
 
 	return nil
+}
+
+func (r *Router) handleServeSteamGridPortrait(w http.ResponseWriter, req *http.Request) {
+	shortcutAppID := chi.URLParam(req, "shortcutAppId")
+	if _, err := strconv.ParseUint(shortcutAppID, 10, 32); err != nil {
+		http.Error(w, "Bad Request", http.StatusBadRequest)
+		return
+	}
+
+	portraitPath, err := decky.FindSteamGridPortrait(shortcutAppID)
+	if err != nil {
+		http.Error(w, "Not Found", http.StatusNotFound)
+		return
+	}
+
+	http.ServeFile(w, req, portraitPath)
 }
 
 // handleServeMedia serves local media files (game images, achievement icons, sounds)

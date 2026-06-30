@@ -1,6 +1,7 @@
 package config
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -163,6 +164,62 @@ func TestSaveConfig_DefaultsAchievementProgressUpdateMode(t *testing.T) {
 	require.NoError(t, json.Unmarshal(data, &raw))
 
 	assert.Equal(t, string(AchievementProgressUpdateModeDefault), raw["achievementProgressUpdateMode"])
+}
+
+func TestStart_DefaultConfigDisablesDeckySteamGrid(t *testing.T) {
+	_, tempDir := setupTestConfig(t)
+
+	originalConfigDir := backend.ConfigDir
+	originalDataDir := backend.DataDir
+	originalGameCacheDir := backend.GameCacheDir
+	backend.ConfigDir = filepath.Dir(backend.ConfigPath)
+	backend.DataDir = filepath.Join(tempDir, "data")
+	backend.GameCacheDir = filepath.Join(backend.DataDir, "games")
+	t.Cleanup(func() {
+		backend.ConfigDir = originalConfigDir
+		backend.DataDir = originalDataDir
+		backend.GameCacheDir = originalGameCacheDir
+	})
+
+	cfg := &File{}
+	require.NoError(t, cfg.Start(context.Background()))
+
+	var raw map[string]any
+	data, err := os.ReadFile(backend.ConfigPath)
+	require.NoError(t, err)
+	require.NoError(t, json.Unmarshal(data, &raw))
+
+	decky, ok := raw["decky"].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, false, decky["UseSteamGrid"])
+}
+
+func TestLoadConfig_MissingDeckySectionDefaultsUseSteamGridFalse(t *testing.T) {
+	_, _ = setupTestConfig(t)
+
+	require.NoError(t, os.WriteFile(backend.ConfigPath, []byte(`{"steamDataSource":"external"}`), 0644))
+
+	cfg := &File{}
+	result, err := cfg.LoadConfig()
+	require.NoError(t, err)
+
+	assert.False(t, result.Decky.UseSteamGrid)
+}
+
+func TestSetDeckyUseSteamGrid(t *testing.T) {
+	_, _ = setupTestConfig(t)
+
+	cfg := &File{}
+	require.NoError(t, cfg.SetDeckyUseSteamGrid(true))
+	assert.True(t, cfg.Decky.UseSteamGrid)
+
+	loaded := &File{}
+	_, err := loaded.LoadConfig()
+	require.NoError(t, err)
+	assert.True(t, loaded.Decky.UseSteamGrid)
+
+	require.NoError(t, loaded.SetDeckyUseSteamGrid(false))
+	assert.False(t, loaded.Decky.UseSteamGrid)
 }
 
 func TestSetSteamAPIKey(t *testing.T) {

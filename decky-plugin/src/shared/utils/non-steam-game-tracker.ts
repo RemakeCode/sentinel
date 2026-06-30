@@ -1,7 +1,7 @@
 import { findModuleExport } from '@decky/ui';
 import { EDisplayStatus, EAppType } from '@decky/ui/dist/globals/steam-client/App';
 
-interface NonSteamGame {
+export interface NonSteamGame {
   appId: number;
   name: string;
   isRunning: boolean;
@@ -175,4 +175,8 @@ export function initTracker(): TrackerCleanup {
 
 export function runningGames(): NonSteamGame[] {
   return Array.from(cache.values()).filter((game) => game.isRunning);
+}
+
+export function nonSteamGames(): NonSteamGame[] {
+  return Array.from(cache.values());
 }
