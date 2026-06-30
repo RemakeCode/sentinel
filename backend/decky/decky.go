@@ -1,6 +1,7 @@
 package decky
 
 import (
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -49,4 +50,36 @@ func IsGamescopeSession() bool {
 
 func IsActiveDeckSession() bool {
 	return IsSteamInBPM() || IsGamescopeSession()
+}
+
+func SteamInstallPath() string {
+	home := os.Getenv("DECKY_USER_HOME")
+	if home == "" {
+		home, _ = os.UserHomeDir()
+	}
+	return filepath.Join(home, ".local", "share", "Steam")
+}
+
+func FindSteamGridPortrait(shortcutAppID string) (string, error) {
+	filename := shortcutAppID + "p.png"
+	userdataPath := filepath.Join(SteamInstallPath(), "userdata")
+
+	userDirs, err := os.ReadDir(userdataPath)
+	if err != nil {
+		return "", err
+	}
+
+	for _, userDir := range userDirs {
+		if !userDir.IsDir() {
+			continue
+		}
+
+		candidate := filepath.Join(userdataPath, userDir.Name(), "config", "grid", filename)
+		info, err := os.Stat(candidate)
+		if err == nil && !info.IsDir() {
+			return candidate, nil
+		}
+	}
+
+	return "", errors.New("steamgrid portrait not found")
 }
