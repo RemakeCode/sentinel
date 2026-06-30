@@ -1,4 +1,4 @@
-import { FC, useRef } from 'react';
+import { FC, useEffect, useRef, useState } from 'react';
 import { Focusable, joinClassNames, libraryAssetImageClasses, ProgressBar } from '@decky/ui';
 import { ASSET_URL } from '@/shared/utils/fetcher';
 
@@ -31,6 +31,7 @@ const libraryImageStyles = `
 
 export interface LibraryImageProps {
   src: string;
+  fallbackSrc?: string;
   alt?: string;
   name?: string;
   onError?: () => void;
@@ -42,13 +43,27 @@ export interface LibraryImageProps {
 
 const LibraryImage: FC<LibraryImageProps> = ({
   src,
+  fallbackSrc,
   alt = '',
+  onError,
   progress,
   onActivate,
   onOpenContextMenu,
   isRefreshing = false
 }) => {
   const focusableRef = useRef<HTMLDivElement | null>(null);
+  const [activeSrc, setActiveSrc] = useState(src);
+
+  useEffect(() => {
+    setActiveSrc(src);
+  }, [src]);
+
+  const handleImageError = () => {
+    onError?.();
+    if (fallbackSrc && activeSrc !== fallbackSrc) {
+      setActiveSrc(fallbackSrc);
+    }
+  };
 
   return (
     <>
@@ -71,8 +86,9 @@ const LibraryImage: FC<LibraryImageProps> = ({
         )}
       >
         <img
-          src={`${ASSET_URL}${src}`}
+          src={`${ASSET_URL}${activeSrc}`}
           alt={alt}
+          onError={handleImageError}
           className={joinClassNames(
             libraryAssetImageClasses.Image,
             libraryAssetImageClasses.Visibility,

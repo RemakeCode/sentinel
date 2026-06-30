@@ -82,6 +82,10 @@ type AppInfo struct {
 	GitHub      string `json:"github"`
 }
 
+type DeckyConfig struct {
+	UseSteamGrid bool `json:"UseSteamGrid"`
+}
+
 //wails:internal
 type File struct {
 	autostart                     Autostarter
@@ -95,6 +99,7 @@ type File struct {
 	AchievementProgressUpdateMode AchievementProgressUpdateMode `json:"achievementProgressUpdateMode"`
 	LogLevel                      string                        `json:"logLevel"`
 	StartOnLogin                  bool                          `json:"startOnLogin"`
+	Decky                         DeckyConfig                   `json:"decky"`
 }
 
 var defaultEmulatorSources = []EmulatorSource{
@@ -205,6 +210,9 @@ func (c *File) Start(ctx context.Context) error {
 			},
 			LogLevel:     "info",
 			StartOnLogin: true,
+			Decky: DeckyConfig{
+				UseSteamGrid: false,
+			},
 		}
 		config, marshalErr := json.MarshalIndent(defaultConfig, "", "  ")
 		if marshalErr != nil {
@@ -474,6 +482,11 @@ func (c *File) SetAchievementProgressUpdateMode(mode AchievementProgressUpdateMo
 	}
 
 	c.AchievementProgressUpdateMode = mode
+	return c.SaveConfig()
+}
+
+func (c *File) SetDeckyUseSteamGrid(useSteamGrid bool) error {
+	c.Decky.UseSteamGrid = useSteamGrid
 	return c.SaveConfig()
 }
 

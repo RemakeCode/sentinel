@@ -32,6 +32,10 @@ interface Emulator {
   shouldNotify: boolean;
 }
 
+interface DeckyConfig {
+  UseSteamGrid: boolean;
+}
+
 interface AppConfig {
   prefixes: Prefix[];
   emulators: Emulator[];
@@ -40,6 +44,7 @@ interface AppConfig {
   notificationSound: string;
   logLevel: string;
   achievementProgressUpdateMode: string;
+  decky?: DeckyConfig;
 }
 
 interface SoundOption {
@@ -244,6 +249,26 @@ const SettingsPage: FC = () => {
     }
   };
 
+  const handleUseSteamGridToggle = async (enabled: boolean) => {
+    if (enabled) {
+      const confirmed = await showConfirmModal({
+        title: 'Experimental SteamGridDB Images',
+        description:
+          'SteamGridDB must already be installed. Sentinel does not download images and assumes you have already updated your artwork using the default SteamGridDB methods.',
+        okText: 'Enable',
+        cancelText: 'Cancel'
+      });
+      if (!confirmed) return;
+    }
+
+    try {
+      await fetcher.put(`${BASE_URL}/config/decky/use-steam-grid`, { useSteamGrid: enabled });
+      setConfig((prev) => (prev ? { ...prev, decky: { ...(prev.decky ?? { UseSteamGrid: false }), UseSteamGrid: enabled } } : prev));
+    } catch {
+      toaster.toast({ title: 'Error', body: 'Failed to update SteamGridDB image setting' });
+    }
+  };
+
   const prefixes = config?.prefixes || [];
   const emulators = config?.emulators || [];
 
@@ -303,6 +328,12 @@ const SettingsPage: FC = () => {
                     selectedOption={stmSrc}
                     onChange={(option) => handleSteamDataSourceChange(option.data)}
                   />
+                </Field>
+              </DialogControlsSection>
+              <DialogControlsSection>
+                <DialogControlsSectionHeader>Library Images</DialogControlsSectionHeader>
+                <Field label='Experimental SteamGridDB Images'>
+                  <Toggle value={config?.decky?.UseSteamGrid ?? false} onChange={handleUseSteamGridToggle} />
                 </Field>
               </DialogControlsSection>
               <DialogControlsSection>
