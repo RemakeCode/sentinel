@@ -230,6 +230,39 @@ func TestProgressNotificationTiming(t *testing.T) {
 	assert.Equal(t, backend.NotificationDelay, notificationDelay(false))
 }
 
+func TestSendNotificationSSE_DoesNotBlockOnFullClient(t *testing.T) {
+	fullClient := make(chan string, 1)
+	fullClient <- "pending"
+	availableClient := make(chan string, 1)
+	svc := &Service{
+		clients: map[string]chan string{
+			"full":      fullClient,
+			"available": availableClient,
+		},
+	}
+
+	svc.sendNotificationSSE(&NotificationPayload{Title: "Delivered"})
+
+	select {
+	case payload := <-availableClient:
+		assert.Contains(t, payload, `"Title":"Delivered"`)
+	default:
+		t.Fatal("expected available client to receive notification")
+	}
+	assert.Equal(t, "pending", <-fullClient)
+}
+
+func TestClientRegistrationLifecycle(t *testing.T) {
+	svc := &Service{clients: make(map[string]chan string)}
+	client := make(chan string, 1)
+
+	svc.RegisterClient("client-1", client)
+	assert.Equal(t, 1, svc.ClientCount())
+
+	svc.UnregisterClient("client-1")
+	assert.Equal(t, 0, svc.ClientCount())
+}
+
 func setupNotifierCache(t *testing.T) string {
 	t.Helper()
 
