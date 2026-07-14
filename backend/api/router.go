@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"os"
@@ -34,6 +35,8 @@ func (e AppError) Error() string {
 }
 
 type HandlerFunc func(http.ResponseWriter, *http.Request) error
+
+var sseHeartbeatInterval = 15 * time.Second
 
 // Wrap converts our HandlerFunc into a standard http.HandlerFunc
 func Wrap(h HandlerFunc) http.HandlerFunc {
@@ -134,7 +137,7 @@ func (r *Router) Handler() http.Handler {
 		// Notifier service endpoints
 		api.Post("/notifications/test", Wrap(r.handleTestNotification))
 		api.Post("/notifications/test-progress", Wrap(r.handleTestNotificationProgress))
-		api.Get("/notifications", Wrap(r.handleNotifications))
+		api.Get("/notifications", r.handleNotifications)
 	})
 
 	// Serve media files under /api to keep asset paths clean and avoid
@@ -393,8 +396,13 @@ func (r *Router) handleTestNotificationProgress(w http.ResponseWriter, req *http
 	return JSON(w, http.StatusOK, map[string]string{"status": "success"})
 }
 
-// handleNotifications serves as the SSE endpoint for real-time notifications
-func (r *Router) handleNotifications(w http.ResponseWriter, req *http.Request) error {
+// handleNotifications serves as the SSE endpoint for real-time notifications.
+func (r *Router) handleNotifications(w http.ResponseWriter, req *http.Request) {
+	if _, ok := w.(http.Flusher); !ok {
+		http.Error(w, "Streaming unsupported", http.StatusInternalServerError)
+		return
+	}
+
 	// Set SSE headers
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
@@ -406,24 +414,44 @@ func (r *Router) handleNotifications(w http.ResponseWriter, req *http.Request) e
 
 	// Register this client
 	r.Notifier.RegisterClient(clientID, notifications)
-
-	// Close connection when client disconnects
-	ctx := req.Context()
-	go func() {
-		<-ctx.Done()
+	defer func() {
 		r.Notifier.UnregisterClient(clientID)
-		close(notifications)
+		slog.Info("SSE client disconnected", "clientID", clientID)
 	}()
 
-	// Send notifications to client
-	for notification := range notifications {
-		fmt.Fprintf(w, "data: %s\n\n", notification)
-		if f, ok := w.(http.Flusher); ok {
-			f.Flush()
+	controller := http.NewResponseController(w)
+	if err := writeSSE(w, controller, ": connected\n\n"); err != nil {
+		slog.Warn("Failed to establish SSE connection", "clientID", clientID, "error", err)
+		return
+	}
+	slog.Info("SSE client established", "clientID", clientID)
+
+	heartbeat := time.NewTicker(sseHeartbeatInterval)
+	defer heartbeat.Stop()
+
+	for {
+		select {
+		case <-req.Context().Done():
+			return
+		case notification := <-notifications:
+			if err := writeSSE(w, controller, fmt.Sprintf("data: %s\n\n", notification)); err != nil {
+				slog.Warn("Failed to write SSE notification", "clientID", clientID, "error", err)
+				return
+			}
+		case <-heartbeat.C:
+			if err := writeSSE(w, controller, ": heartbeat\n\n"); err != nil {
+				slog.Warn("Failed to write SSE heartbeat", "clientID", clientID, "error", err)
+				return
+			}
 		}
 	}
+}
 
-	return nil
+func writeSSE(w io.Writer, controller *http.ResponseController, event string) error {
+	if _, err := io.WriteString(w, event); err != nil {
+		return err
+	}
+	return controller.Flush()
 }
 
 func (r *Router) handleServeSteamGridPortrait(w http.ResponseWriter, req *http.Request) {
