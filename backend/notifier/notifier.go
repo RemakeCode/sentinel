@@ -437,6 +437,7 @@ func (s *Service) RegisterClient(clientID string, notifications chan string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.clients[clientID] = notifications
+	slog.Info("SSE client registered", "clientID", clientID)
 }
 
 // UnregisterClient removes a client from the notifier service
@@ -444,6 +445,16 @@ func (s *Service) UnregisterClient(clientID string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	delete(s.clients, clientID)
+	slog.Info("SSE client unregistered", "clientID", clientID)
+}
+
+// ClientCount returns the number of currently registered SSE clients.
+//
+//wails:internal
+func (s *Service) ClientCount() int {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return len(s.clients)
 }
 
 // sendNotificationSSE sends a notification to all connected SSE clients
@@ -465,11 +476,11 @@ func (s *Service) sendNotificationSSE(payload *NotificationPayload) {
 
 	// Send to all clients
 	s.mu.RLock()
-	for _, ch := range s.clients {
+	for clientID, ch := range s.clients {
 		select {
 		case ch <- string(jsonData):
 		default:
-			// Skip if channel is full
+			slog.Warn("SSE client delivery dropped", "clientID", clientID, "reason", "buffer full")
 		}
 	}
 	s.mu.RUnlock()
