@@ -1,3 +1,5 @@
+import { sentinelLogger } from './logger';
+
 export interface EventSourceClient {
   addEventListener(type: string, listener: (event: MessageEvent<string>) => void): void;
   close(): void;
@@ -48,7 +50,7 @@ export class SSEController {
     this.createSource = options.createSource ?? ((url) => new EventSource(url));
     this.setTimer = options.setTimer ?? ((cb, delay) => setTimeout(cb, delay));
     this.clearTimer = options.clearTimer ?? ((t) => clearTimeout(t));
-    this.logger = options.logger ?? console;
+    this.logger = options.logger ?? sentinelLogger;
     this.establishmentTimeout = options.establishmentTimeout ?? DEFAULT_ESTABLISHMENT_TIMEOUT;
     this.initialRetryDelay = options.initialRetryDelay ?? DEFAULT_INITIAL_RETRY_DELAY;
     this.maximumRetryDelay = options.maximumRetryDelay ?? DEFAULT_MAXIMUM_RETRY_DELAY;

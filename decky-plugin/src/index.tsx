@@ -14,6 +14,7 @@ import AchievementsPage from '@/pages/achievements';
 import { PiTrophy } from 'react-icons/pi';
 import { playAudio } from '@/shared/utils/usePlayAudio';
 import { SSEController } from '@/shared/utils/sse-controller';
+import { sentinelLogger } from '@/shared/utils/logger';
 
 let sseController: SSEController | null = null;
 
@@ -157,7 +158,7 @@ export default definePlugin(() => {
       sseController?.dispose();
       sseController = null;
       const notificationTab = await getNotificationTab();
-      console.log('unmounting sentinel');
+      sentinelLogger.log('unmounting sentinel');
       if (cssId) {
         removeCssFromTab(notificationTab!, cssId);
       }

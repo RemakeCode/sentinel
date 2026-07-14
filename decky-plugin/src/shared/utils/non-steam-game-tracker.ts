@@ -1,5 +1,6 @@
 import { findModuleExport } from '@decky/ui';
 import { EDisplayStatus, EAppType } from '@decky/ui/dist/globals/steam-client/App';
+import { sentinelLogger } from './logger';
 
 export interface NonSteamGame {
   appId: number;
@@ -68,7 +69,7 @@ function resolveAppOverviewChangeClass(): AppOverviewChangeClass | null {
       ) as AppOverviewChangeClass | undefined) ?? null
     );
   } catch (e) {
-    console.error('Failed to resolve CAppOverviewChange protobuf class:', e);
+    sentinelLogger.error('Failed to resolve CAppOverviewChange protobuf class:', e);
     return null;
   }
 }
@@ -141,7 +142,7 @@ export function initTracker(): TrackerCleanup {
           typeof registerForAppOverviewChanges !== 'function' ? 'SteamClient.Apps.RegisterForAppOverviewChanges' : null
         ].filter(Boolean);
 
-        console.error('Failed to initialize Sentinel game tracker. Missing:', missing.join(', '));
+        sentinelLogger.error('Failed to initialize Sentinel game tracker. Missing:', missing.join(', '));
         setTrackerStatus('failed');
         return;
       }
@@ -157,14 +158,14 @@ export function initTracker(): TrackerCleanup {
           const change = CAppOverviewChange.deserializeBinary(data).toObject();
           processAppOverviewChange(change);
         } catch (e) {
-          console.error('Failed to process overview change:', e);
+          sentinelLogger.error('Failed to process overview change:', e);
         }
       }) as unknown;
 
       cleanupAppOverview = typeof unregister === 'function' ? (unregister as TrackerCleanup) : null;
       setTrackerStatus('ready');
     } catch (e) {
-      console.error('Failed to register Sentinel game tracker:', e);
+      sentinelLogger.error('Failed to register Sentinel game tracker:', e);
       setTrackerStatus('failed');
     }
   };
