@@ -46,8 +46,8 @@ export class SSEController {
     this.url = options.url;
     this.onMessage = options.onMessage;
     this.createSource = options.createSource ?? ((url) => new EventSource(url));
-    this.setTimer = options.setTimer ?? setTimeout;
-    this.clearTimer = options.clearTimer ?? clearTimeout;
+    this.setTimer = options.setTimer ?? ((cb, delay) => setTimeout(cb, delay));
+    this.clearTimer = options.clearTimer ?? ((t) => clearTimeout(t));
     this.logger = options.logger ?? console;
     this.establishmentTimeout = options.establishmentTimeout ?? DEFAULT_ESTABLISHMENT_TIMEOUT;
     this.initialRetryDelay = options.initialRetryDelay ?? DEFAULT_INITIAL_RETRY_DELAY;
