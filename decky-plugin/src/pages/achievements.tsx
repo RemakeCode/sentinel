@@ -339,7 +339,10 @@ const AchievementsPage: FC = () => {
         <ScrollPanel style={styles.achList}>
           <div className={joinClassNames(staticClasses.PanelSectionTitle, 'sentinel-achievement-header')}>
             <Marquee>{game.Name}</Marquee>
-            <div className='sentinel-achievement-sort-buttons'>
+            <Focusable
+              flow-children='right'
+              className='sentinel-achievement-sort-buttons'
+            >
               {SORT_OPTIONS.map((opt) => (
                 <Focusable
                   noFocusRing={true}
@@ -355,7 +358,7 @@ const AchievementsPage: FC = () => {
                   {opt.icon}
                 </Focusable>
               ))}
-            </div>
+            </Focusable>
           </div>
           <div className={achievementPageClasses.AchievementTabs} style={{ height: 'auto' }}>
             <div className={joinClassNames(achievementListClasses.AchievementList)}>
