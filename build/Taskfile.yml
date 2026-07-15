@@ -30,7 +30,7 @@ tasks:
       - |
         if [ "$CI" = "true" ]; then
           rm -rf node_modules
-          npm ci
+          npm ci --include=dev
         else
           npm install
         fi
@@ -51,7 +51,6 @@ tasks:
     generates:
       - dist/**/*
     deps:
-      - task: install:frontend:deps
       - task: generate:bindings
         vars:
           BUILD_FLAGS:
@@ -105,6 +104,7 @@ tasks:
     summary: Generates bindings for the frontend
     deps:
       - task: go:mod:tidy
+      - task: install:frontend:deps
     sources:
       - "**/*.[jt]s"
       - exclude: frontend/**/*
