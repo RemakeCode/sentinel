@@ -1,7 +1,7 @@
 import type { FC } from 'react';
 import { motion } from 'framer-motion';
 import { EyeOff } from 'lucide-react';
-import type { achievement } from '@wa/sentinel/backend/steam/models';
+import type { GlobalAchievementPercentage, achievement } from '@wa/sentinel/backend/steam/models';
 
 const itemVariants = {
   hidden: { opacity: 0, y: 15 },
@@ -17,7 +17,7 @@ const itemVariants = {
 
 export type AchievementListItemProps = {
   ach: achievement;
-  globalPercentages: Map<string, number>;
+  globalPercentages: Map<string, GlobalAchievementPercentage>;
 };
 
 export const formatUnlockTime = (timestamp: number | undefined): string => {
@@ -33,10 +33,12 @@ export const AchievementListItem: FC<AchievementListItemProps> = ({ ach, globalP
   const progress = currentAch?.progress || 0;
   const maxProgress = currentAch?.max_progress || 1;
   const displayProgress = earned && progress !== maxProgress ? progress + 1 : progress;
+  const globalPercentage = globalPercentages.get(ach.Name);
+  const isRare = Boolean(earned && globalPercentage?.isRare);
 
   return (
     <motion.li className='game-details-ach-item' variants={itemVariants}>
-      <div className='game-details-ach-icon'>
+      <div className={`game-details-ach-icon${isRare ? ' game-details-ach-icon--rare' : ''}`}>
         <img src={ach.Icon} alt={ach.DisplayName} width={64} height={64} />
       </div>
       <div className='game-details-ach-info'>
@@ -58,9 +60,9 @@ export const AchievementListItem: FC<AchievementListItemProps> = ({ ach, globalP
         <code className='game-details-ach-unlocktime'>
           {currentAch?.earned_time ? formatUnlockTime(currentAch.earned_time) : 'Locked'}
         </code>
-        {globalPercentages.has(ach.Name) && (
+        {globalPercentage && (
           <code className='game-details-ach-global-percent fade-in'>
-            {globalPercentages.get(ach.Name)}% of players have this
+            {globalPercentage.percent}% of players have this
           </code>
         )}
       </div>

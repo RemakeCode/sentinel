@@ -18,7 +18,9 @@ import { ASSET_URL, BASE_URL, Fetcher } from '@/shared/utils/fetcher';
 import type { GameBasics } from '@/shared/types/GameBasics';
 import { decorateGames, type DeckyGameBasics } from '@/shared/utils/steamgrid';
 import { computeProgress } from '@/shared/utils/utils';
+import type { GlobalAchievementPercentage } from '@/shared/types/GameBasics';
 import { styles } from '@/shared/styles';
+import { rareAchievementGlowStyles } from '@/shared/rare-achievement-glow';
 import { FaArrowDown, FaArrowUp, FaClock, FaHistory } from 'react-icons/fa';
 
 type SortOption = 'name-asc' | 'name-desc' | 'time-newest' | 'time-oldest';
@@ -41,6 +43,8 @@ function formatUnlockTime(timestamp: number | undefined): string {
 
 //language=css
 const achievementStyles = `
+    ${rareAchievementGlowStyles}
+
     .sentinel-achievement-container {
         display: grid;
         grid-template-columns: minmax(200px, 300px) 1fr;
@@ -148,6 +152,14 @@ const achievementStyles = `
         scroll-margin-top: 70px;
     }
 
+    .sentinel-achievement-icon-frame {
+        position: relative;
+        width: 60px;
+        height: 60px;
+        flex-shrink: 0;
+        border-radius: 8px;
+    }
+
     .sentinel-achievement-icon {
         width: 60px;
         height: 60px;
@@ -180,7 +192,7 @@ const AchievementsPage: FC = () => {
   const appId = window.location.pathname.split('/games/')[1];
 
   const [game, setGame] = useState<DeckyGameBasics | null>(null);
-  const [globalPercentages, setGlobalPercentages] = useState<Map<string, number>>(new Map());
+  const [globalPercentages, setGlobalPercentages] = useState<Map<string, GlobalAchievementPercentage>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
   const [sortBy, setSortBy] = useState<SortOption>(() => {
     if (typeof window === 'undefined') {
@@ -218,11 +230,11 @@ const AchievementsPage: FC = () => {
     const loadPercentages = async () => {
       if (!appId) return;
       try {
-        const achievements = await fetcher.get<Array<{ name: string; percent: string }>>(
+        const achievements = await fetcher.get<GlobalAchievementPercentage[]>(
           `${BASE_URL}/games/${appId}/global-achievement-percentages`
         );
-        const map = new Map<string, number>();
-        achievements.forEach((ach) => map.set(ach.name, parseFloat(ach.percent)));
+        const map = new Map<string, GlobalAchievementPercentage>();
+        achievements.forEach((ach) => map.set(ach.name, ach));
         setGlobalPercentages(map);
       } catch {
         // global percentages unavailable
@@ -374,6 +386,7 @@ const AchievementsPage: FC = () => {
                     const hasProgress = (currentAch?.max_progress || 0) > 1;
                     const progress = currentAch?.progress || 0;
                     const maxProgress = currentAch?.max_progress || 1;
+                    const isRare = Boolean(currentAch?.earned && globalPercentages.get(ach.Name)?.isRare);
 
                     return (
                       <Focusable
@@ -384,25 +397,32 @@ const AchievementsPage: FC = () => {
                         )}
                         onActivate={() => {}}
                       >
-                        <img
-                          src={`${ASSET_URL}${ach.Icon}`}
-                          alt={ach.DisplayName}
-                          className='sentinel-achievement-icon'
-                        />
+                        <div
+                          className={joinClassNames(
+                            'sentinel-achievement-icon-frame',
+                            isRare ? 'sentinel-rare-achievement-glow' : ''
+                          )}
+                        >
+                          <img
+                            src={`${ASSET_URL}${ach.Icon}`}
+                            alt={ach.DisplayName}
+                            className='sentinel-achievement-icon'
+                          />
+                        </div>
 
                         <div className='sentinel-achievement-meta'>
                           <div className={achievementListClasses.AchievementTitle}>{ach.DisplayName}</div>
                           <div className={joinClassNames(achievementListClasses.AchievementDescription)}>
                             {ach.Description || ''}
                           </div>
-                          {!isLoading && globalPercentages.has(ach.Name) && (
+                          {!isLoading && globalPercentages.get(ach.Name) && (
                             <div
                               className={joinClassNames(
                                 achievementListClasses.AchievementGlobalPercentage,
                                 achievementListClasses.InBody
                               )}
                             >
-                              {globalPercentages.get(ach.Name)}% of players have this
+                              {globalPercentages.get(ach.Name)?.percent}% of players have this
                             </div>
                           )}
                         </div>
@@ -480,14 +500,14 @@ const AchievementsPage: FC = () => {
                           >
                             {ach.Description || ''}
                           </div>
-                          {!isLoading && globalPercentages.has(ach.Name) && (
+                          {!isLoading && globalPercentages.get(ach.Name) && (
                             <div
                               className={joinClassNames(
                                 achievementListClasses.AchievementGlobalPercentage,
                                 achievementListClasses.InBody
                               )}
                             >
-                              {globalPercentages.get(ach.Name)}% of players have this
+                              {globalPercentages.get(ach.Name)?.percent}% of players have this
                             </div>
                           )}
                         </div>

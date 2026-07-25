@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { Link, useLocation, useParams } from 'react-router';
 import { ArrowDown, ArrowLeft, ArrowUp, Clock, Ghost, Glasses, History, ListCheck, Trophy } from 'lucide-react';
 import { GameBasics } from '@wa/sentinel/backend/steam';
+import type { GlobalAchievementPercentage } from '@wa/sentinel/backend/steam/models';
 import { GetGlobalAchievementPercentages } from '@wa/sentinel/backend/steam/service';
 import { computeProgress } from '@/shared/utils';
 import missingCover from '@/assets/images/missing-cover.png';
@@ -37,7 +38,7 @@ const GameDetails: FC = () => {
   const location = useLocation();
   const game = location.state?.game as GameBasics | undefined;
 
-  const [globalPercentages, setGlobalPercentages] = useState<Map<string, number>>(new Map());
+  const [globalPercentages, setGlobalPercentages] = useState<Map<string, GlobalAchievementPercentage>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -46,9 +47,9 @@ const GameDetails: FC = () => {
 
       try {
         const achievements = await GetGlobalAchievementPercentages(id);
-        const percentageMap = new Map<string, number>();
+        const percentageMap = new Map<string, GlobalAchievementPercentage>();
         achievements.forEach((ach) => {
-          percentageMap.set(ach.name, parseFloat(ach.percent));
+          percentageMap.set(ach.name, ach);
         });
         setGlobalPercentages(percentageMap);
       } catch (error) {

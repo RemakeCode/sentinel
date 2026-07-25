@@ -7,5 +7,5 @@ export type Notification = {
   Progress: number;
   MaxProgress: number;
   IsProgress: boolean;
+  IsRare: boolean;
 };
-

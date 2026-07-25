@@ -16,6 +16,12 @@ export interface AchievementInfo {
   CurrentAch?: Achievement;
 }
 
+export interface GlobalAchievementPercentage {
+  name: string;
+  percent: string;
+  isRare: boolean;
+}
+
 export interface GameBasics {
   AppID: string;
   Name: string;
