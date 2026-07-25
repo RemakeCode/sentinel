@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -13,12 +12,7 @@ import (
 	"sentinel/backend/notifier"
 )
 
-func init() {
-	flag.Bool("decky", false, "Run in Decky plugin mode")
-}
-
 func main() {
-	flag.Parse()
 	bootstrap.ConfigureLogger()
 	if err := runDecky(); err != nil {
 		slog.Error("Decky backend failed", "error", err)

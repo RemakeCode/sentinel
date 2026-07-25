@@ -19,7 +19,7 @@ class Plugin:
 
         try:
             self.process = await asyncio.create_subprocess_exec(
-                bin_path, '--decky',
+                bin_path,
                 start_new_session=True
             )
         except Exception as e:
