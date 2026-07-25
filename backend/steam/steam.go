@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"math"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -14,6 +15,7 @@ import (
 	"sentinel/backend/ach"
 	"sentinel/backend/config"
 	"sentinel/backend/steam/types"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -66,6 +68,14 @@ type communityData struct {
 type GlobalAchievementPercentage struct {
 	Name    string `json:"name"`
 	Percent string `json:"percent"`
+	IsRare  bool   `json:"isRare"`
+}
+
+const globalAchievementPercentageCacheTTL = 24 * time.Hour
+
+type globalAchievementPercentageCacheEntry struct {
+	percentages []GlobalAchievementPercentage
+	expiresAt   time.Time
 }
 
 type Config interface {
@@ -84,6 +94,11 @@ type Service struct {
 	client           *http.Client
 	assetLimiterOnce sync.Once
 	assetLimiter     chan struct{}
+
+	globalAchievementPercentagesMu    sync.Mutex
+	globalAchievementPercentagesCache map[string]globalAchievementPercentageCacheEntry
+	globalAchievementPercentagesTTL   time.Duration
+	globalAchievementPercentagesNow   func() time.Time
 }
 
 type assetCacheTask struct {
@@ -136,6 +151,9 @@ func (s *Service) Start(ctx context.Context) error {
 		}
 		s.Config = c
 	}
+	s.globalAchievementPercentagesMu.Lock()
+	s.globalAchievementPercentagesCache = make(map[string]globalAchievementPercentageCacheEntry)
+	s.globalAchievementPercentagesMu.Unlock()
 	slog.Info("Steam service startup complete")
 	return nil
 }
@@ -1070,9 +1088,19 @@ func (s *Service) loadCachedGameImage(appID string, imageType string) (string, e
 	return "", errors.New("cached image not found")
 }
 
-// GetGlobalAchievementPercentages fetches global achievement percentages from Steam API
+// GetGlobalAchievementPercentages fetches global achievement percentages from Steam API.
+// Successful responses are cached by app ID and include the backend rarity decision.
 // This method is exposed to the frontend
 func (s *Service) GetGlobalAchievementPercentages(appID string) ([]GlobalAchievementPercentage, error) {
+	now := s.globalAchievementPercentagesNowValue()
+	s.globalAchievementPercentagesMu.Lock()
+	if cached, ok := s.globalAchievementPercentagesCache[appID]; ok && now.Before(cached.expiresAt) {
+		percentages := cloneGlobalAchievementPercentages(cached.percentages)
+		s.globalAchievementPercentagesMu.Unlock()
+		return percentages, nil
+	}
+	s.globalAchievementPercentagesMu.Unlock()
+
 	url := fmt.Sprintf(
 		"https://api.steampowered.com/ISteamUserStats/GetGlobalAchievementPercentagesForApp/v0002/?gameid=%s",
 		appID,
@@ -1098,7 +1126,46 @@ func (s *Service) GetGlobalAchievementPercentages(appID string) ([]GlobalAchieve
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
 
-	return data.AchievementPercentages.Achievements, nil
+	percentages := annotateGlobalAchievementPercentages(data.AchievementPercentages.Achievements)
+	now = s.globalAchievementPercentagesNowValue()
+	s.globalAchievementPercentagesMu.Lock()
+	if s.globalAchievementPercentagesCache == nil {
+		s.globalAchievementPercentagesCache = make(map[string]globalAchievementPercentageCacheEntry)
+	}
+	s.globalAchievementPercentagesCache[appID] = globalAchievementPercentageCacheEntry{
+		percentages: cloneGlobalAchievementPercentages(percentages),
+		expiresAt:   now.Add(s.globalAchievementPercentagesCacheTTL()),
+	}
+	s.globalAchievementPercentagesMu.Unlock()
+
+	return percentages, nil
+}
+
+func (s *Service) globalAchievementPercentagesNowValue() time.Time {
+	if s.globalAchievementPercentagesNow != nil {
+		return s.globalAchievementPercentagesNow()
+	}
+	return time.Now()
+}
+
+func (s *Service) globalAchievementPercentagesCacheTTL() time.Duration {
+	if s.globalAchievementPercentagesTTL > 0 {
+		return s.globalAchievementPercentagesTTL
+	}
+	return globalAchievementPercentageCacheTTL
+}
+
+func annotateGlobalAchievementPercentages(percentages []GlobalAchievementPercentage) []GlobalAchievementPercentage {
+	annotated := cloneGlobalAchievementPercentages(percentages)
+	for i := range annotated {
+		percentage, err := strconv.ParseFloat(strings.TrimSpace(annotated[i].Percent), 64)
+		annotated[i].IsRare = err == nil && !math.IsNaN(percentage) && !math.IsInf(percentage, 0) && percentage < 10
+	}
+	return annotated
+}
+
+func cloneGlobalAchievementPercentages(percentages []GlobalAchievementPercentage) []GlobalAchievementPercentage {
+	return append([]GlobalAchievementPercentage(nil), percentages...)
 }
 
 func (s *Service) toVirtualPath(absPath string) string {

@@ -9,11 +9,23 @@ import (
 	"sentinel/backend"
 	"sentinel/backend/ach"
 	"sentinel/backend/config"
+	"sentinel/backend/steam"
 	steamtypes "sentinel/backend/steam/types"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+type mockGlobalAchievementPercentageProvider struct {
+	percentages []steam.GlobalAchievementPercentage
+	err         error
+	calls       int
+}
+
+func (m *mockGlobalAchievementPercentageProvider) GetGlobalAchievementPercentages(appID string) ([]steam.GlobalAchievementPercentage, error) {
+	m.calls++
+	return m.percentages, m.err
+}
 
 func TestProgressBar_ZeroMax(t *testing.T) {
 	result := progressBar(0, 0, 25)
@@ -156,6 +168,75 @@ func TestSendNotification_EarnedIgnoresProgressUpdateMode(t *testing.T) {
 	assert.Equal(t, "Progress Description", payload.Message)
 }
 
+func TestSendNotification_MarksRareEarnedAchievement(t *testing.T) {
+	appID := setupNotifierCache(t)
+	svc := newNotifierTestService(config.AchievementProgressUpdateModeDefault)
+	provider := &mockGlobalAchievementPercentageProvider{
+		percentages: []steam.GlobalAchievementPercentage{{Name: "ACH_PROGRESS", Percent: "9.9", IsRare: true}},
+	}
+	svc.Steam = provider
+
+	err := svc.SendNotification(appID, map[string]ach.Achievement{
+		"ACH_PROGRESS": {Earned: true},
+	}, false, true)
+	require.NoError(t, err)
+
+	payload := requireQueuedPayload(t, svc)
+	assert.True(t, payload.IsRare)
+	assert.Equal(t, 1, provider.calls)
+}
+
+func TestSendNotification_RarityFallbacksRemainNormal(t *testing.T) {
+	tests := []struct {
+		name        string
+		percentages []steam.GlobalAchievementPercentage
+		providerErr error
+	}{
+		{name: "threshold", percentages: []steam.GlobalAchievementPercentage{{Name: "ACH_PROGRESS", Percent: "10"}}},
+		{name: "invalid", percentages: []steam.GlobalAchievementPercentage{{Name: "ACH_PROGRESS", Percent: "not-a-number"}}},
+		{name: "missing"},
+		{name: "lookup failure", providerErr: assert.AnError},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			appID := setupNotifierCache(t)
+			svc := newNotifierTestService(config.AchievementProgressUpdateModeDefault)
+			provider := &mockGlobalAchievementPercentageProvider{
+				percentages: tt.percentages,
+				err:         tt.providerErr,
+			}
+			svc.Steam = provider
+
+			err := svc.SendNotification(appID, map[string]ach.Achievement{
+				"ACH_PROGRESS": {Earned: true},
+			}, false, true)
+			require.NoError(t, err)
+
+			payload := requireQueuedPayload(t, svc)
+			assert.False(t, payload.IsRare)
+		})
+	}
+}
+
+func TestSendNotification_ProgressUpdateIsNotRare(t *testing.T) {
+	appID := setupNotifierCache(t)
+	svc := newNotifierTestService(config.AchievementProgressUpdateModeDefault)
+	provider := &mockGlobalAchievementPercentageProvider{
+		percentages: []steam.GlobalAchievementPercentage{{Name: "ACH_PROGRESS", Percent: "1", IsRare: true}},
+	}
+	svc.Steam = provider
+
+	err := svc.SendNotification(appID, map[string]ach.Achievement{
+		"ACH_PROGRESS": {Progress: 1, MaxProgress: 10},
+	}, true, true)
+	require.NoError(t, err)
+
+	payload := requireQueuedPayload(t, svc)
+	assert.False(t, payload.IsRare)
+	assert.Equal(t, 0, provider.calls)
+}
+
 func TestSendNotification_EmptyAchievementIconOmitsIconPath(t *testing.T) {
 	appID := setupNotifierCache(t)
 	svc := newNotifierTestService(config.AchievementProgressUpdateModeDisabled)
@@ -241,11 +322,12 @@ func TestSendNotificationSSE_DoesNotBlockOnFullClient(t *testing.T) {
 		},
 	}
 
-	svc.sendNotificationSSE(&NotificationPayload{Title: "Delivered"})
+	svc.sendNotificationSSE(&NotificationPayload{Title: "Delivered", IsRare: true})
 
 	select {
 	case payload := <-availableClient:
 		assert.Contains(t, payload, `"Title":"Delivered"`)
+		assert.Contains(t, payload, `"IsRare":true`)
 	default:
 		t.Fatal("expected available client to receive notification")
 	}

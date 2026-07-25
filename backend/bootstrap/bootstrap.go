@@ -33,6 +33,7 @@ func NewServices() *Services {
 	}
 	notifierService := &notifier.Service{
 		Config: configService,
+		Steam:  steamService,
 	}
 	watcherService := &watcher.Service{
 		Steam:    steamService,
