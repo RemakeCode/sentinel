@@ -9,7 +9,8 @@ import {
   Navigation,
   PanelSection,
   PanelSectionRow,
-  ProgressBar
+  ProgressBar,
+  Spinner
 } from '@decky/ui';
 import { FaUnlock } from 'react-icons/fa';
 import { LibraryImage } from '@/shared/components/library-image';
@@ -26,7 +27,7 @@ import { getMapping, setMapping } from '@/shared/utils/game-mappings';
 import { matchGameByName } from '@/shared/utils/game-matcher';
 import { showConfirmModal } from '@/shared/components/confirm';
 import { computeProgress } from '@/shared/utils/utils';
-import type { GameBasics } from '@/shared/types/GameBasics';
+import { decorateGames, type AppConfig, type DeckyGameBasics } from '@/shared/utils/steamgrid';
 import { ImgIcon } from '@/shared/components/img-icon';
 
 const fetcher = new Fetcher();
@@ -204,8 +205,8 @@ const trackerStatusContent: Record<Exclude<TrackerStatus, 'ready'>, { title: str
 };
 
 const MainPage: FC = () => {
-  const [games, setGames] = useState<GameBasics[]>([]);
-  const [matchedGame, setMatchedGame] = useState<GameBasics | null>(null);
+  const [games, setGames] = useState<DeckyGameBasics[]>([]);
+  const [matchedGame, setMatchedGame] = useState<DeckyGameBasics | null>(null);
   const [loading, setLoading] = useState(true);
   const [screen, setScreen] = useState<
     'loading' | 'matched' | 'unmatched' | 'empty' | 'tracker-initializing' | 'tracker-failed'
@@ -224,7 +225,7 @@ const MainPage: FC = () => {
     setPlayingKey((prev) => (play ? key : prev === key ? null : prev));
   };
 
-  const selectGame = async (game: GameBasics) => {
+  const selectGame = async (game: DeckyGameBasics) => {
     const confirmed = await showConfirmModal({
       title: 'Confirm Mapping',
       description: `Are you sure the game title is ${game.Name}?`,
@@ -240,7 +241,7 @@ const MainPage: FC = () => {
     setScreen('matched');
   };
 
-  const matchRunningGame = (gamesList: GameBasics[], status: TrackerStatus = trackerStatusRef.current) => {
+  const matchRunningGame = (gamesList: DeckyGameBasics[], status: TrackerStatus = trackerStatusRef.current) => {
     if (status === 'initializing') {
       setScreen('tracker-initializing');
       return;
@@ -285,8 +286,11 @@ const MainPage: FC = () => {
 
   const loadGames = async () => {
     try {
-      const data = await fetcher.get<GameBasics[]>(`${BASE_URL}/games`);
-      setGames(data);
+      const [config, data] = await Promise.all([
+        fetcher.get<AppConfig>(`${BASE_URL}/config`),
+        fetcher.get<DeckyGameBasics[]>(`${BASE_URL}/games`)
+      ]);
+      setGames(decorateGames(config, data));
     } catch {
       setScreen('empty');
     } finally {
@@ -334,9 +338,12 @@ const MainPage: FC = () => {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', padding: '16px 0' }}>
-        Loading
-        {/*TODO- CHange this*/}
+      <div
+        aria-busy='true'
+        aria-label='Loading'
+        style={{ display: 'flex', justifyContent: 'center', padding: '16px 0' }}
+      >
+        <Spinner />
       </div>
     );
   }
