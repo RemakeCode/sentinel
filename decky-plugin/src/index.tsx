@@ -15,14 +15,26 @@ import { PiTrophy } from 'react-icons/pi';
 import { playAudio } from '@/shared/utils/usePlayAudio';
 import { SSEController } from '@/shared/utils/sse-controller';
 import { sentinelLogger } from '@/shared/utils/logger';
+import { rareAchievementGlowStyles } from '@/shared/rare-achievement-glow';
 
 let sseController: SSEController | null = null;
 
 const toasterClassName = `sentinel-toaster`;
 const toasterContentClassName = `sentinel-toaster-content`;
+const rareToastLogoClassName = 'sentinel-rare-achievement-glow sentinel-rare-achievement-glow--toast';
 
 //language=css
 const toasterStyles = `
+  ${rareAchievementGlowStyles}
+
+  .sentinel-rare-achievement-glow--toast {
+    --rare-achievement-glow-radius: 6px;
+  }
+
+  .sentinel-rare-achievement-glow--toast > img[data-name="ach"] {
+    margin-left: 0;
+  }
+
   .${toasterClassName} {
     height: 55%;
     padding: 2px;
@@ -105,7 +117,11 @@ async function handleNotificationMessage(ev: MessageEvent<string>) {
       toaster.toast({
         title: <ToastTitle message={message} />,
         body: <ToastBody message={message} />,
-        logo: <ImgIcon src={message.IconPath} />,
+        logo: (
+          <div className={message.IsRare ? rareToastLogoClassName : undefined}>
+            <ImgIcon src={message.IconPath} />
+          </div>
+        ),
         playSound: false,
         eType: 3,
         expiration: 0,
