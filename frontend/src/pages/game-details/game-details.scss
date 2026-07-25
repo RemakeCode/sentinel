@@ -1,3 +1,9 @@
+@property --rare-achievement-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
 .game-details {
   &-header {
     gap: var(--space-3);
@@ -179,6 +185,49 @@
         height: 100%;
         object-fit: contain;
       }
+
+      &--rare {
+        position: relative;
+        isolation: isolate;
+        overflow: visible;
+
+        &::before,
+        &::after {
+          content: '';
+          position: absolute;
+          pointer-events: none;
+          border-radius: calc(var(--radius-medium) + 2px);
+        }
+
+        &::before {
+          inset: -4px;
+          z-index: 0;
+          background: conic-gradient(
+            from var(--rare-achievement-angle),
+            transparent 0deg,
+            rgba(255, 214, 77, 0.2) 55deg,
+            rgba(255, 174, 0, 0.95) 115deg,
+            rgba(255, 244, 178, 0.95) 160deg,
+            rgba(255, 174, 0, 0.25) 220deg,
+            transparent 300deg
+          );
+          filter: blur(3px);
+          animation: rare-achievement-spin 3s linear infinite;
+        }
+
+        &::after {
+          inset: -2px;
+          z-index: 1;
+          border: 1px solid rgba(255, 214, 77, 0.9);
+          box-shadow: 0 0 10px rgba(255, 174, 0, 0.7);
+        }
+
+        img {
+          position: relative;
+          z-index: 2;
+          border-radius: var(--radius-medium);
+        }
+      }
     }
 
     &-info {
@@ -279,6 +328,18 @@
 
     to {
       opacity: 1;
+    }
+  }
+
+  @keyframes rare-achievement-spin {
+    to {
+      --rare-achievement-angle: 360deg;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .game-details-ach-icon--rare::before {
+      animation: none;
     }
   }
 }

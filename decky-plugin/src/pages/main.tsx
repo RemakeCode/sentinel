@@ -28,12 +28,16 @@ import { matchGameByName } from '@/shared/utils/game-matcher';
 import { showConfirmModal } from '@/shared/components/confirm';
 import { computeProgress } from '@/shared/utils/utils';
 import { decorateGames, type AppConfig, type DeckyGameBasics } from '@/shared/utils/steamgrid';
+import type { GlobalAchievementPercentage } from '@/shared/types/GameBasics';
 import { ImgIcon } from '@/shared/components/img-icon';
+import { rareAchievementGlowStyles } from '@/shared/rare-achievement-glow';
 
 const fetcher = new Fetcher();
 
 //language=css
 const mainStyles = `
+  ${rareAchievementGlowStyles}
+
   .sentinel-qam-scroll-area {
     display: flex;
     flex-direction: column;
@@ -215,6 +219,7 @@ const MainPage: FC = () => {
   const [playingKey, setPlayingKey] = useState<string | null>(null);
   const [revealedHidden, setRevealedHidden] = useState<Record<string, boolean>>({});
   const [trackerStatus, setTrackerStatus] = useState<TrackerStatus>(getTrackerStatus());
+  const [globalPercentages, setGlobalPercentages] = useState<Map<string, GlobalAchievementPercentage>>(new Map());
 
   const gamesRef = useRef(games);
   const trackerStatusRef = useRef(trackerStatus);
@@ -307,6 +312,40 @@ const MainPage: FC = () => {
   }, [games, trackerStatus]);
 
   useEffect(() => {
+    const appID = matchedGame?.AppID;
+    if (!appID) {
+      setGlobalPercentages(new Map());
+      return undefined;
+    }
+
+    let active = true;
+    setGlobalPercentages(new Map());
+
+    const loadGlobalPercentages = async () => {
+      try {
+        const percentages = await fetcher.get<GlobalAchievementPercentage[]>(
+          `${BASE_URL}/games/${appID}/global-achievement-percentages`
+        );
+        if (!active) return;
+
+        const map = new Map<string, GlobalAchievementPercentage>();
+        percentages.forEach((achievement) => map.set(achievement.name, achievement));
+        setGlobalPercentages(map);
+      } catch {
+        if (active) {
+          setGlobalPercentages(new Map());
+        }
+      }
+    };
+
+    void loadGlobalPercentages();
+
+    return () => {
+      active = false;
+    };
+  }, [matchedGame?.AppID]);
+
+  useEffect(() => {
     const unsubscribeGameChanges = subscribeToGameChanges(() => {
       matchRunningGame(gamesRef.current, trackerStatusRef.current);
     });
@@ -386,6 +425,7 @@ const MainPage: FC = () => {
             const currentProgress = ach.CurrentAch?.progress || 0;
             const maxProgress = ach.CurrentAch?.max_progress || 1;
             const isPlaying = playingKey === key;
+            const isRare = Boolean(earnedAch && globalPercentages.get(ach.Name)?.isRare);
 
             return (
               <Focusable
@@ -405,7 +445,12 @@ const MainPage: FC = () => {
                 focusClassName='sentinel-qam-ach-item--focus'
                 className={joinClassNames('sentinel-qam-ach-item')}
               >
-                <div className={'sentinel-qam-ach-image'}>
+                <div
+                  className={joinClassNames(
+                    'sentinel-qam-ach-image',
+                    isRare ? 'sentinel-rare-achievement-glow' : ''
+                  )}
+                >
                   <ImgIcon src={ach.Icon} style={{ bottom: 0, height: '48px' }} />
                 </div>
                 <div className='sentinel-qam-ach-content'>
