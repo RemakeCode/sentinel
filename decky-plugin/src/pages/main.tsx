@@ -351,7 +351,9 @@ const MainPage: FC = () => {
   if (screen === 'matched' && matchedGame) {
     const progress = computeProgress(matchedGame.Achievement.List);
     const earned = matchedGame.Achievement.List.filter((a) => a.CurrentAch?.earned).length;
-    const achievements = matchedGame.Achievement.List;
+    const achievements = [...matchedGame.Achievement.List].sort(
+      (a, b) => (b.CurrentAch?.earned_time ?? 0) - (a.CurrentAch?.earned_time ?? 0)
+    );
 
     return (
       <PanelSection>
