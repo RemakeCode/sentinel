@@ -35,6 +35,11 @@ type NotificationPayload struct {
 	Progress    int
 	MaxProgress int
 	IsProgress  bool
+	IsRare      bool
+}
+
+type GlobalAchievementPercentageProvider interface {
+	GetGlobalAchievementPercentages(appID string) ([]steam.GlobalAchievementPercentage, error)
 }
 
 type DeliveryMode int
@@ -49,6 +54,7 @@ type Service struct {
 	ctx               context.Context
 	cancel            context.CancelFunc
 	Config            *config.File
+	Steam             GlobalAchievementPercentageProvider
 	deliveryMode      DeliveryMode
 	clients           map[string]chan string
 	mu                sync.RWMutex
@@ -220,6 +226,8 @@ func (s *Service) SendNotification(appId string, achievements map[string]ach.Ach
 		return nil
 	}
 
+	rareAchievements := s.getRareAchievements(appId, isProgress)
+
 	for id, a := range achievements {
 		notificationAch, gameName, e := s.getAchDataForNotification(appId)
 		if e != nil {
@@ -264,6 +272,7 @@ func (s *Service) SendNotification(appId string, achievements map[string]ach.Ach
 					Progress:    a.Progress,
 					MaxProgress: a.MaxProgress,
 					IsProgress:  isProgress,
+					IsRare:      !isProgress && a.Earned && rareAchievements[strings.ToLower(id)],
 				}
 
 				select {
@@ -278,6 +287,26 @@ func (s *Service) SendNotification(appId string, achievements map[string]ach.Ach
 	}
 
 	return nil
+}
+
+func (s *Service) getRareAchievements(appID string, isProgress bool) map[string]bool {
+	if isProgress || s.Steam == nil {
+		return nil
+	}
+
+	percentages, err := s.Steam.GetGlobalAchievementPercentages(appID)
+	if err != nil {
+		slog.Warn("Global achievement percentages unavailable for notification", "appID", appID, "error", err)
+		return nil
+	}
+
+	rareAchievements := make(map[string]bool)
+	for _, percentage := range percentages {
+		if percentage.IsRare {
+			rareAchievements[strings.ToLower(percentage.Name)] = true
+		}
+	}
+	return rareAchievements
 }
 
 func (s *Service) TestNotification() error {

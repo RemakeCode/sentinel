@@ -12,9 +12,11 @@ import (
 	"sentinel/backend/steam/types"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 // --- Mocks ---
@@ -219,6 +221,79 @@ func TestLibrarySyncStatus_Error(t *testing.T) {
 	svc.failLibrarySync()
 
 	assert.Equal(t, LibrarySyncStatus{State: "error", Current: 1, Total: 3}, svc.GetLibrarySyncStatus())
+}
+
+func TestGetGlobalAchievementPercentages_CachesAndAnnotatesRarity(t *testing.T) {
+	requests := 0
+	now := time.Date(2026, time.July, 25, 12, 0, 0, 0, time.UTC)
+
+	svc := &Service{
+		client: &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			requests++
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body: io.NopCloser(strings.NewReader(`{
+					"achievementpercentages": {
+						"achievements": [
+							{"name": "ACH_RARE", "percent": "9.99"},
+							{"name": "ACH_COMMON", "percent": "10"},
+							{"name": "ACH_INVALID", "percent": "not-a-number"}
+						]
+					}
+				}`)),
+				Header: make(http.Header),
+			}, nil
+		})},
+		globalAchievementPercentagesTTL: time.Hour,
+		globalAchievementPercentagesNow: func() time.Time { return now },
+	}
+	svc.clientOnce.Do(func() {})
+
+	first, err := svc.GetGlobalAchievementPercentages("12345")
+	require.NoError(t, err)
+	require.Len(t, first, 3)
+	assert.True(t, first[0].IsRare)
+	assert.False(t, first[1].IsRare)
+	assert.False(t, first[2].IsRare)
+	assert.Equal(t, 1, requests)
+
+	now = now.Add(30 * time.Minute)
+	_, err = svc.GetGlobalAchievementPercentages("12345")
+	require.NoError(t, err)
+	assert.Equal(t, 1, requests)
+
+	now = now.Add(31 * time.Minute)
+	_, err = svc.GetGlobalAchievementPercentages("12345")
+	require.NoError(t, err)
+	assert.Equal(t, 2, requests)
+}
+
+func TestGetGlobalAchievementPercentages_DoesNotCacheFailures(t *testing.T) {
+	requests := 0
+	svc := &Service{
+		client: &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			requests++
+			if requests == 1 {
+				return &http.Response{
+					StatusCode: http.StatusServiceUnavailable,
+					Body:       io.NopCloser(strings.NewReader("unavailable")),
+					Header:     make(http.Header),
+				}, nil
+			}
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body:       io.NopCloser(strings.NewReader(`{"achievementpercentages":{"achievements":[]}}`)),
+				Header:     make(http.Header),
+			}, nil
+		})},
+	}
+	svc.clientOnce.Do(func() {})
+
+	_, err := svc.GetGlobalAchievementPercentages("12345")
+	assert.Error(t, err)
+	_, err = svc.GetGlobalAchievementPercentages("12345")
+	require.NoError(t, err)
+	assert.Equal(t, 2, requests)
 }
 
 func TestFetchAchievementsFromOfficialAPI_CachesFilenameIconsAsLocalMediaPaths(t *testing.T) {
