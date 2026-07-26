@@ -21,26 +21,27 @@ func main() {
 }
 
 func runDecky() error {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	services := bootstrap.NewServices()
 	services.Notifier.SetDeliveryMode(notifier.DeliveryDecky)
-	activeDeckSession := decky.IsActiveDeckSession()
-
-	if !activeDeckSession {
-		slog.Info("Decky watcher disabled outside active Decky session")
-	}
+	sessionSupervisor := newDeckSessionSupervisor(services.Watcher, decky.IsActiveDeckSession)
 
 	return startDecky(
 		func() error {
-			return bootstrap.StartSharedServices(context.Background(), services, bootstrap.StartOptions{StartWatcher: activeDeckSession})
+			return bootstrap.StartSharedServices(ctx, services, bootstrap.StartOptions{StartWatcher: false})
 		},
+		func() { go sessionSupervisor.Run(ctx) },
 		func() error { return startDeckyServer(services) },
 	)
 }
 
-func startDecky(startServices func() error, startServer func() error) error {
+func startDecky(startServices func() error, startSupervisor func(), startServer func() error) error {
 	if err := startServices(); err != nil {
 		return fmt.Errorf("initialize Decky services: %w", err)
 	}
+	startSupervisor()
 	return startServer()
 }
 
