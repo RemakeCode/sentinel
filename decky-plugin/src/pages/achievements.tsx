@@ -141,6 +141,10 @@ const achievementStyles = `
         background: inherit;
         width: 100%;
         margin-block-start: 16px;
+
+        & + .sentinel-achievement-item {
+            scroll-margin-top: 120px;
+        }
     }
 
     .sentinel-achievement-item {
@@ -180,6 +184,10 @@ const achievementStyles = `
         display: flex;
         flex-direction: column;
         gap: 4px;
+
+        & > .sentinel-achievement-progress-count {
+            align-self: flex-end;
+        }
 
         & [role="progressbar"], progress {
             width: 180px;
@@ -515,7 +523,12 @@ const AchievementsPage: FC = () => {
                         <div className='sentinel-achievement-state'>
                           {hasProgress && (
                             <>
-                              <div className={achievementListClasses.ProgressCount}>
+                              <div
+                                className={joinClassNames(
+                                  achievementListClasses.ProgressCount,
+                                  'sentinel-achievement-progress-count'
+                                )}
+                              >
                                 {currentAch?.earned && progress !== maxProgress ? progress + 1 : progress} /
                                 {maxProgress}
                               </div>
