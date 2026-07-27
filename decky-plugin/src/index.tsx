@@ -6,22 +6,17 @@ import type { Notification } from '@/shared/types/Notification';
 import { getNotificationTab } from '@/shared/utils/utils';
 import { ImgIcon } from '@/shared/components/img-icon';
 import { ToastBody, ToastTitle } from '@/shared/components/toast';
-import { initTracker } from '@/shared/utils/non-steam-game-tracker';
+import { initTracker, type TrackerCleanup } from '@/shared/utils/non-steam-game-tracker';
 import MainPage from '@/pages/main';
 import SettingsPage from '@/pages/settings';
 import LibraryPage from '@/pages/library';
 import AchievementsPage from '@/pages/achievements';
 import { PiTrophy } from 'react-icons/pi';
 import { playAudio } from '@/shared/utils/usePlayAudio';
+import { SSEController } from '@/shared/utils/sse-controller';
+import { sentinelLogger } from '@/shared/utils/logger';
 
-let sse: EventSource | null = null;
-let sseRetryCount = 0;
-let sseRetryTimer: ReturnType<typeof setTimeout> | null = null;
-const MAX_RETRY_DELAY = 30000;
-
-initTracker().catch((error) => {
-  console.error(error);
-});
+let sseController: SSEController | null = null;
 
 const toasterClassName = `sentinel-toaster`;
 const toasterContentClassName = `sentinel-toaster-content`;
@@ -99,56 +94,38 @@ let cssId: string | undefined;
 
 const duration = 7000;
 
-function connectSSE() {
-  if (sse) sse.close();
+async function handleNotificationMessage(ev: MessageEvent<string>) {
+  const message: Notification = JSON?.parse(ev?.data);
+  const notificationTab = (await getNotificationTab()) ?? '';
 
-  sse = new EventSource(NOTIFICATION_SSE_URL);
+  cssId = cssId ? cssId : await injectCssIntoTab(notificationTab, toasterStyles);
 
-  sse.addEventListener('message', async (ev) => {
-    const message: Notification = JSON?.parse(ev?.data);
-    const notificationTab = (await getNotificationTab()) ?? '';
+  if (Object.keys(message).length > 0) {
+    const showProgressToast = async () => {
+      toaster.toast({
+        title: <ToastTitle message={message} />,
+        body: <ToastBody message={message} />,
+        logo: <ImgIcon src={message.IconPath} />,
+        playSound: false,
+        eType: 3,
+        expiration: 0,
+        className: toasterClassName,
+        contentClassName: toasterContentClassName,
+        duration
+      });
 
-    cssId = cssId ? cssId : await injectCssIntoTab(notificationTab, toasterStyles);
-
-    if (Object.keys(message).length > 0) {
-      const showProgressToast = async () => {
-        toaster.toast({
-          title: <ToastTitle message={message} />,
-          body: <ToastBody message={message} />,
-          logo: <ImgIcon src={message.IconPath} />,
-          playSound: false,
-          eType: 3,
-          expiration: 0,
-          className: toasterClassName,
-          contentClassName: toasterContentClassName,
-          duration
-        });
-
-        if (message.SoundFile) {
-          await playAudio(message.SoundFile);
-        }
-      };
-      await showProgressToast();
-    }
-  });
-
-  sse.addEventListener('open', () => {
-    console.log('Sentinel SSE is open for business');
-    sseRetryCount = 0;
-  });
-
-  sse.addEventListener('error', () => {
-    console.log('Sentinel SSE connection error, reconnecting...');
-    sse?.close();
-
-    const delay = Math.min(1000 * Math.pow(2, sseRetryCount), MAX_RETRY_DELAY);
-    sseRetryCount++;
-    sseRetryTimer = setTimeout(connectSSE, delay);
-  });
+      if (message.SoundFile) {
+        await playAudio(message.SoundFile);
+      }
+    };
+    await showProgressToast();
+  }
 }
 
 export default definePlugin(() => {
-  connectSSE();
+  sseController = new SSEController({ url: NOTIFICATION_SSE_URL, onMessage: handleNotificationMessage });
+  sseController.start();
+  const cleanupTracker: TrackerCleanup = initTracker();
 
   routerHook.addRoute('/sentinel/settings', () => <SettingsPage />);
   routerHook.addRoute('/sentinel/library', () => <LibraryPage />);
@@ -178,17 +155,14 @@ export default definePlugin(() => {
     content: <MainPage />,
     icon: <PiTrophy />,
     async onDismount() {
+      sseController?.dispose();
+      sseController = null;
       const notificationTab = await getNotificationTab();
-      console.log('unmounting sentinel');
+      sentinelLogger.log('unmounting sentinel');
       if (cssId) {
         removeCssFromTab(notificationTab!, cssId);
       }
-      if (sseRetryTimer) {
-        clearTimeout(sseRetryTimer);
-      }
-      if (sse) {
-        sse.close();
-      }
+      cleanupTracker();
       routerHook.removeRoute('/sentinel/settings');
       routerHook.removeRoute('/sentinel/library');
       routerHook.removeRoute('/sentinel/games/:appId');

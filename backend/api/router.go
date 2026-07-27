@@ -4,12 +4,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
 	"sentinel/backend"
 	"sentinel/backend/config"
+	"sentinel/backend/decky"
 	"sentinel/backend/notifier"
 	"sentinel/backend/steam"
 	"sentinel/backend/watcher"
@@ -33,6 +35,8 @@ func (e AppError) Error() string {
 }
 
 type HandlerFunc func(http.ResponseWriter, *http.Request) error
+
+var sseHeartbeatInterval = 15 * time.Second
 
 // Wrap converts our HandlerFunc into a standard http.HandlerFunc
 func Wrap(h HandlerFunc) http.HandlerFunc {
@@ -114,24 +118,31 @@ func (r *Router) Handler() http.Handler {
 		api.Put("/config/steam-data-source", Wrap(r.handleSetSteamDataSource))
 		api.Put("/config/logging", Wrap(r.handleSetLogging))
 		api.Put("/config/achievement-progress-update-mode", Wrap(r.handleSetAchievementProgressUpdateMode))
+		api.Put("/config/decky/use-steam-grid", Wrap(r.handleSetDeckyUseSteamGrid))
 		api.Post("/config/notification-sound", Wrap(r.handleSetSound))
 		api.Patch("/config/emulator-notification/{index}", Wrap(r.handleToggleEmulatorNotification))
 		api.Post("/config/prefix", Wrap(r.handleAddPrefix))
 		api.Delete("/config/prefix/{index}", Wrap(r.handleRemovePrefix))
 
+		// Watcher service endpoints
+		api.Post("/watcher/start", Wrap(r.handleStartWatcher))
+		api.Post("/watcher/stop", Wrap(r.handleStopWatcher))
+
 		// Games service endpoints
 		api.Get("/games", Wrap(r.handleGetAllGames))
+		api.Get("/games/sync-status", Wrap(r.handleGetLibrarySyncStatus))
 		api.Post("/games/{id}/refresh", Wrap(r.handleRefreshGame))
 		api.Get("/games/{id}/global-achievement-percentages", Wrap(r.handleGetGlobalAchievementPercentages))
 
 		// Notifier service endpoints
 		api.Post("/notifications/test", Wrap(r.handleTestNotification))
 		api.Post("/notifications/test-progress", Wrap(r.handleTestNotificationProgress))
-		api.Get("/notifications", Wrap(r.handleNotifications))
+		api.Get("/notifications", r.handleNotifications)
 	})
 
 	// Serve media files under /api to keep asset paths clean and avoid
 	// confusion with the backend API routes
+	router.Get("/api/media/steamgrid/{shortcutAppId}/portrait", http.HandlerFunc(r.handleServeSteamGridPortrait))
 	router.Get("/api/media/*", http.HandlerFunc(r.handleServeMedia))
 
 	return router
@@ -251,6 +262,22 @@ func (r *Router) handleSetAchievementProgressUpdateMode(w http.ResponseWriter, r
 	return JSON(w, http.StatusOK, map[string]string{"status": "success"})
 }
 
+func (r *Router) handleSetDeckyUseSteamGrid(w http.ResponseWriter, req *http.Request) error {
+	var body struct {
+		UseSteamGrid bool `json:"useSteamGrid"`
+	}
+
+	if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
+		return AppError{Status: http.StatusBadRequest, Message: "Invalid request body"}
+	}
+
+	if err := r.Config.SetDeckyUseSteamGrid(body.UseSteamGrid); err != nil {
+		return AppError{Status: http.StatusInternalServerError, Message: err.Error()}
+	}
+
+	return JSON(w, http.StatusOK, map[string]string{"status": "success"})
+}
+
 // handleAddPrefix adds a prefix path
 func (r *Router) handleAddPrefix(w http.ResponseWriter, req *http.Request) error {
 	var body struct {
@@ -283,6 +310,28 @@ func (r *Router) handleRemovePrefix(w http.ResponseWriter, req *http.Request) er
 	return JSON(w, http.StatusOK, map[string]string{"status": "success"})
 }
 
+// handleStartWatcher starts the watcher with the current configuration
+func (r *Router) handleStartWatcher(w http.ResponseWriter, req *http.Request) error {
+	if r.Watcher == nil {
+		return AppError{Status: http.StatusInternalServerError, Message: "Watcher service is unavailable"}
+	}
+
+	if err := r.Watcher.Start(); err != nil {
+		return AppError{Status: http.StatusInternalServerError, Message: err.Error()}
+	}
+
+	return JSON(w, http.StatusOK, map[string]string{"status": "success"})
+}
+
+// handleStopWatcher stops the watcher if it is running
+func (r *Router) handleStopWatcher(w http.ResponseWriter, req *http.Request) error {
+	if r.Watcher != nil {
+		r.Watcher.Stop()
+	}
+
+	return JSON(w, http.StatusOK, map[string]string{"status": "success"})
+}
+
 // handleGetAllGames returns all cached games
 func (r *Router) handleGetAllGames(w http.ResponseWriter, req *http.Request) error {
 	games, err := r.Steam.LoadAllCachedGameData()
@@ -291,6 +340,15 @@ func (r *Router) handleGetAllGames(w http.ResponseWriter, req *http.Request) err
 	}
 
 	return JSON(w, http.StatusOK, games)
+}
+
+// handleGetLibrarySyncStatus returns current library sync progress
+func (r *Router) handleGetLibrarySyncStatus(w http.ResponseWriter, req *http.Request) error {
+	if r.Steam == nil {
+		return AppError{Status: http.StatusInternalServerError, Message: "Steam service is unavailable"}
+	}
+
+	return JSON(w, http.StatusOK, r.Steam.GetLibrarySyncStatus())
 }
 
 // handleRefreshGame refetches one cached game and returns the updated payload
@@ -338,8 +396,13 @@ func (r *Router) handleTestNotificationProgress(w http.ResponseWriter, req *http
 	return JSON(w, http.StatusOK, map[string]string{"status": "success"})
 }
 
-// handleNotifications serves as the SSE endpoint for real-time notifications
-func (r *Router) handleNotifications(w http.ResponseWriter, req *http.Request) error {
+// handleNotifications serves as the SSE endpoint for real-time notifications.
+func (r *Router) handleNotifications(w http.ResponseWriter, req *http.Request) {
+	if _, ok := w.(http.Flusher); !ok {
+		http.Error(w, "Streaming unsupported", http.StatusInternalServerError)
+		return
+	}
+
 	// Set SSE headers
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
@@ -351,24 +414,60 @@ func (r *Router) handleNotifications(w http.ResponseWriter, req *http.Request) e
 
 	// Register this client
 	r.Notifier.RegisterClient(clientID, notifications)
-
-	// Close connection when client disconnects
-	ctx := req.Context()
-	go func() {
-		<-ctx.Done()
+	defer func() {
 		r.Notifier.UnregisterClient(clientID)
-		close(notifications)
+		slog.Info("SSE client disconnected", "clientID", clientID)
 	}()
 
-	// Send notifications to client
-	for notification := range notifications {
-		fmt.Fprintf(w, "data: %s\n\n", notification)
-		if f, ok := w.(http.Flusher); ok {
-			f.Flush()
+	controller := http.NewResponseController(w)
+	if err := writeSSE(w, controller, ": connected\n\n"); err != nil {
+		slog.Warn("Failed to establish SSE connection", "clientID", clientID, "error", err)
+		return
+	}
+	slog.Info("SSE client established", "clientID", clientID)
+
+	heartbeat := time.NewTicker(sseHeartbeatInterval)
+	defer heartbeat.Stop()
+
+	for {
+		select {
+		case <-req.Context().Done():
+			return
+		case notification := <-notifications:
+			if err := writeSSE(w, controller, fmt.Sprintf("data: %s\n\n", notification)); err != nil {
+				slog.Warn("Failed to write SSE notification", "clientID", clientID, "error", err)
+				return
+			}
+		case <-heartbeat.C:
+			if err := writeSSE(w, controller, ": heartbeat\n\n"); err != nil {
+				slog.Warn("Failed to write SSE heartbeat", "clientID", clientID, "error", err)
+				return
+			}
 		}
 	}
+}
 
-	return nil
+func writeSSE(w io.Writer, controller *http.ResponseController, event string) error {
+	if _, err := io.WriteString(w, event); err != nil {
+		return err
+	}
+	return controller.Flush()
+}
+
+func (r *Router) handleServeSteamGridPortrait(w http.ResponseWriter, req *http.Request) {
+	shortcutAppID := chi.URLParam(req, "shortcutAppId")
+	if _, err := strconv.ParseUint(shortcutAppID, 10, 32); err != nil {
+		http.Error(w, "Bad Request", http.StatusBadRequest)
+		return
+	}
+
+	portraitPath, err := decky.FindSteamGridPortrait(shortcutAppID)
+	if err != nil {
+		http.Error(w, "Not Found", http.StatusNotFound)
+		return
+	}
+
+	http.ServeFile(w, req, portraitPath)
 }
 
 // handleServeMedia serves local media files (game images, achievement icons, sounds)

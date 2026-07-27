@@ -198,6 +198,10 @@ if [ "$GOOS" = "windows" ]; then
     EXT=".exe"
     LDFLAGS="-s -w -H windowsgui"
 fi
+if [ -n "$APP_VERSION" ]; then
+    MODULE=$(go list -m)
+    LDFLAGS="${LDFLAGS} -X ${MODULE}/backend.Version=${APP_VERSION}"
+fi
 
 TAGS="production"
 if [ -n "$EXTRA_TAGS" ]; then

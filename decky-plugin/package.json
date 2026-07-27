@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "tsc --noEmit && rollup -c -w",
-    "build": "rollup -c"
+    "build": "rollup -c",
+    "typecheck": "tsc --noEmit"
   },
   "repository": {
     "type": "git",

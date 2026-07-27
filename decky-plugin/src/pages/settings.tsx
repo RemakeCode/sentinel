@@ -20,13 +20,20 @@ import { FaBook, FaCircle, FaCog, FaLink } from 'react-icons/fa';
 
 const fetcher = new Fetcher();
 
+const startWatcher = () => fetcher.post(`${BASE_URL}/watcher/start`, {});
+const stopWatcher = () => fetcher.post(`${BASE_URL}/watcher/stop`, {});
+
 interface Prefix {
   path: string;
 }
 
 interface Emulator {
-  path: string;
+  id: string;
   shouldNotify: boolean;
+}
+
+interface DeckyConfig {
+  UseSteamGrid: boolean;
 }
 
 interface AppConfig {
@@ -37,12 +44,20 @@ interface AppConfig {
   notificationSound: string;
   logLevel: string;
   achievementProgressUpdateMode: string;
+  decky?: DeckyConfig;
 }
 
 interface SoundOption {
   name: string;
   value: string;
 }
+
+const emulatorSearchPaths: Record<string, string> = {
+  gse: 'users/steamuser/AppData/Roaming/GSE Saves',
+  'goldberg-steamemu': 'users/steamuser/AppData/Roaming/Goldberg SteamEmu Saves',
+  codex: 'users/Public/Documents/Steam/CODEX',
+  rune: 'users/Public/Documents/Steam/RUNE'
+};
 
 const MappingsContent: FC = () => {
   const [mappings, setMappings] = useState<Record<number, GameMapping>>({});
@@ -150,8 +165,9 @@ const SettingsPage: FC = () => {
     if (result.realpath) {
       try {
         await fetcher.post(`${BASE_URL}/config/prefix`, { path: result.realpath });
-        await loadConfig();
+        await stopWatcher();
         toaster.toast({ title: 'Success', body: 'Prefix path added' });
+        await Promise.all([startWatcher(), loadConfig()]);
       } catch {
         toaster.toast({ title: 'Error', body: 'Failed to add prefix' });
       }
@@ -161,8 +177,9 @@ const SettingsPage: FC = () => {
   const handleRemovePrefix = async (index: number) => {
     try {
       await fetcher.delete(`${BASE_URL}/config/prefix/${index}`);
-      await loadConfig();
+      await stopWatcher();
       toaster.toast({ title: 'Success', body: 'Prefix removed' });
+      await Promise.all([startWatcher(), loadConfig()]);
     } catch {
       toaster.toast({ title: 'Error', body: 'Failed to remove prefix' });
     }
@@ -232,6 +249,26 @@ const SettingsPage: FC = () => {
     }
   };
 
+  const handleUseSteamGridToggle = async (enabled: boolean) => {
+    if (enabled) {
+      const confirmed = await showConfirmModal({
+        title: 'Experimental SteamGridDB Images',
+        description:
+          'SteamGridDB must already be installed. Sentinel does not download images and assumes you have already updated your artwork using the default SteamGridDB methods.',
+        okText: 'Enable',
+        cancelText: 'Cancel'
+      });
+      if (!confirmed) return;
+    }
+
+    try {
+      await fetcher.put(`${BASE_URL}/config/decky/use-steam-grid`, { useSteamGrid: enabled });
+      setConfig((prev) => (prev ? { ...prev, decky: { ...(prev.decky ?? { UseSteamGrid: false }), UseSteamGrid: enabled } } : prev));
+    } catch {
+      toaster.toast({ title: 'Error', body: 'Failed to update SteamGridDB image setting' });
+    }
+  };
+
   const prefixes = config?.prefixes || [];
   const emulators = config?.emulators || [];
 
@@ -270,7 +307,7 @@ const SettingsPage: FC = () => {
                   emulators.map((emu, index) => (
                     <Field
                       key={index}
-                      label={emu.path}
+                      label={emulatorSearchPaths[emu.id] ?? emu.id}
                       icon={
                         <div style={{ display: 'block' }}>{emu.shouldNotify ? <FaVolumeHigh /> : <FaVolumeOff />}</div>
                       }
@@ -291,6 +328,12 @@ const SettingsPage: FC = () => {
                     selectedOption={stmSrc}
                     onChange={(option) => handleSteamDataSourceChange(option.data)}
                   />
+                </Field>
+              </DialogControlsSection>
+              <DialogControlsSection>
+                <DialogControlsSectionHeader>Library Images</DialogControlsSectionHeader>
+                <Field label='Experimental SteamGridDB Images'>
+                  <Toggle value={config?.decky?.UseSteamGrid ?? false} onChange={handleUseSteamGridToggle} />
                 </Field>
               </DialogControlsSection>
               <DialogControlsSection>

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
 	"sentinel/backend/api"
 	"sentinel/backend/bootstrap"
 	"sentinel/backend/decky"
@@ -19,6 +20,13 @@ func init() {
 func main() {
 	flag.Parse()
 	bootstrap.ConfigureLogger()
+	if err := runDecky(); err != nil {
+		slog.Error("Decky backend failed", "error", err)
+		os.Exit(1)
+	}
+}
+
+func runDecky() error {
 	services := bootstrap.NewServices()
 	services.Notifier.SetDeliveryMode(notifier.DeliveryDecky)
 	activeDeckSession := decky.IsActiveDeckSession()
@@ -27,18 +35,27 @@ func main() {
 		slog.Info("Decky watcher disabled outside active Decky session")
 	}
 
-	if err := bootstrap.StartSharedServices(context.Background(), services, bootstrap.StartOptions{StartWatcher: activeDeckSession}); err != nil {
-		slog.Error("Failed to initialize Decky backend", "error", err)
+	return startDecky(
+		func() error {
+			return bootstrap.StartSharedServices(context.Background(), services, bootstrap.StartOptions{StartWatcher: activeDeckSession})
+		},
+		func() error { return startDeckyServer(services) },
+	)
+}
+
+func startDecky(startServices func() error, startServer func() error) error {
+	if err := startServices(); err != nil {
+		return fmt.Errorf("initialize Decky services: %w", err)
 	}
-	if err := startDeckyServer(services); err != nil {
-		slog.Error("Decky API Server failed", "error", err)
-	}
+	return startServer()
 }
 
 func startDeckyServer(services *bootstrap.Services) error {
 	router := api.NewRouter(services.Config, services.Steam, services.Watcher, services.Notifier)
-	port := decky.GetPort()
-	addr := fmt.Sprintf("127.0.0.1:%d", port)
+	addr, err := decky.GetAPIAddress()
+	if err != nil {
+		return err
+	}
 	slog.Info("Decky API Server starting", "addr", addr)
 	return http.ListenAndServe(addr, router.Handler())
 }

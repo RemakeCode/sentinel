@@ -16,6 +16,7 @@ import {
 import { LibraryImage } from '@/shared/components/library-image';
 import { ASSET_URL, BASE_URL, Fetcher } from '@/shared/utils/fetcher';
 import type { GameBasics } from '@/shared/types/GameBasics';
+import { decorateGames, type DeckyGameBasics } from '@/shared/utils/steamgrid';
 import { computeProgress } from '@/shared/utils/utils';
 import { styles } from '@/shared/styles';
 import { FaArrowDown, FaArrowUp, FaClock, FaHistory } from 'react-icons/fa';
@@ -178,7 +179,7 @@ const achievementStyles = `
 const AchievementsPage: FC = () => {
   const appId = window.location.pathname.split('/games/')[1];
 
-  const [game, setGame] = useState<GameBasics | null>(null);
+  const [game, setGame] = useState<DeckyGameBasics | null>(null);
   const [globalPercentages, setGlobalPercentages] = useState<Map<string, number>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
   const [sortBy, setSortBy] = useState<SortOption>(() => {
@@ -199,8 +200,12 @@ const AchievementsPage: FC = () => {
     const loadData = async () => {
       if (!appId) return;
       try {
-        const games = await fetcher.get<GameBasics[]>(`${BASE_URL}/games`);
-        const found = games.find((g) => g.AppID === appId);
+        const [config, games] = await Promise.all([
+          fetcher.get<{ decky?: { UseSteamGrid: boolean } }>(`${BASE_URL}/config`),
+          fetcher.get<GameBasics[]>(`${BASE_URL}/games`)
+        ]);
+        const decorated = decorateGames(config, games);
+        const found = decorated.find((g) => g.AppID === appId);
         setGame(found ?? null);
       } catch {
         setGame(null);
@@ -301,7 +306,7 @@ const AchievementsPage: FC = () => {
       <div className='sentinel-achievement-container'>
         <div className='sentinel-achievement-sidebar'>
           <div className='sentinel-achievement-sidebar-image'>
-            <LibraryImage src={game.PortraitImage} alt={game.Name} />
+            <LibraryImage src={game.PortraitImage} fallbackSrc={game.FallbackPortraitImage} alt={game.Name} />
           </div>
           <ProgressBar nProgress={stats.percentage} focusable={false} />
           <div className='sentinel-achievement-stats'>
@@ -334,7 +339,10 @@ const AchievementsPage: FC = () => {
         <ScrollPanel style={styles.achList}>
           <div className={joinClassNames(staticClasses.PanelSectionTitle, 'sentinel-achievement-header')}>
             <Marquee>{game.Name}</Marquee>
-            <div className='sentinel-achievement-sort-buttons'>
+            <Focusable
+              flow-children='right'
+              className='sentinel-achievement-sort-buttons'
+            >
               {SORT_OPTIONS.map((opt) => (
                 <Focusable
                   noFocusRing={true}
@@ -350,7 +358,7 @@ const AchievementsPage: FC = () => {
                   {opt.icon}
                 </Focusable>
               ))}
-            </div>
+            </Focusable>
           </div>
           <div className={achievementPageClasses.AchievementTabs} style={{ height: 'auto' }}>
             <div className={joinClassNames(achievementListClasses.AchievementList)}>

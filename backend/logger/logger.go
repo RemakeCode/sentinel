@@ -6,7 +6,6 @@ import (
 	"os"
 	"sentinel/backend"
 	"strings"
-	"time"
 
 	"gopkg.in/natefinch/lumberjack.v2"
 )
@@ -54,18 +53,32 @@ func New() *slog.Logger {
 // NewWithFile returns a new slog.Logger that writes to both stdout and a log file.
 // If fileWriter is nil, it falls back to stdout-only output and logs a warning.
 func NewWithFile(fileWriter *lumberjack.Logger) *slog.Logger {
-	// Prepare sanitization prefixes
+	var output io.Writer = os.Stdout
+
+	if fileWriter != nil {
+		output = io.MultiWriter(os.Stdout, fileWriter)
+	} else {
+		slog.Warn("Log file writer unavailable, falling back to stdout-only output")
+	}
+
+	handler := slog.NewTextHandler(output, &slog.HandlerOptions{
+		Level:       levelVar,
+		ReplaceAttr: newReplaceAttr(),
+	})
+
+	return slog.New(handler)
+}
+
+func newReplaceAttr() func([]string, slog.Attr) slog.Attr {
 	homeDir, _ := os.UserHomeDir()
 
-	// ReplaceAttr for path sanitization and time formatting
-	replace := func(groups []string, a slog.Attr) slog.Attr {
-		if a.Key == slog.TimeKey {
-			return slog.String(slog.TimeKey, a.Value.Any().(time.Time).Format("15:04:05"))
+	return func(_ []string, a slog.Attr) slog.Attr {
+		if a.Key == slog.TimeKey && a.Value.Kind() == slog.KindTime {
+			return slog.String(slog.TimeKey, a.Value.Time().Format("2006-01-02 15:04:05"))
 		}
 		if a.Value.Kind() == slog.KindString {
 			val := a.Value.String()
 
-			// Sanitize common paths
 			if backend.ConfigDir != "" {
 				val = strings.ReplaceAll(val, backend.ConfigDir, "<CONFIG_DIR>")
 			}
@@ -80,19 +93,4 @@ func NewWithFile(fileWriter *lumberjack.Logger) *slog.Logger {
 		}
 		return a
 	}
-
-	var output io.Writer = os.Stdout
-
-	if fileWriter != nil {
-		output = io.MultiWriter(os.Stdout, fileWriter)
-	} else {
-		slog.Warn("Log file writer unavailable, falling back to stderr-only output")
-	}
-
-	handler := slog.NewTextHandler(output, &slog.HandlerOptions{
-		Level:       levelVar,
-		ReplaceAttr: replace,
-	})
-
-	return slog.New(handler)
 }
