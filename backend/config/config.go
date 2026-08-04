@@ -69,10 +69,6 @@ type LogLevelOption struct {
 	Value string `json:"value"`
 }
 
-type Autostarter interface {
-	SetEnabled(enabled bool) error
-}
-
 type AppInfo struct {
 	Name        string `json:"name"`
 	Version     string `json:"version"`
@@ -88,7 +84,6 @@ type DeckyConfig struct {
 
 //wails:internal
 type File struct {
-	autostart                     Autostarter
 	Language                      types.Language                `json:"language"`
 	Emulators                     []Emulator                    `json:"emulators"`
 	Prefixes                      []Prefix                      `json:"prefixes"`
@@ -764,29 +759,12 @@ func (c *File) GetAppInfo() AppInfo {
 	}
 }
 
-//wails:internal
-func (c *File) SetAutostart(a Autostarter) {
-	c.autostart = a
-}
-
 func (c *File) GetStartOnLogin() bool {
 	return c.StartOnLogin
 }
 
+//wails:internal
 func (c *File) SetStartOnLogin(enabled bool) error {
 	c.StartOnLogin = enabled
-	if err := c.SaveConfig(); err != nil {
-		return err
-	}
-	if c.autostart != nil {
-		return c.autostart.SetEnabled(enabled)
-	}
-	return nil
-}
-
-func (c *File) SyncAutostart() error {
-	if c.autostart != nil {
-		return c.autostart.SetEnabled(c.StartOnLogin)
-	}
-	return nil
+	return c.SaveConfig()
 }
