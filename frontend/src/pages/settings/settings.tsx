@@ -26,10 +26,10 @@ import {
   SetLanguage,
   SetLoggingEnabled,
   SetNotificationSound,
-  SetStartOnLogin,
   SetSteamDataSource,
   ToggleEmulatorNotification
 } from '@wa/sentinel/backend/config/file';
+import { SetEnabled as SetAutostartEnabled } from '@wa/sentinel/backend/autostart/service';
 import {
   GetNotificationExpireTime,
   PlaySound,
@@ -151,7 +151,7 @@ const Settings: FC = () => {
   const handleStartOnLoginToggle = async () => {
     const newValue = !startOnLogin;
     try {
-      await SetStartOnLogin(newValue);
+      await SetAutostartEnabled(newValue);
       setStartOnLogin(newValue);
       window.ot?.toast(`Autostart ${newValue ? 'enabled' : 'disabled'}`, 'Success', { variant: 'success' });
     } catch (err) {

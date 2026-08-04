@@ -76,6 +76,23 @@ func TestLoadConfig_MissingFile(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestSetStartOnLogin_PersistsPreference(t *testing.T) {
+	_, _ = setupTestConfig(t)
+
+	cfg := &File{}
+	require.NoError(t, cfg.SetStartOnLogin(true))
+
+	loaded := &File{}
+	_, err := loaded.LoadConfig()
+	require.NoError(t, err)
+	assert.True(t, loaded.StartOnLogin)
+
+	require.NoError(t, cfg.SetStartOnLogin(false))
+	_, err = loaded.LoadConfig()
+	require.NoError(t, err)
+	assert.False(t, loaded.StartOnLogin)
+}
+
 func TestLoadConfig_InvalidJSON(t *testing.T) {
 	_, _ = setupTestConfig(t)
 

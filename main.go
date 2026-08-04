@@ -9,8 +9,8 @@ import (
 	"unicode"
 
 	"sentinel/backend"
+	"sentinel/backend/autostart"
 	"sentinel/backend/bootstrap"
-	"sentinel/backend/config"
 	"sentinel/backend/logger"
 
 	"path/filepath"
@@ -53,6 +53,7 @@ func main() {
 			application.NewService(services.Ach),
 			application.NewService(services.Watcher),
 			application.NewService(services.Notifier),
+			application.NewService(autostart.NewService(services.Config)),
 		},
 
 		Assets: application.AssetOptions{
@@ -84,11 +85,6 @@ func main() {
 	logger.SetLevel(options.LogLevel)
 
 	app := application.New(options)
-
-	services.Config.SetAutostart(config.NewAutostartManager(app))
-	if err := services.Config.SyncAutostart(); err != nil {
-		slog.Error("Failed to sync autostart", "error", err)
-	}
 
 	gameMenu := application.NewContextMenu("game-card-menu")
 	gameMenu.Add("Refresh Metadata").OnClick(func(ctx *application.Context) {
