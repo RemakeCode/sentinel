@@ -128,8 +128,7 @@ tasks:
       - task: create:deb
       - task: create:rpm
       - task: create:aur
-      # Disabled until the generated AppImage crash is resolved.
-      # - task: create:appimage
+      - task: create:appimage
       - task: cleanup:artifacts
 
   create:appimage:
@@ -219,7 +218,7 @@ tasks:
       OUTPUTFILE: '{{.ROOT_DIR}}/build/linux/{{.APP_NAME}}.desktop'
       COMMENT: 'An Achievement Watcher for Linux'
       KEYWORDS: 'steam, achievements, watcher, trophy'
-      STARTUP_WM_CLASS: 'sentinel'
+      STARTUP_WM_CLASS: '{{.APP_NAME}}'
 
   run:
     cmds:
@@ -364,6 +363,7 @@ tasks:
       - rm -f linuxdeploy-*-AppImage
       # Remove copied binary and icon files
       - rm -f "{{.APP_NAME}}"
-      - rm -f "{{.APP_NAME}}.png"
+      - rm -f "{{.ICON}}"
     vars:
       APP_NAME: '{{.APP_NAME}}'
+      ICON: 'io.github.remakecode.{{.APP_NAME}}.png'

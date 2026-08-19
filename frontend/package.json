@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@knadh/oat": "^0.4.2",
-    "@wailsio/runtime": "^3.0.0-alpha.94",
+    "@wailsio/runtime": "3.0.0-beta.10",
     "framer-motion": "^12.38.0",
     "lucide-react": "^0.574.0",
     "react": "^19.1.0",
