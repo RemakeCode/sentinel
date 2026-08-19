@@ -24,9 +24,14 @@ contents:
   - src: "./bin/sentinel"
     dst: "/usr/local/bin/sentinel"
   - src: "./build/appicon.png"
-    dst: "/usr/share/icons/hicolor/128x128/apps/sentinel.png"
+    dst: "/usr/share/icons/hicolor/128x128/apps/io.github.remakecode.${APP_NAME}.png"
+    expand: true
+    file_info:
+      mode: 0644
   - src: "./build/linux/sentinel.desktop"
     dst: "/usr/share/applications/sentinel.desktop"
+    file_info:
+      mode: 0644
 
 # Default dependencies for Debian 12/Ubuntu 24.04+
 depends:

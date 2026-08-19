@@ -142,7 +142,7 @@ tasks:
           APP_NAME: '{{.APP_NAME}}'
     cmds:
       - cp "{{.APP_BINARY}}" "{{.APP_NAME}}"
-      - cp ../../appicon.png "{{.APP_NAME}}.png"
+      - cp ../../appicon.png "{{.ICON}}"
       - touch .appimage-build-marker
       - wails3 generate appimage -binary "{{.APP_NAME}}" -icon {{.ICON}} -desktopfile {{.DESKTOP_FILE}} -outputdir {{.OUTPUT_DIR}} -builddir {{.ROOT_DIR}}/build/linux/appimage/build
       - |
@@ -160,7 +160,7 @@ tasks:
     vars:
       APP_NAME: '{{.APP_NAME}}'
       APP_BINARY: '../../../bin/{{.APP_NAME}}'
-      ICON: '{{.APP_NAME}}.png'
+      ICON: 'io.github.remakecode.{{.APP_NAME}}.png'
       DESKTOP_FILE: '../{{.APP_NAME}}.desktop'
       OUTPUT_DIR: '../../../bin'
 
@@ -191,17 +191,17 @@ tasks:
   generate:deb:
     summary: Creates a deb package
     cmds:
-      - wails3 tool package -name "{{.APP_NAME}}" -format deb -config ./build/linux/nfpm/nfpm.yaml -out {{.ROOT_DIR}}/bin
+      - APP_NAME="{{.APP_NAME}}" wails3 tool package -name "{{.APP_NAME}}" -format deb -config ./build/linux/nfpm/nfpm.yaml -out {{.ROOT_DIR}}/bin
 
   generate:rpm:
     summary: Creates a rpm package
     cmds:
-      - wails3 tool package -name "{{.APP_NAME}}" -format rpm -config ./build/linux/nfpm/nfpm.yaml -out {{.ROOT_DIR}}/bin
+      - APP_NAME="{{.APP_NAME}}" wails3 tool package -name "{{.APP_NAME}}" -format rpm -config ./build/linux/nfpm/nfpm.yaml -out {{.ROOT_DIR}}/bin
 
   generate:aur:
     summary: Creates a arch linux packager package
     cmds:
-      - wails3 tool package -name "{{.APP_NAME}}" -format archlinux -config ./build/linux/nfpm/nfpm.yaml -out {{.ROOT_DIR}}/bin
+      - APP_NAME="{{.APP_NAME}}" wails3 tool package -name "{{.APP_NAME}}" -format archlinux -config ./build/linux/nfpm/nfpm.yaml -out {{.ROOT_DIR}}/bin
 
   generate:dotdesktop:
     summary: Generates a `.desktop` file
@@ -209,14 +209,17 @@ tasks:
     cmds:
       - mkdir -p {{.ROOT_DIR}}/build/linux/appimage
       - wails3 generate .desktop -name "{{.NAME}}" -exec "{{.EXEC}}" -icon "{{.ICON}}" -outputfile "{{.OUTPUTFILE}}" -categories "{{.CATEGORIES}}" -comment "{{.COMMENT}}" -keywords "{{.KEYWORDS}}"
+      - sed -i '/^StartupWMClass=/d' "{{.OUTPUTFILE}}"
+      - sed -i '$aStartupWMClass={{.STARTUP_WM_CLASS}}' "{{.OUTPUTFILE}}"
     vars:
       NAME: 'Sentinel'
       EXEC: '{{.APP_NAME}}'
-      ICON: '{{.APP_NAME}}'
+      ICON: 'io.github.remakecode.{{.APP_NAME}}'
       CATEGORIES: 'Game;'
       OUTPUTFILE: '{{.ROOT_DIR}}/build/linux/{{.APP_NAME}}.desktop'
       COMMENT: 'An Achievement Watcher for Linux'
       KEYWORDS: 'steam, achievements, watcher, trophy'
+      STARTUP_WM_CLASS: 'sentinel'
 
   run:
     cmds:
