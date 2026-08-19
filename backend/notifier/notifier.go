@@ -58,6 +58,8 @@ type Service struct {
 	deliveryMode      DeliveryMode
 	clients           map[string]chan string
 	mu                sync.RWMutex
+	desktopMu         sync.Mutex
+	desktopConn       *dbus.Conn
 }
 
 var queueCap = 100
@@ -108,6 +110,12 @@ func (s *Service) Start(ctx context.Context) error {
 	s.ctx, s.cancel = context.WithCancel(context.Background())
 	s.clients = make(map[string]chan string)
 
+	if s.deliveryMode == DeliveryDesktop {
+		if _, err := s.getDesktopConnection(); err != nil {
+			slog.Warn("Failed to connect to session bus", "error", err)
+		}
+	}
+
 	go s.notificationWorker()
 
 	slog.Info("Notification service initialized")
@@ -116,6 +124,37 @@ func (s *Service) Start(ctx context.Context) error {
 
 func (s *Service) SetDeliveryMode(mode DeliveryMode) {
 	s.deliveryMode = mode
+}
+
+func (s *Service) getDesktopConnection() (*dbus.Conn, error) {
+	s.desktopMu.Lock()
+	defer s.desktopMu.Unlock()
+
+	if s.ctx != nil && s.ctx.Err() != nil {
+		return nil, s.ctx.Err()
+	}
+
+	if s.desktopConn != nil {
+		if s.desktopConn.Connected() {
+			return s.desktopConn, nil
+		}
+
+		conn := s.desktopConn
+		s.desktopConn = nil
+		_ = conn.Close()
+	}
+
+	conn, err := dbus.ConnectSessionBus()
+	if err != nil {
+		return nil, err
+	}
+	if !conn.Connected() {
+		_ = conn.Close()
+		return nil, errors.New("session bus connection is not active")
+	}
+
+	s.desktopConn = conn
+	return conn, nil
 }
 
 func (s *Service) notificationWorker() {
@@ -138,12 +177,13 @@ func (s *Service) notificationWorker() {
 }
 
 func (s *Service) sendNotificationDesktop(payload *NotificationPayload) {
-	conn, err := dbus.ConnectSessionBus()
+	conn, err := s.getDesktopConnection()
 	if err != nil {
-		slog.Warn("Failed to connect to session bus", "error", err)
+		if !errors.Is(err, context.Canceled) {
+			slog.Warn("Failed to connect to session bus", "error", err)
+		}
 		return
 	}
-	defer conn.Close()
 
 	hints := map[string]dbus.Variant{
 		"urgency":   dbus.MakeVariant(byte(2)),
@@ -204,16 +244,17 @@ func notificationDelay(isProgress bool) time.Duration {
 }
 
 func (s *Service) closeNotification(notificationID uint32) {
-	conn, err := dbus.ConnectSessionBus()
+	conn, err := s.getDesktopConnection()
 	if err != nil {
-		slog.Warn("Failed to connect to session bus for notification close", "id", notificationID, "error", err)
+		if !errors.Is(err, context.Canceled) {
+			slog.Warn("Failed to connect to session bus for notification close", "id", notificationID, "error", err)
+		}
 		return
 	}
-	defer conn.Close()
 
 	obj := conn.Object("org.freedesktop.Notifications", "/org/freedesktop/Notifications")
-	if call := obj.Call("org.freedesktop.Notifications.CloseNotification", 0, notificationID); call.Err != nil {
-		slog.Warn("Failed to close notification", "id", notificationID, "error", call.Err)
+	if err := obj.Call("org.freedesktop.Notifications.CloseNotification", 0, notificationID).Err; err != nil {
+		slog.Warn("Failed to close notification", "id", notificationID, "error", err)
 	}
 }
 
@@ -517,8 +558,18 @@ func (s *Service) sendNotificationSSE(payload *NotificationPayload) {
 
 //wails:internal
 func (s *Service) ServiceShutdown() error {
+	s.desktopMu.Lock()
 	if s.cancel != nil {
 		s.cancel()
+	}
+	conn := s.desktopConn
+	s.desktopConn = nil
+	s.desktopMu.Unlock()
+
+	if conn != nil {
+		if err := conn.Close(); err != nil {
+			slog.Warn("Failed to close session bus connection", "error", err)
+		}
 	}
 	return nil
 }

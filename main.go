@@ -70,7 +70,9 @@ func main() {
 		Mac: application.MacOptions{
 			ApplicationShouldTerminateAfterLastWindowClosed: false,
 		},
-		Linux: application.LinuxOptions{},
+		Linux: application.LinuxOptions{
+			ProgramName: "sentinel",
+		},
 		SingleInstance: &application.SingleInstanceOptions{
 			UniqueID: "dev.sentinel.app",
 			OnSecondInstanceLaunch: func(data application.SecondInstanceData) {
