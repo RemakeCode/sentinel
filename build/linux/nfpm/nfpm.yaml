@@ -37,7 +37,6 @@ contents:
 depends:
   - libgtk-4-1
   - libwebkitgtk-6.0-4
-  - libnotify-bin
 
 # Distribution-specific overrides for different package formats
 overrides:
@@ -46,14 +45,12 @@ overrides:
     depends:
       - gtk4
       - webkitgtk6.0
-      - libnotify
 
   # Arch Linux packages
   archlinux:
     depends:
       - gtk4
       - webkitgtk-6.0
-      - libnotify
 
 
 archlinux:
