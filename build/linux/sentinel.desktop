@@ -2,10 +2,11 @@
 Type=Application
 Name=Sentinel
 Exec=sentinel
-Icon=sentinel
+Icon=io.github.remakecode.sentinel
 Categories=Game;
 Comment=An Achievement Watcher for Linux
 Terminal=false
 Keywords=steam, achievements, watcher, trophy
 Version=1.0
 StartupNotify=false
+StartupWMClass=sentinel
