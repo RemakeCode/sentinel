@@ -123,6 +123,7 @@ jobs:
             bin/*.deb
             bin/*.rpm
             bin/*.pkg.tar.zst
+            bin/*.AppImage
           retention-days: 30
 
       - name: Upload decky build artifact
