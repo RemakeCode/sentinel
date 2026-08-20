@@ -25,8 +25,8 @@
           "types": [
             {"type": "feat", "section": "🚀 New Features"},
             {"type": "fix", "section": "🐛 Bug Fixes"},
-            {"type": "perf", "section": "⚡ Performance Improvements"},
-            {"type": "revert", "section": "↩️ Reverts"},
+            {"type": "perf", "hidden": true},
+            {"type": "revert", "hidden": true},
             {"type": "docs", "hidden": true},
             {"type": "style", "hidden": true},
             {"type": "chore", "hidden": true},

@@ -36,11 +36,14 @@ The beta release includes an additional plugin for decky-loader.
 ### Install
 
 1. Download the `sentinel-decky-plugin` from the GitHub release assets .
-2. Run the following command assuming the zip is in Downloads folder
+2. In Decky Loader, use the **Install ZIP** feature and select the downloaded archive.
+
+Alternatively, install it manually from a terminal:
+
 ```bash 
-sudo mkdir -p ~/homebrew/plugins/sentinel && sudo unzip -o ~/Downloads/sentinel-decky-plugin.zip -d "$_"
+sudo mkdir -p "$HOME/homebrew/plugins" && sudo unzip -o ~/Downloads/sentinel-decky-plugin.zip -d "$HOME/homebrew/plugins"
 ```
-3. Restart Steam
+3. Restart Steam.
 
 
 
