@@ -11,7 +11,33 @@
     }
   ],
   "plugins": [
-    "@semantic-release/commit-analyzer",
+    [
+      "@semantic-release/commit-analyzer",
+      {
+        "preset": "conventionalcommits"
+      }
+    ],
+    [
+      "@semantic-release/release-notes-generator",
+      {
+        "preset": "conventionalcommits",
+        "presetConfig": {
+          "types": [
+            {"type": "feat", "section": "🚀 New Features"},
+            {"type": "fix", "section": "🐛 Bug Fixes"},
+            {"type": "perf", "section": "⚡ Performance Improvements"},
+            {"type": "revert", "section": "↩️ Reverts"},
+            {"type": "docs", "hidden": true},
+            {"type": "style", "hidden": true},
+            {"type": "chore", "hidden": true},
+            {"type": "refactor", "hidden": true},
+            {"type": "test", "hidden": true},
+            {"type": "build", "hidden": true},
+            {"type": "ci", "hidden": true}
+          ]
+        }
+      }
+    ],
     [
       "@semantic-release/changelog",
       {
@@ -52,17 +78,6 @@
         "assets": ["CHANGELOG.md"],
         "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
       }
-    ],
-    ["@semantic-release/release-notes-generator", {
-      "preset": "conventionalcommits",
-      "presetConfig": {
-        "types": [
-          {"type": "feat", "section": "🚀 New Features"},
-          {"type": "fix", "section": "🐛 Bug Fixes"},
-          {"type": "perf", "section": "⚡ Performance Improvements"},
-          {"type": "chore", "hidden": true}
-        ]
-      }
-    }]
+    ]
   ]
 }
