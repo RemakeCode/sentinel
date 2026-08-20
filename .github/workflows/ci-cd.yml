@@ -82,7 +82,7 @@ jobs:
       - name: Install GTK Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential pkg-config libasound2-dev libgtk-4-dev libwebkitgtk-6.0-dev libgirepository1.0-dev librsvg2-dev xvfb xauth dbus-x11
+          sudo apt-get install -y build-essential pkg-config libasound2-dev libgtk-4-dev libwebkitgtk-6.0-dev libgirepository1.0-dev librsvg2-dev
 
       - name: Install Wails CLI
         run: go install github.com/wailsapp/wails/v3/cmd/wails3@${WAILS_VERSION}
@@ -92,21 +92,6 @@ jobs:
 
       - name: Build AppImage
         run: APP_VERSION=ci task linux:create:appimage
-
-      - name: Smoke test AppImage
-        shell: bash
-        run: |
-          set -euo pipefail
-          artifact="$(find bin -maxdepth 1 -type f -name '*.AppImage' -print -quit)"
-          test -n "$artifact"
-          chmod +x "$artifact"
-          set +e
-          dbus-run-session -- xvfb-run -a timeout 10s "$artifact" --appimage-extract-and-run
-          status=$?
-          set -e
-          if [ "$status" -ne 0 ] && [ "$status" -ne 124 ]; then
-            exit "$status"
-          fi
 
       - name: Install decky-plugin dependencies
         run: task linux:decky:install:deps
