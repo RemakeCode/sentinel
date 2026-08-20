@@ -98,6 +98,13 @@ jobs:
       - name: Build decky plugin
         run: task linux:decky:package
 
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-build
+          path: bin/sentinel
+          retention-days: 30
+
       - name: Upload decky build artifact
         uses: actions/upload-artifact@v4
         with:
