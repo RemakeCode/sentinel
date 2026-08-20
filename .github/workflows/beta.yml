@@ -126,6 +126,7 @@ jobs:
           node-version: '24'
           cache: 'npm'
           cache-dependency-path: |
+            package-lock.json
             frontend/package-lock.json
             decky-plugin/package-lock.json
 
@@ -134,19 +135,11 @@ jobs:
         with:
           version: 3.x
 
+      - name: Install semantic-release dependencies
+        run: npm ci
+
       - name: Semantic Release Dry Run
-        id: semantic
-        uses: cycjimmy/semantic-release-action@v4
-        with:
-          semantic_version: '24'
-          dry_run: true
-          extra_plugins: |
-            conventional-changelog-conventionalcommits
-            @semantic-release/release-notes-generator
-            @semantic-release/changelog
-            @semantic-release/git
-            @semantic-release/exec
-            @semantic-release/github
+        run: npm run release:dry-run
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -186,6 +179,7 @@ jobs:
           node-version: '24'
           cache: 'npm'
           cache-dependency-path: |
+            package-lock.json
             frontend/package-lock.json
             decky-plugin/package-lock.json
 
@@ -208,20 +202,18 @@ jobs:
       - name: Install decky-plugin dependencies
         run: task linux:decky:install:deps
 
+      - name: Install semantic-release dependencies
+        run: npm ci
+
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
       - name: Semantic Release
-        id: semantic
-        uses: cycjimmy/semantic-release-action@v4
-        with:
-          semantic_version: '24'
-          extra_plugins: |
-            conventional-changelog-conventionalcommits
-            @semantic-release/release-notes-generator
-            @semantic-release/changelog
-            @semantic-release/git
-            @semantic-release/exec
-            @semantic-release/github
+        run: npm run release
         env:
-          GITHUB_TOKEN: ${{steps.app-token.outputs.token }}
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
 
       - name: Upload decky build artifact
         uses: actions/upload-artifact@v4
