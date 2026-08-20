@@ -64,6 +64,8 @@ type Service struct {
 
 var queueCap = 100
 
+const desktopAppIcon = "io.github.remakecode.sentinel"
+
 var (
 	speakerMu          sync.Mutex
 	speakerInitialized bool
@@ -200,7 +202,7 @@ func (s *Service) sendNotificationDesktop(payload *NotificationPayload) {
 	call := obj.Call("org.freedesktop.Notifications.Notify", 0,
 		payload.GameName,
 		uint32(0),
-		"",
+		desktopAppIcon,
 		payload.Title,
 		payload.Message,
 		[]string{},
