@@ -4,7 +4,9 @@
   "description": "**An achievement watcher for Steam emulator games on Linux**",
   "scripts": {
     "test": "echo 'nothing'",
-    "prepare": "husky"
+    "prepare": "husky",
+    "release": "semantic-release",
+    "release:dry-run": "semantic-release --dry-run"
   },
   "repository": {
     "type": "git",
@@ -20,7 +22,15 @@
   "devDependencies": {
     "@commitlint/cli": "^21.1.0",
     "@commitlint/config-conventional": "^21.1.0",
-    "husky": "^9.1.7"
+    "@semantic-release/changelog": "^7.0.0",
+    "@semantic-release/commit-analyzer": "^13.0.1",
+    "@semantic-release/exec": "^7.1.0",
+    "@semantic-release/git": "^11.0.1",
+    "@semantic-release/github": "^12.0.9",
+    "@semantic-release/release-notes-generator": "^14.1.1",
+    "conventional-changelog-conventionalcommits": "^7.0.2",
+    "husky": "^9.1.7",
+    "semantic-release": "^24.2.9"
   },
   "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
 }
