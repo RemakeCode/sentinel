@@ -267,25 +267,29 @@ tasks:
        - npm run build
 
   decky:package:
-    summary: Bundles the Decky plugin (dist + binary + manifest) and zips it for distribution
+    summary: Bundles the Decky plugin under its install directory and zips it for distribution
     dir: decky-plugin
     deps:
       - task: decky:frontend
       - task: decky:backend
+    preconditions:
+      - sh: command -v bsdtar
+        msg: bsdtar is required to create the plugin ZIP
     cmds:
-      - mkdir -p out/bin
-      - mkdir -p out/dist/
-      - cp -r ./dist ./out/
-      - cp ../bin/{{.APP_NAME}}-decky out/bin/{{.APP_NAME}}-decky
-      - cp ./plugin.json ./package.json ./main.py ./out/
+      - rm -rf out
+      - mkdir -p out/{{.APP_NAME}}/bin out/{{.APP_NAME}}/dist
+      - cp -r ./dist/. out/{{.APP_NAME}}/dist/
+      - cp ../bin/{{.APP_NAME}}-decky out/{{.APP_NAME}}/bin/{{.APP_NAME}}-decky
+      - cp ./plugin.json ./package.json ./main.py out/{{.APP_NAME}}/
       - |
         if [ -n "${APP_VERSION}" ]; then
-          jq --arg v "$APP_VERSION" '.version = $v' out/package.json > out/package.json.tmp \
-            && mv out/package.json.tmp out/package.json
+          jq --arg v "$APP_VERSION" '.version = $v' out/{{.APP_NAME}}/package.json > out/{{.APP_NAME}}/package.json.tmp \
+            && mv out/{{.APP_NAME}}/package.json.tmp out/{{.APP_NAME}}/package.json
         fi
-      - chmod +x out/bin/{{.APP_NAME}}-decky
+      - chmod +x out/{{.APP_NAME}}/bin/{{.APP_NAME}}-decky
       - mkdir -p {{.ROOT_DIR}}/bin
-      - cd out && zip -r {{.ROOT_DIR}}/bin/{{.APP_NAME}}-decky-plugin.zip .
+      - rm -f {{.ROOT_DIR}}/bin/{{.APP_NAME}}-decky-plugin.zip
+      - bsdtar -a -cf {{.ROOT_DIR}}/bin/{{.APP_NAME}}-decky-plugin.zip -C out {{.APP_NAME}}
 
    # add to visudo
    # deck ALL=(root) NOPASSWD: /bin/chown -R deck /home/deck/homebrew/plugins/sentinel, /bin/mkdir -p /home/deck/homebrew/plugins/sentinel, /bin/mv /home/deck/homebrew/plugins/sentinel/bin/sentinel /home/deck/homebrew/plugins/sentinel/bin/sentinel.old, /bin/cp -R * /home/deck/homebrew/plugins/sentinel, /bin/rm -f /home/deck/homebrew/plugins/sentinel/bin/sentinel.old, /bin/touch /home/deck/homebrew/plugins/sentinel/main.py
