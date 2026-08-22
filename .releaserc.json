@@ -53,6 +53,7 @@
     [
       "@semantic-release/github",
       {
+        "draftRelease": true,
         "assets": [
           {
             "path": "bin/*.deb"
