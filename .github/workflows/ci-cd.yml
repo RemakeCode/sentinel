@@ -154,6 +154,12 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     steps:
+      - name: Verify main branch
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::This workflow must be dispatched from the 'main' branch (current ref: ${{ github.ref }}). Re-run with branch 'main' selected."
+          exit 1
+
       - name: Generate Token
         uses: actions/create-github-app-token@v1
         id: app-token
@@ -213,3 +219,10 @@ jobs:
         run: npm run release
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+
+      - name: Upload decky build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: decky-plugin
+          path: bin/sentinel-decky-plugin.zip
+          retention-days: 30
