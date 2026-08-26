@@ -2,14 +2,18 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
+	"os/signal"
 	"sentinel/backend/api"
 	"sentinel/backend/bootstrap"
 	"sentinel/backend/decky"
 	"sentinel/backend/notifier"
+	"syscall"
+	"time"
 )
 
 func main() {
@@ -21,20 +25,20 @@ func main() {
 }
 
 func runDecky() error {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
 	services := bootstrap.NewServices()
 	services.Notifier.SetDeliveryMode(notifier.DeliveryDecky)
 	sessionSupervisor := newDeckSessionSupervisor(services.Watcher, decky.IsActiveDeckSession)
 
-	return startDecky(
-		func() error {
-			return bootstrap.StartSharedServices(ctx, services, bootstrap.StartOptions{StartWatcher: false})
-		},
-		func() { go sessionSupervisor.Run(ctx) },
-		func() error { return startDeckyServer(services) },
-	)
+	if err := bootstrap.StartSharedServices(ctx, services, bootstrap.StartOptions{StartWatcher: false}); err != nil {
+		return fmt.Errorf("initialize Decky services: %w", err)
+	}
+	defer bootstrap.ShutdownSharedServices(services)
+
+	go sessionSupervisor.Run(ctx)
+	return startDeckyServer(ctx, services)
 }
 
 func startDecky(startServices func() error, startSupervisor func(), startServer func() error) error {
@@ -45,12 +49,29 @@ func startDecky(startServices func() error, startSupervisor func(), startServer 
 	return startServer()
 }
 
-func startDeckyServer(services *bootstrap.Services) error {
-	router := api.NewRouter(services.Config, services.Steam, services.Watcher, services.Notifier)
+func startDeckyServer(ctx context.Context, services *bootstrap.Services) error {
+	router := api.NewRouter(services.Config, services.Steam, services.Watcher, services.Notifier, services.Generator)
 	addr, err := decky.GetAPIAddress()
 	if err != nil {
 		return err
 	}
 	slog.Info("Decky API Server starting", "addr", addr)
-	return http.ListenAndServe(addr, router.Handler())
+	server := &http.Server{Addr: addr, Handler: router.Handler(), ReadHeaderTimeout: 10 * time.Second}
+	result := make(chan error, 1)
+	go func() { result <- server.ListenAndServe() }()
+	select {
+	case <-ctx.Done():
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		if err := server.Shutdown(shutdownCtx); err != nil {
+			return err
+		}
+		return nil
+	case err := <-result:
+		if errors.Is(err, http.ErrServerClosed) {
+			return nil
+		}
+		return err
+	}
 }

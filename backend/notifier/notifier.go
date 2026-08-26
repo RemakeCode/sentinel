@@ -38,6 +38,11 @@ type NotificationPayload struct {
 	IsRare      bool
 }
 
+type SSEEnvelope struct {
+	MessageType string `json:"messageType"`
+	Payload     any    `json:"payload"`
+}
+
 type GlobalAchievementPercentageProvider interface {
 	GetGlobalAchievementPercentages(appID string) ([]steam.GlobalAchievementPercentage, error)
 }
@@ -538,9 +543,17 @@ func (s *Service) sendNotificationSSE(payload *NotificationPayload) {
 		}
 	}
 
-	jsonData, err := json.Marshal(payload)
+	s.SendEvent("achievement", payload)
+}
+
+// SendEvent publishes a discriminated message over Decky's existing SSE
+// connection. Desktop delivery ignores this channel.
+//
+//wails:internal
+func (s *Service) SendEvent(messageType string, payload any) {
+	jsonData, err := json.Marshal(SSEEnvelope{MessageType: messageType, Payload: payload})
 	if err != nil {
-		slog.Error("Failed to marshal SSE notification", "error", err)
+		slog.Error("Failed to marshal SSE event", "messageType", messageType, "error", err)
 		return
 	}
 

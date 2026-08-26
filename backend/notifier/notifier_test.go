@@ -326,6 +326,8 @@ func TestSendNotificationSSE_DoesNotBlockOnFullClient(t *testing.T) {
 
 	select {
 	case payload := <-availableClient:
+		assert.Contains(t, payload, `"messageType":"achievement"`)
+		assert.Contains(t, payload, `"payload":`)
 		assert.Contains(t, payload, `"Title":"Delivered"`)
 		assert.Contains(t, payload, `"IsRare":true`)
 	default:

@@ -1,0 +1,45 @@
+// Pinned subset of Valve's Steam authentication contract used by Sentinel.
+// Keep field numbers synchronized with the tested HTTPS QR flow before changing.
+syntax = "proto2";
+
+package sentinel.generator.steamauth;
+
+enum EAuthTokenPlatformType {
+  Unknown = 0;
+  SteamClient = 1;
+}
+
+message DeviceDetails {
+  optional string device_friendly_name = 1;
+  optional EAuthTokenPlatformType platform_type = 2;
+  optional int32 os_type = 3;
+}
+
+message BeginAuthSessionViaQRRequest {
+  optional string device_friendly_name = 1;
+  optional EAuthTokenPlatformType platform_type = 2;
+  optional DeviceDetails device_details = 3;
+  optional string website_id = 4;
+}
+
+message BeginAuthSessionViaQRResponse {
+  optional uint64 client_id = 1;
+  optional string challenge_url = 2;
+  optional bytes request_id = 3;
+  optional float interval = 4;
+}
+
+message PollAuthSessionStatusRequest {
+  optional uint64 client_id = 1;
+  optional bytes request_id = 2;
+  optional fixed64 token_to_revoke = 3;
+}
+
+message PollAuthSessionStatusResponse {
+  optional uint64 new_client_id = 1;
+  optional string new_challenge_url = 2;
+  optional string refresh_token = 3;
+  optional string access_token = 4;
+  optional bool had_remote_interaction = 5;
+  optional string account_name = 6;
+}

@@ -12,6 +12,7 @@ import (
 	"sentinel/backend"
 	"sentinel/backend/config"
 	"sentinel/backend/decky"
+	"sentinel/backend/generator"
 	"sentinel/backend/notifier"
 	"sentinel/backend/steam"
 	"sentinel/backend/watcher"
@@ -83,14 +84,15 @@ func JSON(w http.ResponseWriter, status int, v interface{}) error {
 }
 
 type Router struct {
-	Config   *config.File
-	Steam    *steam.Service
-	Watcher  *watcher.Service
-	Notifier *notifier.Service
+	Config    *config.File
+	Steam     *steam.Service
+	Watcher   *watcher.Service
+	Notifier  *notifier.Service
+	Generator *generator.Service
 }
 
-func NewRouter(c *config.File, s *steam.Service, w *watcher.Service, n *notifier.Service) *Router {
-	return &Router{Config: c, Steam: s, Watcher: w, Notifier: n}
+func NewRouter(c *config.File, s *steam.Service, w *watcher.Service, n *notifier.Service, g *generator.Service) *Router {
+	return &Router{Config: c, Steam: s, Watcher: w, Notifier: n, Generator: g}
 }
 
 // Handler returns a fully configured chi router as an http.Handler
@@ -138,6 +140,12 @@ func (r *Router) Handler() http.Handler {
 		api.Post("/notifications/test", Wrap(r.handleTestNotification))
 		api.Post("/notifications/test-progress", Wrap(r.handleTestNotificationProgress))
 		api.Get("/notifications", r.handleNotifications)
+
+		api.Get("/gbe-setup/managed", Wrap(r.handleManagedGBESetupAppIDs))
+		api.Post("/gbe-setup/preflight", Wrap(r.handleInspectGBEBackups))
+		api.Post("/gbe-setup/start", Wrap(r.handleSetupGBE))
+		api.Post("/gbe-setup/cancel", Wrap(r.handleCancelGBESetup))
+		api.Post("/gbe-setup/{id}/undo", Wrap(r.handleUndoGBESetup))
 	})
 
 	// Serve media files under /api to keep asset paths clean and avoid
@@ -146,6 +154,54 @@ func (r *Router) Handler() http.Handler {
 	router.Get("/api/media/*", http.HandlerFunc(r.handleServeMedia))
 
 	return router
+}
+
+func (r *Router) handleManagedGBESetupAppIDs(w http.ResponseWriter, _ *http.Request) error {
+	return JSON(w, http.StatusOK, r.Generator.ManagedGBESetupAppIDs())
+}
+
+func (r *Router) handleInspectGBEBackups(w http.ResponseWriter, req *http.Request) error {
+	var body struct {
+		AppID   string `json:"appId"`
+		DLLPath string `json:"dllPath"`
+	}
+	if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
+		return AppError{Status: http.StatusBadRequest, Message: "Invalid request body"}
+	}
+	result, err := r.Generator.InspectGBEBackups(body.AppID, body.DLLPath)
+	if err != nil {
+		return AppError{Status: http.StatusBadRequest, Message: err.Error()}
+	}
+	return JSON(w, http.StatusOK, result)
+}
+
+func (r *Router) handleSetupGBE(w http.ResponseWriter, req *http.Request) error {
+	var body generator.SetupRequest
+	if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
+		return AppError{Status: http.StatusBadRequest, Message: "Invalid request body"}
+	}
+	result, err := r.Generator.SetupGBE(body)
+	if err != nil {
+		status := http.StatusInternalServerError
+		if errors.Is(err, generator.ErrGBESetupRunning) {
+			status = http.StatusConflict
+		} else if strings.Contains(err.Error(), "selected") || strings.Contains(err.Error(), "confirmation") {
+			status = http.StatusBadRequest
+		}
+		return AppError{Status: status, Message: err.Error()}
+	}
+	return JSON(w, http.StatusOK, result)
+}
+
+func (r *Router) handleCancelGBESetup(w http.ResponseWriter, _ *http.Request) error {
+	return JSON(w, http.StatusOK, map[string]bool{"cancelled": r.Generator.CancelGBESetup()})
+}
+
+func (r *Router) handleUndoGBESetup(w http.ResponseWriter, req *http.Request) error {
+	if err := r.Generator.UndoGBESetup(chi.URLParam(req, "id")); err != nil {
+		return AppError{Status: http.StatusInternalServerError, Message: err.Error()}
+	}
+	return JSON(w, http.StatusOK, map[string]string{"status": "success"})
 }
 
 func (r *Router) handleReady(w http.ResponseWriter, req *http.Request) error {

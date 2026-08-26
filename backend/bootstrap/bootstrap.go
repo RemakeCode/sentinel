@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"sentinel/backend/ach"
 	"sentinel/backend/config"
+	"sentinel/backend/generator"
 	"sentinel/backend/logger"
 	"sentinel/backend/notifier"
 	"sentinel/backend/steam"
@@ -13,11 +14,12 @@ import (
 )
 
 type Services struct {
-	Config   *config.File
-	Ach      *ach.Service
-	Steam    *steam.Service
-	Watcher  *watcher.Service
-	Notifier *notifier.Service
+	Config    *config.File
+	Ach       *ach.Service
+	Steam     *steam.Service
+	Watcher   *watcher.Service
+	Notifier  *notifier.Service
+	Generator *generator.Service
 }
 
 type StartOptions struct {
@@ -35,6 +37,10 @@ func NewServices() *Services {
 		Config: configService,
 		Steam:  steamService,
 	}
+	generatorService := &generator.Service{
+		Config: configService,
+		Events: notifierService,
+	}
 	watcherService := &watcher.Service{
 		Steam:    steamService,
 		Ach:      achService,
@@ -43,11 +49,12 @@ func NewServices() *Services {
 	}
 
 	return &Services{
-		Config:   configService,
-		Ach:      achService,
-		Steam:    steamService,
-		Watcher:  watcherService,
-		Notifier: notifierService,
+		Config:    configService,
+		Ach:       achService,
+		Steam:     steamService,
+		Watcher:   watcherService,
+		Notifier:  notifierService,
+		Generator: generatorService,
 	}
 }
 
@@ -81,5 +88,18 @@ func StartSharedServices(ctx context.Context, services *Services, options StartO
 	if err := services.Notifier.Start(ctx); err != nil {
 		return fmt.Errorf("notifier startup: %w", err)
 	}
+	if err := services.Generator.Start(ctx); err != nil {
+		return fmt.Errorf("generator startup: %w", err)
+	}
 	return nil
+}
+
+func ShutdownSharedServices(services *Services) error {
+	if services == nil {
+		return nil
+	}
+	if err := services.Generator.ServiceShutdown(); err != nil {
+		return fmt.Errorf("generator shutdown: %w", err)
+	}
+	return services.Notifier.ServiceShutdown()
 }
