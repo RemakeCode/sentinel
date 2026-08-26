@@ -234,6 +234,8 @@ tasks:
       - package-lock.json
     generates:
       - node_modules
+    status:
+      - test -d node_modules
     cmds:
       - |
         if [ "$CI" = "true" ]; then
@@ -243,17 +245,6 @@ tasks:
           npm install
         fi
 
-
-  decky:dev:
-    summary: Build and watch decky
-    dir: decky-plugin
-    sources:
-      - package.json
-      - package-lock.json
-    generates:
-      - dist
-    cmds:
-      - npm run dev
 
   decky:frontend:
     summary: Build Decky Frontend
@@ -294,30 +285,117 @@ tasks:
    # add to visudo
    # deck ALL=(root) NOPASSWD: /bin/chown -R deck /home/deck/homebrew/plugins/sentinel, /bin/mkdir -p /home/deck/homebrew/plugins/sentinel, /bin/mv /home/deck/homebrew/plugins/sentinel/bin/sentinel /home/deck/homebrew/plugins/sentinel/bin/sentinel.old, /bin/cp -R * /home/deck/homebrew/plugins/sentinel, /bin/rm -f /home/deck/homebrew/plugins/sentinel/bin/sentinel.old, /bin/touch /home/deck/homebrew/plugins/sentinel/main.py
 
-  decky:deploy:local:
-    summary: Builds and deploys the plugin to Decky Loader via SSH
+  decky:stage:local:
+    summary: Stages the locally built Decky plugin
+    internal: true
     dir: decky-plugin
-    sources:
-      - "./dist/index.js"
-      - "../bin/"
-    vars:
-      DECK_DIR: "~/homebrew/plugins"
-      PLUGINNAME: "sentinel"
+    preconditions:
+      - test -f dist/index.js
+      - test -f ../bin/{{.APP_NAME}}-decky
     cmds:
-      - pkill -f ~/homebrew/plugins/sentinel/bin/sentinel-decky || true
-      - sleep 1
-      - mkdir -p out/bin
-      - mkdir -p out/dist/
-      - cp -r ./dist ./out/
+      - rm -rf out/{{.PLUGIN_NAME}}
+      - mkdir -p out/{{.PLUGIN_NAME}}/bin out/{{.PLUGIN_NAME}}/dist
+      - cp -R dist/. out/{{.PLUGIN_NAME}}/dist/
+      - cp ../bin/{{.APP_NAME}}-decky out/{{.PLUGIN_NAME}}/bin/{{.APP_NAME}}-decky
+      - cp plugin.json package.json main.py out/{{.PLUGIN_NAME}}/
+      - chmod +x out/{{.PLUGIN_NAME}}/bin/{{.APP_NAME}}-decky
+    vars:
+      PLUGIN_NAME: sentinel
+
+  decky:deploy:
+    summary: Builds and deploys the Decky plugin locally
+    platforms: [linux]
+    preconditions:
+      - sh: command -v flock
+        msg: flock is required to serialize Decky deployments
+      - sh: command -v rsync
+        msg: rsync is required to deploy the Decky plugin
+      - sh: command -v sudo
+        msg: sudo is required to deploy the Decky plugin
+      - sh: test -d "{{.DECKY_PLUGIN_DIR}}/{{.PLUGIN_NAME}}"
+        msg: "Install the Sentinel Decky plugin once before deploying locally."
+    cmds:
+      - task --parallel linux:decky:frontend linux:decky:backend
+      - task: decky:sync:local
+    vars:
+      DECKY_PLUGIN_DIR: '{{.HOME}}/homebrew/plugins'
+      PLUGIN_NAME: sentinel
+
+  decky:sync:local:
+    summary: Synchronizes the staged Decky plugin to the local Decky installation
+    internal: true
+    cmds:
+      - mkdir -p .task
+      - flock .task/sentinel-decky-deploy.lock task linux:decky:sync:local:unlocked
+
+  decky:sync:local:unlocked:
+    deps:
+      - task: decky:stage:local
+    cmds:
+      - 'sudo -n rsync -a --delete "{{.ROOT_DIR}}/decky-plugin/out/{{.PLUGIN_NAME}}/" "{{.DECKY_PLUGIN_DIR}}/{{.PLUGIN_NAME}}/"'
+      - 'touch "{{.DECKY_PLUGIN_DIR}}/{{.PLUGIN_NAME}}/main.py"'
+    vars:
+      DECKY_PLUGIN_DIR: '{{.HOME}}/homebrew/plugins'
+      PLUGIN_NAME: sentinel
+
+  decky:dev:
+    summary: Watches Decky frontend and backend changes, redeploying successful builds locally
+    platforms: [linux]
+    preconditions:
+      - sh: command -v task
+        msg: Task is required for Decky development
+      - sh: command -v npm
+        msg: npm is required for Decky development
+      - sh: command -v flock
+        msg: flock is required to serialize Decky deployments
+      - sh: command -v rsync
+        msg: rsync is required to deploy the Decky plugin
+      - sh: command -v sudo
+        msg: sudo is required to deploy the Decky plugin
+    cmds:
+      - task: decky:deploy
+      - task --parallel linux:decky:watch:frontend linux:decky:watch:backend
+
+  decky:watch:frontend:
+    cmds:
+      - task --watch linux:decky:rebuild:frontend
+
+  decky:rebuild:frontend:
+    sources:
+      - decky-plugin/src/**/*
+      - decky-plugin/main.py
+      - decky-plugin/plugin.json
+      - decky-plugin/package.json
+      - decky-plugin/package-lock.json
+      - decky-plugin/rollup.config.*
+      - decky-plugin/tsconfig.json
+    cmds:
+      - mkdir -p .task
+      - flock .task/sentinel-decky-deploy.lock task linux:decky:rebuild:frontend:locked
+
+  decky:rebuild:frontend:locked:
+    cmds:
+      - task: decky:frontend
+      - task: decky:sync:local:unlocked
+
+  decky:watch:backend:
+    cmds:
+      - task --watch linux:decky:rebuild:backend
+
+  decky:rebuild:backend:
+    sources:
+      - backend/**/*.go
+      - cmd/decky/**/*.go
+      - go.mod
+      - go.sum
+    cmds:
+      - mkdir -p .task
+      - flock .task/sentinel-decky-deploy.lock task linux:decky:rebuild:backend:locked
+
+  decky:rebuild:backend:locked:
+    cmds:
       - task: decky:backend
-      - cp ../bin/{{.APP_NAME}}-decky out/bin/{{.APP_NAME}}-decky
-      - cp ./plugin.json ./package.json ./main.py ./out/
-      - chmod +x out/bin/{{.APP_NAME}}-decky
-      - sudo mkdir -p {{.DECK_DIR}}/{{.PLUGINNAME}}
-      - sudo chown -R $(whoami) {{.DECK_DIR}}/{{.PLUGINNAME}}
-      - sudo cp -R out/* {{.DECK_DIR}}/{{.PLUGINNAME}}
-     # - sudo touch {{.DECK_DIR}}/{{.PLUGINNAME}}/main.py
-     # - sudo touch {{.DECK_DIR}}/{{.PLUGINNAME}}/dist/index.js
+      - task: decky:sync:local:unlocked
 
   sign:deb:
     summary: Signs the DEB package
