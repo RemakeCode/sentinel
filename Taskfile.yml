@@ -40,6 +40,16 @@ tasks:
     cmds:
       - wails3 dev -config ./build/config.yml -port {{.VITE_PORT}}
 
+  decky:deploy:
+    summary: Builds and deploys the Decky plugin locally
+    cmds:
+      - task: linux:decky:deploy
+
+  decky:dev:
+    summary: Watches Decky frontend and backend changes, redeploying successful builds locally
+    cmds:
+      - task: linux:decky:dev
+
   setup:docker:
     summary: Builds Docker image for cross-compilation (~800MB download)
     cmds:
