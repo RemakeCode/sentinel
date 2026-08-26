@@ -6,11 +6,12 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"unicode"
 
 	"sentinel/backend"
 	"sentinel/backend/autostart"
 	"sentinel/backend/bootstrap"
+	"sentinel/backend/contextmenu"
+	"sentinel/backend/generator"
 	"sentinel/backend/logger"
 
 	"path/filepath"
@@ -33,6 +34,9 @@ func init() {
 	application.RegisterEvent[backend.FetchStatusEvt](backend.EventFetchStatus)
 	application.RegisterEvent[application.Void](backend.EventDataUpdated)
 	application.RegisterEvent[string](backend.EventRefreshGameRequested)
+	application.RegisterEvent[generator.Update](generator.EventGBESetup)
+	application.RegisterEvent[generator.SetupDialogRequest](generator.EventGBESetupRequest)
+	application.RegisterEvent[generator.UndoDialogRequest](generator.EventGBEUndoRequest)
 }
 
 func main() {
@@ -53,6 +57,7 @@ func main() {
 			application.NewService(services.Ach),
 			application.NewService(services.Watcher),
 			application.NewService(services.Notifier),
+			application.NewService(services.Generator),
 			application.NewService(autostart.NewService(services.Config)),
 		},
 
@@ -88,20 +93,10 @@ func main() {
 
 	app := application.New(options)
 
-	gameMenu := application.NewContextMenu("game-card-menu")
-	gameMenu.Add("Refresh Metadata").OnClick(func(ctx *application.Context) {
-		appID := strings.TrimSpace(ctx.ContextMenuData())
-		if !isValidSteamAppID(appID) {
-			slog.Warn("Ignoring invalid game context menu data", "appID", appID)
-			return
-		}
-
-		app.Event.Emit(backend.EventRefreshGameRequested, appID)
-	})
-	gameMenu.Update()
+	contextmenu.RegisterGameCardMenus(app)
 
 	window = app.Window.NewWithOptions(application.WebviewWindowOptions{
-		Title:                      "Sentinel",
+		Title:                      "Sentinel: An Achievement Watcher",
 		MinWidth:                   1280,
 		MinHeight:                  720,
 		Width:                      1920,
@@ -123,8 +118,8 @@ func main() {
 
 	tray := app.SystemTray.New()
 	tray.SetIcon(trayIcon)
-	tray.SetTooltip("Sentinel")
-	tray.SetLabel("Sentinel")
+	tray.SetTooltip("Sentinel: An Achievement Watcher")
+	tray.SetLabel("Sentinel: An Achievement Watcher")
 
 	menu := application.NewMenu()
 	showItem := menu.Add("Show")
@@ -147,18 +142,4 @@ func main() {
 	if err := app.Run(); err != nil {
 		slog.Error("Application failed", "error", err)
 	}
-}
-
-func isValidSteamAppID(appID string) bool {
-	if appID == "" {
-		return false
-	}
-
-	for _, r := range appID {
-		if !unicode.IsDigit(r) {
-			return false
-		}
-	}
-
-	return true
 }

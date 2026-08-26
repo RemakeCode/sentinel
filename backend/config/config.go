@@ -82,6 +82,13 @@ type DeckyConfig struct {
 	UseSteamGrid bool `json:"UseSteamGrid"`
 }
 
+// ManagedGBESetup records the directory where Sentinel successfully installed
+// GBE for an app. The filesystem backups remain authoritative for Undo.
+type ManagedGBESetup struct {
+	AppID string `json:"appId"`
+	Path  string `json:"path"`
+}
+
 //wails:internal
 type File struct {
 	Language                      types.Language                `json:"language"`
@@ -95,6 +102,7 @@ type File struct {
 	LogLevel                      string                        `json:"logLevel"`
 	StartOnLogin                  bool                          `json:"startOnLogin"`
 	Decky                         DeckyConfig                   `json:"decky"`
+	ManagedGBESetups              []ManagedGBESetup             `json:"managedGBESetups,omitempty"`
 }
 
 var defaultEmulatorSources = []EmulatorSource{
@@ -285,6 +293,65 @@ func (c *File) SaveConfig() error {
 	}
 
 	return nil
+}
+
+// GetManagedGBESetups returns a copy of the managed setup index.
+func (c *File) GetManagedGBESetups() []ManagedGBESetup {
+	result := make([]ManagedGBESetup, len(c.ManagedGBESetups))
+	copy(result, c.ManagedGBESetups)
+	return result
+}
+
+// HasManagedGBESetup reports whether Sentinel has a managed setup for appID.
+func (c *File) HasManagedGBESetup(appID string) bool {
+	for _, setup := range c.ManagedGBESetups {
+		if setup.AppID == appID {
+			return setup.Path != ""
+		}
+	}
+	return false
+}
+
+// GetManagedGBESetup returns the stored setup directory for appID.
+func (c *File) GetManagedGBESetup(appID string) (ManagedGBESetup, bool) {
+	for _, setup := range c.ManagedGBESetups {
+		if setup.AppID == appID && setup.Path != "" {
+			return setup, true
+		}
+	}
+	return ManagedGBESetup{}, false
+}
+
+// SetManagedGBESetup records a successful installation for appID.
+func (c *File) SetManagedGBESetup(appID, path string) error {
+	appID = strings.TrimSpace(appID)
+	path = filepath.Clean(strings.TrimSpace(path))
+	if appID == "" || path == "." || path == "" {
+		return errors.New("app ID and setup directory are required")
+	}
+	for i := range c.ManagedGBESetups {
+		if c.ManagedGBESetups[i].AppID == appID {
+			c.ManagedGBESetups[i].Path = path
+			return c.SaveConfig()
+		}
+	}
+	c.ManagedGBESetups = append(c.ManagedGBESetups, ManagedGBESetup{AppID: appID, Path: path})
+	return c.SaveConfig()
+}
+
+// RemoveManagedGBESetup removes the managed setup entry for appID.
+func (c *File) RemoveManagedGBESetup(appID string) error {
+	filtered := c.ManagedGBESetups[:0]
+	for _, setup := range c.ManagedGBESetups {
+		if setup.AppID != appID {
+			filtered = append(filtered, setup)
+		}
+	}
+	if len(filtered) == len(c.ManagedGBESetups) {
+		return nil
+	}
+	c.ManagedGBESetups = filtered
+	return c.SaveConfig()
 }
 
 func (c *File) applyProgressModeDefaults() {
