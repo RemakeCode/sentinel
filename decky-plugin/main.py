@@ -4,6 +4,10 @@ import os
 import signal
 
 
+GRACEFUL_SHUTDOWN_TIMEOUT_SECONDS = 2
+FORCED_SHUTDOWN_TIMEOUT_SECONDS = 1
+
+
 class Plugin:
     def __init__(self):
         self.process = None
@@ -36,11 +40,24 @@ class Plugin:
             os.killpg(pgid, signal.SIGTERM)
 
             try:
-                await asyncio.wait_for(self.process.wait(), timeout=5)
+                await asyncio.wait_for(
+                    self.process.wait(),
+                    timeout=GRACEFUL_SHUTDOWN_TIMEOUT_SECONDS,
+                )
             except asyncio.TimeoutError:
                 logging.warning("Process group did not terminate gracefully, sending SIGKILL")
-                os.killpg(pgid, signal.SIGKILL)
-                await asyncio.wait_for(self.process.wait(), timeout=3)
+                try:
+                    os.killpg(pgid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+                else:
+                    try:
+                        await asyncio.wait_for(
+                            self.process.wait(),
+                            timeout=FORCED_SHUTDOWN_TIMEOUT_SECONDS,
+                        )
+                    except asyncio.TimeoutError:
+                        logging.error("Backend did not exit after SIGKILL")
         except ProcessLookupError:
             pass
         except Exception as e:
