@@ -1,7 +1,7 @@
 import { DialogButton, Navigation } from '@decky/ui';
 import { definePlugin, injectCssIntoTab, removeCssFromTab, routerHook, toaster } from '@decky/api';
 import { FaBook, FaGear } from 'react-icons/fa6';
-import { NOTIFICATION_SSE_URL } from './shared/utils/fetcher';
+import { NOTIFICATION_SSE_URL } from '@/shared/utils/fetcher';
 import type { Notification } from '@/shared/types/Notification';
 import { getNotificationTab } from '@/shared/utils/utils';
 import { ImgIcon } from '@/shared/components/img-icon';
@@ -16,6 +16,7 @@ import { playAudio } from '@/shared/utils/usePlayAudio';
 import { SSEController } from '@/shared/utils/sse-controller';
 import { sentinelLogger } from '@/shared/utils/logger';
 import { rareAchievementGlowStyles } from '@/shared/rare-achievement-glow';
+import { dispatchGBESetupUpdate, type GBESetupUpdate } from '@/pages/library/gbe-setup';
 
 let sseController: SSEController | null = null;
 
@@ -107,35 +108,50 @@ let cssId: string | undefined;
 const duration = 7000;
 
 async function handleNotificationMessage(ev: MessageEvent<string>) {
-  const message: Notification = JSON?.parse(ev?.data);
-  const notificationTab = (await getNotificationTab()) ?? '';
-
-  cssId = cssId ? cssId : await injectCssIntoTab(notificationTab, toasterStyles);
-
-  if (Object.keys(message).length > 0) {
-    const showProgressToast = async () => {
-      toaster.toast({
-        title: <ToastTitle message={message} />,
-        body: <ToastBody message={message} />,
-        logo: (
-          <div className={message.IsRare ? rareToastLogoClassName : undefined}>
-            <ImgIcon src={message.IconPath} />
-          </div>
-        ),
-        playSound: false,
-        eType: 3,
-        expiration: 0,
-        className: toasterClassName,
-        contentClassName: toasterContentClassName,
-        duration
-      });
-
-      if (message.SoundFile) {
-        await playAudio(message.SoundFile);
-      }
-    };
-    await showProgressToast();
+  let envelope: { messageType?: string; payload?: unknown };
+  try {
+    envelope = JSON.parse(ev.data);
+  } catch {
+    sentinelLogger.warn('Ignoring malformed Sentinel SSE message');
+    return;
   }
+  if (envelope.messageType === 'gbeSetup') {
+    dispatchGBESetupUpdate(envelope.payload as GBESetupUpdate);
+    return;
+  }
+  if (envelope.messageType === 'achievement') {
+    const message = envelope.payload as Notification;
+    const notificationTab = (await getNotificationTab()) ?? '';
+    cssId = cssId ? cssId : await injectCssIntoTab(notificationTab, toasterStyles);
+
+    if (Object.keys(message).length > 0) {
+      const showProgressToast = async () => {
+        toaster.toast({
+          title: <ToastTitle message={message} />,
+          body: <ToastBody message={message} />,
+          logo: (
+            <div className={message.IsRare ? rareToastLogoClassName : undefined}>
+              <ImgIcon src={message.IconPath} />
+            </div>
+          ),
+          playSound: false,
+          eType: 3,
+          expiration: 0,
+          className: toasterClassName,
+          contentClassName: toasterContentClassName,
+          duration
+        });
+
+        if (message.SoundFile) {
+          await playAudio(message.SoundFile);
+        }
+      };
+      await showProgressToast();
+    }
+    return;
+  }
+
+  sentinelLogger.warn(`Ignoring unknown Sentinel SSE message type: ${String(envelope.messageType)}`);
 }
 
 export default definePlugin(() => {

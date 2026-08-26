@@ -1,0 +1,148 @@
+.gbe-setup-dialog {
+  width: min(40rem, calc(100vw - 2rem));
+
+  &::backdrop {
+    background: rgb(0 0 0 / 50%);
+    backdrop-filter: blur(0);
+    -webkit-backdrop-filter: blur(0);
+    transition: backdrop-filter 0.3s ease-in-out;
+  }
+
+  &[open]::backdrop {
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+  }
+
+  &-header {
+    display: grid;
+    grid-template-columns: max-content minmax(180px, 1fr);
+    align-items: start;
+    gap: var(--space-4);
+    padding-block-end: var(--space-3);
+    margin-block-end: var(--space-4);
+    background-color: var(--faint);
+    border-bottom: 1px solid var(--border);
+
+    h3 {
+      color: var(--muted-foreground);
+      white-space: nowrap;
+    }
+
+    .gbe-setup-dialog-progress {
+      margin-top: 0;
+      justify-self: end;
+      width: min(100%, 240px);
+    }
+  }
+
+  &-header--without-progress {
+    grid-template-columns: 1fr;
+  }
+
+  &-content {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    height: 160px;
+    padding: 0 var(--space-6);
+    overflow: hidden;
+  }
+
+  &-content--failure {
+    height: auto;
+    min-height: 0;
+    padding-block-start: var(--space-4);
+  }
+
+  &-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  &-content p {
+    margin: 0;
+  }
+
+  &-qr {
+    display: grid;
+    grid-template-columns: 160px minmax(0, 1fr);
+    align-items: center;
+    gap: 1rem;
+    min-height: 160px;
+  }
+
+  &-qr-code {
+    width: 160px;
+    height: 160px;
+    background: white;
+    border-radius: 0.35rem;
+    overflow: hidden;
+  }
+
+  &-qr-image,
+  &-qr-image svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  &-qr-image--blurred {
+    filter: blur(6px);
+    transform: scale(1.04);
+  }
+
+  &-qr-details {
+    display: flex;
+    flex-direction: column;
+    align-self: stretch;
+  }
+
+  &-qr-message,
+  &-content code {
+    overflow-wrap: anywhere;
+  }
+
+  &-qr-message {
+    display: flex;
+    flex: 1;
+    align-items: center;
+  }
+
+  &-progress {
+    display: grid;
+    gap: var(--space-1);
+    line-height: 1;
+    text-align: right;
+  }
+
+  &-progress span {
+    color: var(--muted-foreground);
+    font-size: var(--text-8);
+  }
+
+  &-progress progress {
+    width: 100%;
+  }
+
+  &-warning {
+    color: var(--warning);
+  }
+
+  &-error {
+    color: var(--danger);
+  }
+
+  @media (max-width: 34rem) {
+    &-header {
+      grid-template-columns: 1fr;
+
+      .gbe-setup-dialog-progress {
+        justify-self: stretch;
+        width: 100%;
+        text-align: left;
+      }
+    }
+  }
+}

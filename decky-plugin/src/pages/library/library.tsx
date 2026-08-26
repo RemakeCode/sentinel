@@ -1,22 +1,14 @@
 import { type FC, useCallback, useEffect, useRef, useState } from 'react';
-import {
-  DialogBody,
-  DialogHeader,
-  Focusable,
-  Menu,
-  MenuItem,
-  Navigation,
-  Spinner,
-  showContextMenu
-} from '@decky/ui';
+import { DialogHeader, Focusable, Menu, MenuItem, Navigation, Spinner, showContextMenu } from '@decky/ui';
 import { toaster } from '@decky/api';
 import { LibraryImage } from '@/shared/components/library-image';
 import { EmptyState } from '@/shared/components/empty-state';
 import { BASE_URL, Fetcher } from '@/shared/utils/fetcher';
 import { computeProgress } from '@/shared/utils/utils';
 import type { GameBasics } from '@/shared/types/GameBasics';
-import { styles } from '@/shared/styles';
 import { decorateGames, type AppConfig, type DeckyGameBasics } from '@/shared/utils/steamgrid';
+import { openGBESetup, openGBEUndo } from '@/pages/library/gbe-setup';
+import { styles } from '@/shared/styles';
 
 //language=css
 const libraryStyles = `
@@ -133,7 +125,8 @@ const LibraryPage: FC = () => {
       const previous = lastSyncStatusRef.current;
       const syncStarted = previous.State !== 'running' && syncStatus.State === 'running';
       const progressed =
-        syncStatus.State === 'running' && (syncStarted ? syncStatus.Current > 0 : syncStatus.Current > previous.Current);
+        syncStatus.State === 'running' &&
+        (syncStarted ? syncStatus.Current > 0 : syncStatus.Current > previous.Current);
       const reachedTerminalState =
         (syncStatus.State === 'done' || syncStatus.State === 'error') &&
         (previous.State !== syncStatus.State ||
@@ -190,7 +183,9 @@ const LibraryPage: FC = () => {
     }
   };
 
-  const openGameContextMenu = (appId: string, parent?: EventTarget | null) => {
+  const openGameContextMenu = async (appId: string, gameName: string, parent?: EventTarget | null) => {
+    const managedAppIds = await fetcher.get<string[]>(`${BASE_URL}/gbe-setup/managed`).catch((): string[] => []);
+    const managed = managedAppIds.includes(appId);
     showContextMenu(
       <Menu label='Game Actions'>
         <MenuItem
@@ -199,8 +194,16 @@ const LibraryPage: FC = () => {
             void handleRefreshGame(appId);
           }}
         >
-          {refreshingGameIds.includes(appId) ? 'Refreshing...' : 'Refresh game'}
+          {refreshingGameIds.includes(appId) ? 'Refreshing...' : 'Refresh Game'}
         </MenuItem>
+        <MenuItem
+          onClick={() => {
+            openGBESetup(appId, gameName);
+          }}
+        >
+          Setup Achievements
+        </MenuItem>
+        {managed && <MenuItem onClick={() => openGBEUndo(appId, gameName)}>Undo Achievement Setup</MenuItem>}
       </Menu>,
       parent ?? undefined
     );
@@ -211,7 +214,7 @@ const LibraryPage: FC = () => {
   const showEmptyState = !showInitialSpinner && games.length === 0;
 
   return (
-    <DialogBody style={styles.wrapper}>
+    <div style={styles.wrapper}>
       <style>{libraryStyles}</style>
       {isSyncRunning && (
         <div className='sentinel-library-sync' aria-live='polite' aria-busy='true'>
@@ -251,14 +254,14 @@ const LibraryPage: FC = () => {
                   progress={progress}
                   isRefreshing={isRefreshing}
                   onActivate={() => Navigation.Navigate(`/sentinel/games/${game.AppID}`)}
-                  onOpenContextMenu={(parent) => openGameContextMenu(game.AppID, parent)}
+                  onOpenContextMenu={(parent) => void openGameContextMenu(game.AppID, game.Name, parent)}
                 />
               );
             })}
           </Focusable>
         </>
       )}
-    </DialogBody>
+    </div>
   );
 };
 
