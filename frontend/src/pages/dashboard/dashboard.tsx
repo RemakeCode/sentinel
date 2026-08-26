@@ -1,5 +1,7 @@
 import './dashboard.scss';
 import type { CSSProperties, FC } from 'react';
+import { useEffect, useState } from 'react';
+import { Events } from '@wailsio/runtime';
 import { motion } from 'framer-motion';
 
 import { Gamepad2, Settings } from 'lucide-react';
@@ -10,6 +12,9 @@ import { useGames } from '@/shared/context/games-context';
 import logo from '@/assets/images/sentinel.webp';
 import missingCover from '@/assets/images/missing-cover.png';
 import { HeaderPortal } from '@/shared/components/header/header';
+import { ManagedGBESetupAppIDs } from '@wa/sentinel/backend/generator/service';
+import { Phase, type Update } from '@wa/sentinel/backend/generator/models';
+import { GBESetupDialog } from '@/shared/components/gbe-setup-dialog';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -36,6 +41,24 @@ const itemVariants = {
 
 const Dashboard: FC = () => {
   const { games, loading, status, isRefreshingGame } = useGames();
+  const [managed, setManaged] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    const refreshManaged = () => {
+      void ManagedGBESetupAppIDs()
+        .then((appIds) => setManaged(Object.fromEntries(appIds.map((appId) => [appId, true]))))
+        .catch(() => setManaged({}));
+    };
+    refreshManaged();
+
+    const setupOff = Events.On('sentinel::gbe-setup', (event: { data: Update }) => {
+      if (event.data.phase === Phase.PhaseCompleted || event.data.phase === Phase.PhaseUndoCompleted) {
+        refreshManaged();
+      }
+    });
+
+    return setupOff;
+  }, []);
 
   return (
     <main className='full-layout'>
@@ -76,8 +99,8 @@ const Dashboard: FC = () => {
                     className={`games-item-shell ${isRefreshing ? 'is-refreshing' : ''}`}
                     style={
                       {
-                        '--custom-contextmenu': 'game-card-menu',
-                        '--custom-contextmenu-data': game.AppID
+                        '--custom-contextmenu': managed[game.AppID] ? 'game-card-managed-menu' : 'game-card-menu',
+                        '--custom-contextmenu-data': JSON.stringify({ appId: game.AppID, gameName: game.Name })
                       } as CSSProperties
                     }
                   >
@@ -111,6 +134,7 @@ const Dashboard: FC = () => {
           </motion.div>
         )}
       </section>
+      <GBESetupDialog />
     </main>
   );
 };
