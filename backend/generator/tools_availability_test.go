@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sentinel/backend"
 	"strings"
 	"testing"
 	"time"
@@ -47,8 +48,8 @@ func TestPinnedAssetsRemainAvailable(t *testing.T) {
 		name string
 		url  string
 	}{
-		{name: "GSE Tools", url: gseReleaseURL},
-		{name: "gbe_fork", url: gbeReleaseURL},
+		{name: "GSE Fork Tools", url: gseForkToolsAsset.releaseURL},
+		{name: "gbe_fork DLLs", url: gbeForkDLLAsset.releaseURL},
 	} {
 		asset := asset
 		t.Run(asset.name, func(t *testing.T) {
@@ -60,40 +61,56 @@ func TestPinnedAssetsRemainAvailable(t *testing.T) {
 	}
 }
 
-func TestVersionedAssetCacheIsReused(t *testing.T) {
-	destination := filepath.Join(t.TempDir(), "gse", "2026_02_16", "asset.tar.bz2")
-	require.NoError(t, os.MkdirAll(filepath.Dir(destination), 0755))
-	require.NoError(t, os.WriteFile(destination, []byte("cached"), 0644))
+func TestPublishedProviderDirectoriesAreReused(t *testing.T) {
+	originalGeneratorDir := backend.GeneratorDir
+	backend.GeneratorDir = t.TempDir()
+	t.Cleanup(func() { backend.GeneratorDir = originalGeneratorDir })
+
+	generatorDirectory := filepath.Join(backend.GeneratorDir, gseForkToolsAsset.cacheDirectoryName, gseForkToolsAsset.version)
+	dllDirectory := filepath.Join(backend.GeneratorDir, gbeForkDLLAsset.cacheDirectoryName, gbeForkDLLAsset.version)
+	require.NoError(t, os.MkdirAll(generatorDirectory, 0755))
+	require.NoError(t, os.MkdirAll(dllDirectory, 0755))
+
 	transport := &failingRoundTripper{}
 	manager := newToolManager(&http.Client{Transport: transport})
-	require.NoError(t, manager.downloadTools(context.Background(), "https://unused.invalid/asset", destination, testSHA256("cached")))
+	temporaryDirectory := filepath.Join(backend.GeneratorDir, tempDirName)
+
+	generatorExecutable, err := manager.prepareGSEForkToolsExecutable(context.Background(), temporaryDirectory)
+	require.NoError(t, err)
+	require.Equal(t, filepath.Join(generatorDirectory, filepath.FromSlash(gseForkToolsExecutablePath)), generatorExecutable)
+
+	preparedDLLDirectory, err := manager.prepareGBEForkDLLDirectory(context.Background(), temporaryDirectory)
+	require.NoError(t, err)
+	require.Equal(t, dllDirectory, preparedDLLDirectory)
 	require.Zero(t, transport.calls)
 }
 
-func TestInvalidCachedAssetIsDownloadedAgain(t *testing.T) {
-	destination := filepath.Join(t.TempDir(), "gbe", "release", "asset.7z")
-	require.NoError(t, os.MkdirAll(filepath.Dir(destination), 0755))
-	require.NoError(t, os.WriteFile(destination, []byte("corrupt"), 0644))
+func TestDownloadedArchiveIsTemporaryAndVerified(t *testing.T) {
+	directory := filepath.Join(t.TempDir(), "gbe-fork")
 	transport := &contentRoundTripper{body: "replacement"}
 	manager := newToolManager(&http.Client{Transport: transport})
 
-	require.NoError(t, manager.downloadTools(context.Background(), "https://example.invalid/asset", destination, testSHA256("replacement")))
+	archive, err := manager.downloadArchive(context.Background(), "https://example.invalid/asset", directory, testSHA256("replacement"))
+	require.NoError(t, err)
 	require.Equal(t, 1, transport.calls)
 
-	contents, err := os.ReadFile(destination)
-
+	contents, err := os.ReadFile(archive)
 	require.NoError(t, err)
 	require.Equal(t, "replacement", string(contents))
+	require.NoError(t, os.Remove(archive))
+	require.NoDirExists(t, archive)
 }
 
 func TestDownloadedAssetWithWrongDigestIsRejected(t *testing.T) {
-	destination := filepath.Join(t.TempDir(), "gse", "release", "asset.tar.bz2")
+	directory := filepath.Join(t.TempDir(), "gse-fork-tools")
 	transport := &contentRoundTripper{body: "unexpected"}
 	manager := newToolManager(&http.Client{Transport: transport})
 
-	err := manager.downloadTools(context.Background(), "https://example.invalid/asset", destination, testSHA256("expected"))
+	_, err := manager.downloadArchive(context.Background(), "https://example.invalid/asset", directory, testSHA256("expected"))
 	require.ErrorContains(t, err, "SHA-256 mismatch")
-	require.NoFileExists(t, destination)
+	entries, readErr := os.ReadDir(directory)
+	require.NoError(t, readErr)
+	require.Empty(t, entries)
 }
 
 func testSHA256(contents string) string {

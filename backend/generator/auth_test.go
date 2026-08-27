@@ -4,11 +4,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
-	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"io"
-	"math"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -16,7 +14,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"google.golang.org/protobuf/encoding/protowire"
+	"google.golang.org/protobuf/proto"
 )
 
 type roundTripFunc func(*http.Request) (*http.Response, error)
@@ -27,15 +25,24 @@ func TestHTTPAuthTransportUsesMultipartAndRequiresEResult(t *testing.T) {
 	client := &http.Client{Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
 		require.NoError(t, request.ParseMultipartForm(1<<20))
 		encoded := request.FormValue("input_protobuf_encoded")
-		_, err := base64.StdEncoding.DecodeString(encoded)
+		body, err := base64.StdEncoding.DecodeString(encoded)
 		require.NoError(t, err)
-		response := appendVarint(nil, 1, 42)
-		response = appendString(response, 2, "https://s.team/q/test")
-		response = appendBytes(response, 3, []byte("request"))
-		response = protowire.AppendTag(response, 4, protowire.Fixed32Type)
-		var raw [4]byte
-		binary.LittleEndian.PutUint32(raw[:], math.Float32bits(5))
-		response = append(response, raw[:]...)
+
+		beginRequest := new(BeginAuthSessionViaQRRequest)
+		require.NoError(t, proto.Unmarshal(body, beginRequest))
+		require.Equal(t, "Sentinel", beginRequest.GetDeviceFriendlyName())
+		require.Equal(t, EAuthTokenPlatformType_SteamClient, beginRequest.GetPlatformType())
+		require.Equal(t, "Sentinel", beginRequest.GetDeviceDetails().GetDeviceFriendlyName())
+		require.Equal(t, int32(16), beginRequest.GetDeviceDetails().GetOsType())
+		require.Equal(t, "Client", beginRequest.GetWebsiteId())
+
+		response, err := proto.Marshal(&BeginAuthSessionViaQRResponse{
+			ClientId:     proto.Uint64(42),
+			ChallengeUrl: proto.String("https://s.team/q/test"),
+			RequestId:    []byte("request"),
+			Interval:     proto.Float32(5),
+		})
+		require.NoError(t, err)
 		return &http.Response{
 			StatusCode: http.StatusOK,
 			Header:     http.Header{"X-Eresult": []string{"1"}},
@@ -49,6 +56,43 @@ func TestHTTPAuthTransportUsesMultipartAndRequiresEResult(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, uint64(42), challenge.ClientID)
 	require.Equal(t, 5*time.Second, challenge.Interval)
+}
+
+func TestHTTPAuthTransportPollUsesProtobuf(t *testing.T) {
+	client := &http.Client{Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
+		require.NoError(t, request.ParseMultipartForm(1<<20))
+		body, err := base64.StdEncoding.DecodeString(request.FormValue("input_protobuf_encoded"))
+		require.NoError(t, err)
+
+		pollRequest := new(PollAuthSessionStatusRequest)
+		require.NoError(t, proto.Unmarshal(body, pollRequest))
+		require.Equal(t, uint64(42), pollRequest.GetClientId())
+		require.Equal(t, []byte("request"), pollRequest.GetRequestId())
+
+		response, err := proto.Marshal(&PollAuthSessionStatusResponse{
+			NewClientId:     proto.Uint64(84),
+			NewChallengeUrl: proto.String("https://s.team/q/rotated"),
+			RefreshToken:    proto.String("refresh-token"),
+			AccountName:     proto.String("sentinel"),
+		})
+		require.NoError(t, err)
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Header:     http.Header{"X-Eresult": []string{"1"}},
+			Body:       io.NopCloser(bytes.NewReader(response)),
+			Request:    request,
+		}, nil
+	})}
+	transport := NewHTTPAuthTransport(client)
+	transport.BaseURL = "https://steam.test"
+	poll, err := transport.Poll(context.Background(), 42, []byte("request"))
+	require.NoError(t, err)
+	require.Equal(t, AuthPoll{
+		NewClientID:     84,
+		NewChallengeURL: "https://s.team/q/rotated",
+		RefreshToken:    "refresh-token",
+		AccountName:     "sentinel",
+	}, poll)
 }
 
 type rotatingAuth struct{ polls int }
@@ -93,7 +137,7 @@ func TestAuthenticateCancellationAndTransportFailure(t *testing.T) {
 }
 
 func TestWriteTokenFileUsesGSEMapAndOwnerOnlyPermissions(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "refresh_tokens.json")
+	path := filepath.Join(t.TempDir(), gseTokenFilename)
 	require.NoError(t, writeGSETokenFile(path, "account", "secret"))
 	info, err := os.Stat(path)
 	require.NoError(t, err)
