@@ -326,7 +326,7 @@ func (c *File) GetManagedGBESetup(appID string) (ManagedGBESetup, bool) {
 func (c *File) SetManagedGBESetup(appID, path string) error {
 	appID = strings.TrimSpace(appID)
 	path = filepath.Clean(strings.TrimSpace(path))
-	if appID == "" || path == "." || path == "" {
+	if appID == "" || path == "." {
 		return errors.New("app ID and setup directory are required")
 	}
 	for i := range c.ManagedGBESetups {

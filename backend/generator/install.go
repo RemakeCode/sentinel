@@ -10,21 +10,23 @@ import (
 )
 
 type DLLBitness string
+type InstallLayout string
 
 const (
 	BitnessX64 DLLBitness = "x64"
 	BitnessX86 DLLBitness = "x86"
+
+	LayoutRegular    InstallLayout = "regular"
+	LayoutColdClient InstallLayout = "coldclient"
 )
 
 type InstallTarget struct {
-	AppID   string
-	DLLPath string
-	Bitness DLLBitness
-}
-
-type BackupStatus struct {
-	HasDLLBackup      bool `json:"hasDllBackup"`
-	HasSettingsBackup bool `json:"hasSettingsBackup"`
+	AppID                   string
+	SelectedSteamAPIDLLPath string
+	Bitness                 DLLBitness
+	Layout                  InstallLayout
+	InstallDirectory        string
+	ReplacementDLLPath      string
 }
 
 func ValidateInstallTarget(appID, dllPath string) (InstallTarget, error) {
@@ -38,23 +40,16 @@ func ValidateInstallTarget(appID, dllPath string) (InstallTarget, error) {
 		return InstallTarget{}, fmt.Errorf("selected DLL is unavailable: %w", err)
 	}
 
-	if info.IsDir() {
-		return InstallTarget{}, errors.New("the selected path is a directory")
-	}
-
 	if info.Mode()&os.ModeSymlink != 0 {
 		return InstallTarget{}, errors.New("a direct DLL file must be selected, not a symbolic link")
+	}
+	if !info.Mode().IsRegular() {
+		return InstallTarget{}, errors.New("the selected path is not a regular file")
 	}
 
 	if info.Mode().Perm()&0444 == 0 {
 		return InstallTarget{}, errors.New("the selected DLL is not readable")
 	}
-
-	file, err := os.Open(dllPath)
-	if err != nil {
-		return InstallTarget{}, errors.New("the selected DLL is not readable")
-	}
-	_ = file.Close()
 
 	basename := filepath.Base(dllPath)
 	var bitness DLLBitness
@@ -72,91 +67,129 @@ func ValidateInstallTarget(appID, dllPath string) (InstallTarget, error) {
 		return InstallTarget{}, fmt.Errorf("resolve selected DLL path: %w", err)
 	}
 
-	return InstallTarget{AppID: appID, DLLPath: absoluteDLLPath, Bitness: bitness}, nil
+	target := InstallTarget{
+		AppID:                   appID,
+		SelectedSteamAPIDLLPath: absoluteDLLPath,
+		Bitness:                 bitness,
+		Layout:                  LayoutRegular,
+		InstallDirectory:        filepath.Dir(absoluteDLLPath),
+		ReplacementDLLPath:      absoluteDLLPath,
+	}
+
+	return resolveColdClientTarget(target)
 }
 
-func InspectTargetBackups(target InstallTarget) BackupStatus {
-	installDirectory := filepath.Dir(target.DLLPath)
-	dllName := filepath.Base(target.DLLPath)
-
-	return BackupStatus{
-		HasDLLBackup:      fileExists(filepath.Join(installDirectory, dllName+".sentinel.bak")),
-		HasSettingsBackup: dirExists(filepath.Join(installDirectory, "steam_settings.sentinel.bak")),
+func resolveColdClientTarget(target InstallTarget) (InstallTarget, error) {
+	coldClientDirectory := filepath.Join(filepath.Dir(target.SelectedSteamAPIDLLPath), "coldclient")
+	coldClientInfo, err := os.Lstat(coldClientDirectory)
+	if os.IsNotExist(err) {
+		return target, nil
 	}
+	if err != nil {
+		return InstallTarget{}, fmt.Errorf("inspect ColdClient directory: %w", err)
+	}
+	if coldClientInfo.Mode()&os.ModeSymlink != 0 || !coldClientInfo.IsDir() {
+		return InstallTarget{}, errors.New("ColdClient directory is not a direct directory")
+	}
+
+	steamClientName := coldClientDLLName(target.Bitness)
+	steamClientPath := filepath.Join(coldClientDirectory, steamClientName)
+	steamClientInfo, err := os.Lstat(steamClientPath)
+	if os.IsNotExist(err) {
+		return target, nil
+	}
+	if err != nil {
+		return InstallTarget{}, fmt.Errorf("inspect ColdClient SteamClient DLL: %w", err)
+	}
+	if steamClientInfo.Mode()&os.ModeSymlink != 0 || !steamClientInfo.Mode().IsRegular() {
+		return InstallTarget{}, errors.New("ColdClient SteamClient DLL is not a direct regular file")
+	}
+	if steamClientInfo.Mode().Perm()&0444 == 0 {
+		return InstallTarget{}, errors.New("ColdClient SteamClient DLL is not readable")
+	}
+
+	target.Layout = LayoutColdClient
+	target.InstallDirectory = coldClientDirectory
+	target.ReplacementDLLPath = steamClientPath
+	return target, nil
+}
+
+func coldClientDLLName(bitness DLLBitness) string {
+	if bitness == BitnessX86 {
+		return "steamclient.dll"
+	}
+	return "steamclient64.dll"
 }
 
 func InstallGBESetup(target InstallTarget, stagedDLL, generatedOutput string) error {
-	installDirectory := filepath.Dir(target.DLLPath)
-	dllName := filepath.Base(target.DLLPath)
-	dllBackup := filepath.Join(installDirectory, dllName+".sentinel.bak")
-	settingsPath := filepath.Join(installDirectory, "steam_settings")
-	settingsBackup := filepath.Join(installDirectory, "steam_settings.sentinel.bak")
-	createdDLLBackup := false
-	createdSettingsBackup := false
-	transactionDir, err := os.MkdirTemp(installDirectory, ".sentinel-install-")
-	if err != nil {
-		return fmt.Errorf("create installation transaction: %w", err)
+	installDirectory := target.InstallDirectory
+	dllName := filepath.Base(target.ReplacementDLLPath)
+	dllBackup := filepath.Join(installDirectory, dllName+sentinelBackupSuffix)
+	dllTemporaryBackup := filepath.Join(installDirectory, dllName+sentinelTemporaryBackupSuffix)
+	settingsPath := filepath.Join(installDirectory, steamSettingsDirectoryName)
+	settingsBackup := filepath.Join(installDirectory, steamSettingsDirectoryName+sentinelBackupSuffix)
+	settingsTemporaryBackup := filepath.Join(installDirectory, steamSettingsDirectoryName+sentinelTemporaryBackupSuffix)
+	if err := removePath(dllTemporaryBackup); err != nil {
+		return fmt.Errorf("remove stale temporary DLL backup: %w", err)
 	}
-	defer os.RemoveAll(transactionDir)
+	if err := removePath(settingsTemporaryBackup); err != nil {
+		return fmt.Errorf("remove stale temporary steam_settings backup: %w", err)
+	}
 
-	dllSnapshot := filepath.Join(transactionDir, dllName)
-	settingsSnapshot := filepath.Join(transactionDir, "steam_settings")
-	if err := copyFile(target.DLLPath, dllSnapshot, 0600); err != nil {
-		return fmt.Errorf("snapshot current DLL: %w", err)
+	retainTemporaryBackups := false
+	defer func() {
+		if !retainTemporaryBackups {
+			_ = os.Remove(dllTemporaryBackup)
+			_ = os.RemoveAll(settingsTemporaryBackup)
+		}
+	}()
+
+	dllRollbackSource := dllBackup
+	if fileExists(dllBackup) {
+		if err := copyFile(target.ReplacementDLLPath, dllTemporaryBackup, 0600); err != nil {
+			return fmt.Errorf("snapshot current DLL for redo: %w", err)
+		}
+		dllRollbackSource = dllTemporaryBackup
+	} else {
+		if err := copyFile(target.ReplacementDLLPath, dllBackup, 0644); err != nil {
+			_ = os.Remove(dllBackup)
+			return fmt.Errorf("backup original DLL: %w", err)
+		}
 	}
 
 	hadSettings := dirExists(settingsPath)
+	settingsRollbackSource := ""
 	if hadSettings {
-		if err := copyDirectory(settingsPath, settingsSnapshot); err != nil {
-			return fmt.Errorf("snapshot current steam_settings: %w", err)
-		}
-	}
-
-	if !fileExists(dllBackup) {
-		if err := copyFile(target.DLLPath, dllBackup, 0644); err != nil {
-			return fmt.Errorf("backup original DLL: %w", err)
-		}
-		createdDLLBackup = true
-	}
-	if dirExists(settingsPath) && !dirExists(settingsBackup) {
-		if err := copyDirectory(settingsPath, settingsBackup); err != nil {
-			if createdDLLBackup {
-				_ = os.Remove(dllBackup)
+		settingsRollbackSource = settingsBackup
+		if dirExists(settingsBackup) {
+			if err := copyDirectory(settingsPath, settingsTemporaryBackup); err != nil {
+				return fmt.Errorf("snapshot current steam_settings for redo: %w", err)
 			}
+			settingsRollbackSource = settingsTemporaryBackup
+		} else if err := copyDirectory(settingsPath, settingsBackup); err != nil {
 			_ = os.RemoveAll(settingsBackup)
-			return fmt.Errorf("backup existing steam_settings: %w", err)
+			return fmt.Errorf("backup original steam_settings: %w", err)
 		}
-		createdSettingsBackup = true
 	}
 
-	if err := copyFile(stagedDLL, target.DLLPath, 0755); err != nil {
-		restoreErr := restoreInstallSnapshot(target, dllSnapshot, settingsSnapshot, hadSettings)
-		removeCreatedBackups(dllBackup, settingsBackup, createdDLLBackup, createdSettingsBackup)
+	if err := copyFile(stagedDLL, target.ReplacementDLLPath, 0755); err != nil {
+		restoreErr := restoreInstallState(target, dllRollbackSource, settingsRollbackSource, hadSettings)
 		if restoreErr != nil {
+			retainTemporaryBackups = true
 			return fmt.Errorf("install GBE DLL: %w (restore failed: %v)", err, restoreErr)
 		}
 		return fmt.Errorf("install GBE DLL: %w", err)
 	}
 
 	if err := replaceDirectory(settingsPath, generatedOutput); err != nil {
-		if restoreErr := restoreInstallSnapshot(target, dllSnapshot, settingsSnapshot, hadSettings); restoreErr != nil {
+		if restoreErr := restoreInstallState(target, dllRollbackSource, settingsRollbackSource, hadSettings); restoreErr != nil {
+			retainTemporaryBackups = true
 			return fmt.Errorf("install generated steam_settings: %w (restore failed: %v)", err, restoreErr)
 		}
-		removeCreatedBackups(dllBackup, settingsBackup, createdDLLBackup, createdSettingsBackup)
 		return fmt.Errorf("install generated steam_settings: %w", err)
 	}
 
 	return nil
-}
-
-func removeCreatedBackups(dllBackup, settingsBackup string, dllCreated, settingsCreated bool) {
-	if dllCreated {
-		_ = os.Remove(dllBackup)
-	}
-
-	if settingsCreated {
-		_ = os.RemoveAll(settingsBackup)
-	}
 }
 
 func RestoreSentinelBackups(directory string) (bool, error) {
@@ -169,8 +202,8 @@ func RestoreSentinelBackups(directory string) (bool, error) {
 		return false, nil
 	}
 	restored := false
-	for _, basename := range []string{"steam_api64.dll", "steam_api.dll"} {
-		backup := filepath.Join(directory, basename+".sentinel.bak")
+	for _, basename := range []string{"steam_api64.dll", "steam_api.dll", "steamclient64.dll", "steamclient.dll"} {
+		backup := filepath.Join(directory, basename+sentinelBackupSuffix)
 		if !fileExists(backup) {
 			continue
 		}
@@ -180,8 +213,8 @@ func RestoreSentinelBackups(directory string) (bool, error) {
 		restored = true
 	}
 
-	settingsBackup := filepath.Join(directory, "steam_settings.sentinel.bak")
-	settingsPath := filepath.Join(directory, "steam_settings")
+	settingsBackup := filepath.Join(directory, steamSettingsDirectoryName+sentinelBackupSuffix)
+	settingsPath := filepath.Join(directory, steamSettingsDirectoryName)
 	if dirExists(settingsBackup) {
 		if err := removePath(settingsPath); err != nil {
 			return restored, err
@@ -199,18 +232,18 @@ func RestoreSentinelBackups(directory string) (bool, error) {
 	return restored, nil
 }
 
-func restoreInstallSnapshot(target InstallTarget, dllSnapshot, settingsSnapshot string, hadSettings bool) error {
-	if err := copyFile(dllSnapshot, target.DLLPath, 0755); err != nil {
+func restoreInstallState(target InstallTarget, dllRollbackSource, settingsRollbackSource string, hadSettings bool) error {
+	if err := copyFile(dllRollbackSource, target.ReplacementDLLPath, 0755); err != nil {
 		return fmt.Errorf("restore pre-install DLL: %w", err)
 	}
 
-	settingsPath := filepath.Join(filepath.Dir(target.DLLPath), "steam_settings")
+	settingsPath := filepath.Join(target.InstallDirectory, steamSettingsDirectoryName)
 	if err := removePath(settingsPath); err != nil {
 		return fmt.Errorf("remove partial steam_settings: %w", err)
 	}
 
 	if hadSettings {
-		if err := copyDirectory(settingsSnapshot, settingsPath); err != nil {
+		if err := copyDirectory(settingsRollbackSource, settingsPath); err != nil {
 			return fmt.Errorf("restore pre-install steam_settings: %w", err)
 		}
 	}
@@ -257,11 +290,6 @@ func copyDirectory(source, destination string) error {
 }
 
 func removePath(path string) error {
-	if _, err := os.Lstat(path); os.IsNotExist(err) {
-		return nil
-	} else if err != nil {
-		return err
-	}
 	return os.RemoveAll(path)
 }
 

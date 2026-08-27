@@ -4,6 +4,8 @@ syntax = "proto2";
 
 package sentinel.generator.steamauth;
 
+option go_package = "sentinel/backend/generator;generator";
+
 enum EAuthTokenPlatformType {
   Unknown = 0;
   SteamClient = 1;
