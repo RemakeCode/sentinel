@@ -142,7 +142,6 @@ func (r *Router) Handler() http.Handler {
 		api.Get("/notifications", r.handleNotifications)
 
 		api.Get("/gbe-setup/managed", Wrap(r.handleManagedGBESetupAppIDs))
-		api.Post("/gbe-setup/preflight", Wrap(r.handleInspectGBEBackups))
 		api.Post("/gbe-setup/start", Wrap(r.handleSetupGBE))
 		api.Post("/gbe-setup/cancel", Wrap(r.handleCancelGBESetup))
 		api.Post("/gbe-setup/{id}/undo", Wrap(r.handleUndoGBESetup))
@@ -160,21 +159,6 @@ func (r *Router) handleManagedGBESetupAppIDs(w http.ResponseWriter, _ *http.Requ
 	return JSON(w, http.StatusOK, r.Generator.ManagedGBESetupAppIDs())
 }
 
-func (r *Router) handleInspectGBEBackups(w http.ResponseWriter, req *http.Request) error {
-	var body struct {
-		AppID   string `json:"appId"`
-		DLLPath string `json:"dllPath"`
-	}
-	if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
-		return AppError{Status: http.StatusBadRequest, Message: "Invalid request body"}
-	}
-	result, err := r.Generator.InspectGBEBackups(body.AppID, body.DLLPath)
-	if err != nil {
-		return AppError{Status: http.StatusBadRequest, Message: err.Error()}
-	}
-	return JSON(w, http.StatusOK, result)
-}
-
 func (r *Router) handleSetupGBE(w http.ResponseWriter, req *http.Request) error {
 	var body generator.SetupRequest
 	if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
@@ -185,7 +169,7 @@ func (r *Router) handleSetupGBE(w http.ResponseWriter, req *http.Request) error 
 		status := http.StatusInternalServerError
 		if errors.Is(err, generator.ErrGBESetupRunning) {
 			status = http.StatusConflict
-		} else if strings.Contains(err.Error(), "selected") || strings.Contains(err.Error(), "confirmation") {
+		} else if strings.Contains(err.Error(), "selected") {
 			status = http.StatusBadRequest
 		}
 		return AppError{Status: status, Message: err.Error()}
