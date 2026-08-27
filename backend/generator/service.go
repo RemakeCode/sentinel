@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"sentinel/backend"
 	"sentinel/backend/config"
 	"strings"
 	"sync"
@@ -42,9 +41,8 @@ type Update struct {
 }
 
 type SetupRequest struct {
-	AppID                  string `json:"appId"`
-	DLLPath                string `json:"dllPath"`
-	ConfirmExistingBackups bool   `json:"confirmExistingBackups"`
+	AppID   string `json:"appId"`
+	DLLPath string `json:"dllPath"`
 }
 
 type SetupResult struct {
@@ -59,7 +57,7 @@ type EventSink interface {
 }
 
 type ToolPreparer interface {
-	PrepareTools(context.Context, DLLBitness) (*PreparedTools, error)
+	PrepareTools(context.Context, InstallTarget) (*PreparedTools, error)
 }
 
 type Service struct {
@@ -87,27 +85,14 @@ func (s *Service) Start(_ context.Context) error {
 		s.Auth = NewHTTPAuthTransport(nil)
 	}
 
-	return cleanupGeneratorTransientData()
-}
-
-func (s *Service) InspectGBEBackups(appID, dllPath string) (BackupStatus, error) {
-	target, err := ValidateInstallTarget(appID, dllPath)
-	if err != nil {
-		return BackupStatus{}, err
-	}
-
-	return InspectTargetBackups(target), nil
+	cleanupGeneratorTransientData()
+	return nil
 }
 
 func (s *Service) SetupGBE(request SetupRequest) (result SetupResult, err error) {
 	target, err := ValidateInstallTarget(request.AppID, request.DLLPath)
 	if err != nil {
 		return result, err
-	}
-
-	preflight := InspectTargetBackups(target)
-	if (preflight.HasDLLBackup || preflight.HasSettingsBackup) && !request.ConfirmExistingBackups {
-		return result, errors.New("existing Sentinel backups require confirmation")
 	}
 
 	s.mu.Lock()
@@ -129,21 +114,20 @@ func (s *Service) SetupGBE(request SetupRequest) (result SetupResult, err error)
 		s.mu.Unlock()
 	}()
 
-	s.emit(Update{Phase: PhasePreparing, Message: "Preparing pinned GSE Tools and GBE assets"})
-	tools, err := s.Tools.PrepareTools(ctx, target.Bitness)
+	s.emit(Update{Phase: PhasePreparing, Message: "Preparing pinned GSE Fork Tools and gbe_fork DLLs"})
+	tools, err := s.Tools.PrepareTools(ctx, target)
 	if err != nil {
-		return result, s.reportFailureOrCancellation(err)
+		return result, s.reportFailureOrCancellation(request.AppID, err)
 	}
 
-	gseDir := filepath.Dir(tools.GSEExecutable)
-	outputRoot := filepath.Join(gseDir, "_OUTPUT", target.AppID)
-	tokenPath := filepath.Join(gseDir, "refresh_tokens.json")
-	defer os.RemoveAll(tools.StagingDir)
-	defer os.RemoveAll(outputRoot)
-	defer os.Remove(tokenPath)
+	generatorDirectory := filepath.Dir(tools.GeneratorExecutable)
+	outputDirectory := filepath.Join(generatorDirectory, gseOutputDirectoryName, target.AppID)
+	generatedSettings := filepath.Join(outputDirectory, steamSettingsDirectoryName)
+	tokenPath := filepath.Join(generatorDirectory, gseTokenFilename)
+	defer s.cleanupOperationTransientData(tools.WorkspaceDir, outputDirectory, tokenPath)
 
 	if err := os.Remove(tokenPath); err != nil && !os.IsNotExist(err) {
-		return result, s.reportFailure(fmt.Errorf("remove stale authentication handoff: %w", err))
+		return result, s.reportFailure(request.AppID, fmt.Errorf("remove stale authentication handoff: %w", err))
 	}
 
 	authResult, err := Authenticate(ctx, s.Auth, func(challenge AuthChallenge) {
@@ -155,62 +139,63 @@ func (s *Service) SetupGBE(request SetupRequest) (result SetupResult, err error)
 	})
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			return result, s.reportQRApprovalTimeout()
+			return result, s.reportQRApprovalTimeout(request.AppID)
 		}
 
-		return result, s.reportFailureOrCancellation(err)
+		return result, s.reportFailureOrCancellation(request.AppID, err)
 	}
 
 	if authResult.AccountName == "" || authResult.RefreshToken == "" {
-		return result, s.reportFailure(errors.New("Steam authentication returned incomplete credentials"))
+		return result, s.reportFailure(request.AppID, errors.New("Steam authentication returned incomplete credentials"))
 	}
 
 	if err := writeGSETokenFile(tokenPath, authResult.AccountName, authResult.RefreshToken); err != nil {
-		return result, s.reportFailure(fmt.Errorf("create temporary GSE authentication handoff: %w", err))
+		return result, s.reportFailure(request.AppID, fmt.Errorf("create temporary GSE authentication handoff: %w", err))
 	}
-
-	// Do not retain secrets in the operation result after materializing GSE's
-	// restricted handoff file.
-	authResult.AccountName = ""
-	authResult.RefreshToken = ""
 
 	s.emit(Update{Phase: PhaseGenerating, Message: "Generating GBE configuration"})
-	if err := os.RemoveAll(outputRoot); err != nil {
-		return result, s.reportFailure(fmt.Errorf("clear stale generator output: %w", err))
+	if err := os.RemoveAll(outputDirectory); err != nil {
+		return result, s.reportFailure(request.AppID, fmt.Errorf("clear stale generator output: %w", err))
 	}
 
-	diagnostics, err := runGSEGenerator(ctx, tools.GSEExecutable, target.AppID)
-	_ = os.Remove(tokenPath)
+	diagnostics, err := runGSEGenerator(ctx, tools.GeneratorExecutable, target.AppID)
+	if removeErr := os.Remove(tokenPath); removeErr != nil && !os.IsNotExist(removeErr) {
+		slog.Warn("remove temporary GSE authentication handoff", "app_id", request.AppID, "error", removeErr)
+	}
 	if err != nil {
 		if sanitized := sanitizeDiagnostics(diagnostics); sanitized != "" {
 			slog.Debug("GSE generation diagnostics", "output", sanitized)
 		}
-		return result, s.reportFailureOrCancellation(fmt.Errorf("GSE generation failed: %w", err))
+		return result, s.reportFailureOrCancellation(request.AppID, fmt.Errorf("GSE generation failed: %w", err))
 	}
 
-	generatedSettings := filepath.Join(outputRoot, "steam_settings")
 	if !dirExists(generatedSettings) {
-		return result, s.reportFailure(errors.New("GSE exited successfully without an available generated output folder"))
+		return result, s.reportFailure(request.AppID, errors.New("GSE exited successfully without an available generated output folder"))
+	}
+
+	workspaceSettings := filepath.Join(tools.WorkspaceDir, steamSettingsDirectoryName)
+	if err := copyDirectory(generatedSettings, workspaceSettings); err != nil {
+		return result, s.reportFailure(request.AppID, fmt.Errorf("copy generated output into operation workspace: %w", err))
 	}
 
 	s.emit(Update{Phase: PhaseInstalling, Message: "Backing up existing files and installing GBE setup"})
-	if err := InstallGBESetup(target, tools.GBEDLL, generatedSettings); err != nil {
-		return result, s.reportFailure(err)
+	if err := InstallGBESetup(target, tools.ReplacementDLL, workspaceSettings); err != nil {
+		return result, s.reportFailure(request.AppID, err)
 	}
 
-	installDirectory := filepath.Dir(target.DLLPath)
+	installDirectory := target.InstallDirectory
 	if err := s.Config.SetManagedGBESetup(target.AppID, installDirectory); err != nil {
 		// Installation succeeded. Keep the exact backups and report that only the
 		// managed index could not be recorded; Undo remains possible manually.
-		return result, s.reportFailure(fmt.Errorf("record managed GBE setup: %w", err))
+		return result, s.reportFailure(request.AppID, fmt.Errorf("record managed GBE setup: %w", err))
 	}
 	result = SetupResult{
 		AppID: target.AppID, InstallDirectory: installDirectory,
-		GSEVersion: backend.GSEToolsVersion, GBEVersion: backend.GBEForkVersion,
+		GSEVersion: gseForkToolsAsset.version, GBEVersion: gbeForkDLLAsset.version,
 	}
 	s.emit(Update{
 		Phase: PhaseCompleted, Message: "GBE setup completed",
-		GSEVersion: backend.GSEToolsVersion, GBEVersion: backend.GBEForkVersion,
+		GSEVersion: gseForkToolsAsset.version, GBEVersion: gbeForkDLLAsset.version,
 	})
 	return result, nil
 }
@@ -251,10 +236,10 @@ func (s *Service) UndoGBESetup(appID string) error {
 	}
 	restored, err := RestoreSentinelBackups(setup.Path)
 	if err != nil {
-		return err
+		return s.reportUndoFailure(setup.AppID, err)
 	}
 	if err := s.Config.RemoveManagedGBESetup(setup.AppID); err != nil {
-		return err
+		return s.reportUndoFailure(setup.AppID, err)
 	}
 	message := "Achievement setup was undone"
 	if !restored {
@@ -277,29 +262,54 @@ func (s *Service) ServiceShutdown() error {
 		select {
 		case <-done:
 		case <-time.After(10 * time.Second):
-			return errors.New("timed out waiting for active GBE setup to stop")
+			err := errors.New("timed out waiting for active GBE setup to stop")
+			slog.Error("GBE generator shutdown timed out", "error", err)
+			return err
 		}
 	}
-	return cleanupGeneratorTransientData()
+	cleanupGeneratorTransientData()
+	return nil
 }
 
-func (s *Service) reportFailure(err error) error {
+func (s *Service) reportFailure(appID string, err error) error {
+	slog.Error("GBE setup failed", "app_id", appID, "error", err)
 	s.emit(Update{Phase: PhaseFailed, Message: err.Error()})
 	return err
 }
 
-func (s *Service) reportQRApprovalTimeout() error {
+func (s *Service) reportQRApprovalTimeout(appID string) error {
+	slog.Warn("GBE setup timed out awaiting Steam approval", "app_id", appID)
 	s.emit(Update{Phase: PhaseTimedOut, Message: errQRApprovalTimedOut.Error()})
 	return errQRApprovalTimedOut
 }
 
-func (s *Service) reportFailureOrCancellation(err error) error {
+func (s *Service) reportFailureOrCancellation(appID string, err error) error {
 	if errors.Is(err, context.Canceled) {
+		slog.Info("GBE setup cancelled", "app_id", appID)
 		s.emit(Update{
 			Phase:   PhaseCancelled,
 			Message: "Achievement setup was cancelled before installation. The game files were left unchanged.",
 		})
 		return err
 	}
-	return s.reportFailure(err)
+	return s.reportFailure(appID, err)
+}
+
+func (s *Service) reportUndoFailure(appID string, err error) error {
+	slog.Error("GBE undo failed", "app_id", appID, "error", err)
+	return err
+}
+
+func (s *Service) cleanupOperationTransientData(workspaceDirectory, outputDirectory, tokenPath string) {
+	if err := os.RemoveAll(workspaceDirectory); err != nil {
+		slog.Warn("remove GBE operation workspace", "error", err)
+	}
+
+	if err := os.RemoveAll(outputDirectory); err != nil {
+		slog.Warn("remove GSE generated output", "error", err)
+	}
+
+	if err := os.Remove(tokenPath); err != nil && !os.IsNotExist(err) {
+		slog.Warn("remove temporary GSE authentication handoff", "error", err)
+	}
 }

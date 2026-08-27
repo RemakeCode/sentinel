@@ -24,15 +24,6 @@ var RuneEmuDir = filepath.Join("users", "Public", "Documents", "Steam", "RUNE")
 var UserCacheDir, _ = os.UserCacheDir()
 var UserConfigDir, _ = os.UserConfigDir()
 
-const (
-	GSEToolsVersion   = "2026_02_16"
-	GSEToolsAssetName = "gen_emu_cfg-Linux-Release.tar.bz2"
-	GSEToolsSHA256    = "6a70b7af7db253d80a1133c4a8e27f259e7d3201906cd1f76346f3f12a732ab1"
-	GBEForkVersion    = "release-2026_07_19"
-	GBEForkAssetName  = "emu-win-release.7z"
-	GBEForkSHA256     = "3ba855ef962205136a54fb32519a46362e0cc5b42fc2bb3667e4d21307d972e5"
-)
-
 func getUserDataDir() string {
 	if dir := os.Getenv("XDG_DATA_HOME"); dir != "" {
 		return dir
@@ -56,7 +47,7 @@ var ConfigPath = filepath.Join(ConfigDir, "config.json")
 // CacheDir (XDG_CACHE_HOME)
 var CacheDir = filepath.Join(UserCacheDir, AppName)
 
-// GeneratorDir is staging area for the GSE Tools and gbe_fork assets.
+// GeneratorDir contains versioned provider assets plus transient operation workspaces.
 var GeneratorDir = filepath.Join(CacheDir, "generator")
 
 // Data directory (XDG_DATA_HOME)

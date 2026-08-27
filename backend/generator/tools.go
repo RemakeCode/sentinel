@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/exec"
@@ -23,13 +24,6 @@ import (
 	"github.com/bodgit/sevenzip"
 )
 
-const (
-	gseReleaseURL             = "https://github.com/alex47exe/gse_fork_tools/releases/download/" + backend.GSEToolsVersion + "/" + backend.GSEToolsAssetName
-	gbeReleaseURL             = "https://github.com/Detanup01/gbe_fork/releases/download/" + backend.GBEForkVersion + "/" + backend.GBEForkAssetName
-	gseExecutableRelativePath = "generate_emu_config/generate_emu_config"
-	generatorTimeout          = 5 * time.Minute
-)
-
 var diagnosticSecret = regexp.MustCompile(`(?i)(refresh[_ -]?token|access[_ -]?token|authorization)[^\r\n]*|[A-Za-z0-9_-]{24,}\.[A-Za-z0-9_-]{12,}\.[A-Za-z0-9_-]{12,}`)
 
 type ToolManager struct {
@@ -37,9 +31,9 @@ type ToolManager struct {
 }
 
 type PreparedTools struct {
-	GSEExecutable string
-	GBEDLL        string
-	StagingDir    string
+	GeneratorExecutable string
+	ReplacementDLL      string
+	WorkspaceDir        string
 }
 
 type sevenZipMember struct {
@@ -77,139 +71,177 @@ func NewToolManager() *ToolManager {
 	}
 }
 
-func (m *ToolManager) PrepareTools(ctx context.Context, bitness DLLBitness) (*PreparedTools, error) {
+func (m *ToolManager) PrepareTools(ctx context.Context, target InstallTarget) (*PreparedTools, error) {
 	if err := os.MkdirAll(backend.GeneratorDir, 0755); err != nil {
-		return nil, fmt.Errorf("create generator cache: %w", err)
-	}
-	selectedMemberPath := gbeArchivePath(bitness)
-	selectedOutputName := filepath.Base(selectedMemberPath)
-
-	gseDir := filepath.Join(backend.GeneratorDir, "gse", backend.GSEToolsVersion)
-	gseArchive := filepath.Join(gseDir, backend.GSEToolsAssetName)
-	if err := m.downloadTools(ctx, gseReleaseURL, gseArchive, backend.GSEToolsSHA256); err != nil {
-		return nil, fmt.Errorf("prepare gse tools: %w", err)
+		return nil, fmt.Errorf("create generator asset directory: %w", err)
 	}
 
-	gseExecutable := filepath.Join(gseDir, filepath.FromSlash(gseExecutableRelativePath))
-	if _, err := os.Stat(gseExecutable); err != nil {
-		if !os.IsNotExist(err) {
-			return nil, fmt.Errorf("check cached gse executable: %w", err)
-		}
+	temporaryDirectory := filepath.Join(backend.GeneratorDir, tempDirName)
+	defer os.RemoveAll(temporaryDirectory)
 
-		if err := extractTarBzip2(gseArchive, gseDir); err != nil {
-			return nil, fmt.Errorf("extract gse tools: %w", err)
-		}
-	}
-
-	gbeDir := filepath.Join(backend.GeneratorDir, "gbe", backend.GBEForkVersion)
-	gbeArchive := filepath.Join(gbeDir, backend.GBEForkAssetName)
-	if err := m.downloadTools(ctx, gbeReleaseURL, gbeArchive, backend.GBEForkSHA256); err != nil {
-		return nil, fmt.Errorf("prepare gbe release: %w", err)
-	}
-
-	var pending []sevenZipMember
-	for _, memberBitness := range []DLLBitness{BitnessX86, BitnessX64} {
-		memberPath := gbeArchivePath(memberBitness)
-		outputPath := filepath.Join(gbeDir, filepath.Base(memberPath))
-		if _, err := os.Stat(outputPath); err == nil {
-			continue
-		}
-		pending = append(pending, sevenZipMember{archivePath: memberPath, outputPath: outputPath})
-	}
-
-	if len(pending) > 0 {
-		if err := extractSevenZipMembers(gbeArchive, pending); err != nil {
-			return nil, fmt.Errorf("extract cached GBE DLLs: %w", err)
-		}
-	}
-
-	stagingBase := filepath.Join(backend.GeneratorDir, "staging")
-	if err := os.MkdirAll(stagingBase, 0700); err != nil {
-		return nil, fmt.Errorf("create generator staging: %w", err)
-	}
-
-	stagingTemp, err := os.MkdirTemp(stagingBase, "operation-")
+	generatorExecutable, err := m.prepareGSEForkToolsExecutable(ctx, temporaryDirectory)
 	if err != nil {
-		return nil, fmt.Errorf("create operation staging: %w", err)
+		return nil, err
 	}
 
-	cachedDLL := filepath.Join(gbeDir, selectedOutputName)
-	gbeDLL := filepath.Join(stagingTemp, selectedOutputName)
-	if err := copyFile(cachedDLL, gbeDLL, 0755); err != nil {
-		_ = os.RemoveAll(stagingTemp)
-		return nil, fmt.Errorf("stage gbe DLL: %w", err)
+	gbeForkDLLDirectory, err := m.prepareGBEForkDLLDirectory(ctx, temporaryDirectory)
+	if err != nil {
+		return nil, err
+	}
+
+	workspaceRoot := filepath.Join(backend.GeneratorDir, "operations")
+	if err := os.MkdirAll(workspaceRoot, 0700); err != nil {
+		return nil, fmt.Errorf("create operation workspace directory: %w", err)
+	}
+
+	workspace, err := os.MkdirTemp(workspaceRoot, "operation-")
+	if err != nil {
+		return nil, fmt.Errorf("create operation workspace: %w", err)
+	}
+
+	replacementName := filepath.Base(target.ReplacementDLLPath)
+	assetDLL := filepath.Join(gbeForkDLLDirectory, replacementName)
+	workspaceDLL := filepath.Join(workspace, replacementName)
+	if err := copyFile(assetDLL, workspaceDLL, 0755); err != nil {
+		_ = os.RemoveAll(workspace)
+		return nil, fmt.Errorf("copy GBE DLL into operation workspace: %w", err)
 	}
 
 	return &PreparedTools{
-		GSEExecutable: gseExecutable,
-		GBEDLL:        gbeDLL,
-		StagingDir:    stagingTemp,
+		GeneratorExecutable: generatorExecutable,
+		ReplacementDLL:      workspaceDLL,
+		WorkspaceDir:        workspace,
 	}, nil
 }
 
-func (m *ToolManager) downloadTools(ctx context.Context, url, destination, expectedSHA256 string) error {
-	if info, err := os.Stat(destination); err == nil {
-		if info.IsDir() {
-			return errors.New("cached asset path is a directory")
-		}
-		if info.Size() > 0 && verifyFileSHA256(destination, expectedSHA256) == nil {
-			return nil
-		}
-		if err := os.Remove(destination); err != nil {
-			return fmt.Errorf("remove invalid cached asset: %w", err)
-		}
-	} else if !os.IsNotExist(err) {
-		return err
+func (m *ToolManager) prepareGSEForkToolsExecutable(ctx context.Context, temporaryDirectory string) (string, error) {
+	gseForkToolsDirectory := filepath.Join(backend.GeneratorDir, gseForkToolsAsset.cacheDirectoryName, gseForkToolsAsset.version)
+	if dirExists(gseForkToolsDirectory) {
+		return filepath.Join(gseForkToolsDirectory, filepath.FromSlash(gseForkToolsExecutablePath)), nil
 	}
 
-	if err := os.MkdirAll(filepath.Dir(destination), 0755); err != nil {
-		return err
+	gseForkToolsRoot := filepath.Dir(gseForkToolsDirectory)
+	if err := os.MkdirAll(gseForkToolsRoot, 0755); err != nil {
+		return "", fmt.Errorf("create GSE Fork Tools asset directory: %w", err)
 	}
 
-	tmp, err := os.CreateTemp(filepath.Dir(destination), ".download-*")
+	archive, err := m.downloadArchive(ctx, gseForkToolsAsset.releaseURL, temporaryDirectory, gseForkToolsAsset.sha256)
 	if err != nil {
-		return err
+		return "", fmt.Errorf("download GSE Fork Tools archive: %w", err)
+	}
+	defer os.Remove(archive)
+
+	extractionDir, err := os.MkdirTemp(temporaryDirectory, "gse-extract-")
+	if err != nil {
+		return "", fmt.Errorf("create temporary GSE Fork Tools extraction directory: %w", err)
+	}
+	defer os.RemoveAll(extractionDir)
+
+	if err := extractTarBzip2(archive, extractionDir); err != nil {
+		return "", fmt.Errorf("extract GSE Fork Tools archive: %w", err)
+	}
+	if err := finalizeVersionedAssetDirectory(extractionDir, gseForkToolsDirectory); err != nil {
+		return "", fmt.Errorf("finalize GSE Fork Tools asset directory: %w", err)
+	}
+
+	return filepath.Join(gseForkToolsDirectory, filepath.FromSlash(gseForkToolsExecutablePath)), nil
+}
+
+func (m *ToolManager) prepareGBEForkDLLDirectory(ctx context.Context, temporaryDirectory string) (string, error) {
+	gbeForkDLLDirectory := filepath.Join(backend.GeneratorDir, gbeForkDLLAsset.cacheDirectoryName, gbeForkDLLAsset.version)
+	if dirExists(gbeForkDLLDirectory) {
+		return gbeForkDLLDirectory, nil
+	}
+
+	gbeRoot := filepath.Dir(gbeForkDLLDirectory)
+	if err := os.MkdirAll(gbeRoot, 0755); err != nil {
+		return "", fmt.Errorf("create gbe_fork DLL asset directory: %w", err)
+	}
+
+	archive, err := m.downloadArchive(ctx, gbeForkDLLAsset.releaseURL, temporaryDirectory, gbeForkDLLAsset.sha256)
+	if err != nil {
+		return "", fmt.Errorf("download gbe_fork DLL archive: %w", err)
+	}
+	defer os.Remove(archive)
+
+	extractionDir, err := os.MkdirTemp(temporaryDirectory, "gbe-extract-")
+	if err != nil {
+		return "", fmt.Errorf("create temporary gbe_fork DLL extraction directory: %w", err)
+	}
+	defer os.RemoveAll(extractionDir)
+
+	members := make([]sevenZipMember, 0, len(gbeForkDLLMembers))
+	for _, archivePath := range gbeForkDLLMembers {
+		members = append(members, sevenZipMember{
+			archivePath: archivePath,
+			outputPath:  filepath.Join(extractionDir, filepath.Base(archivePath)),
+		})
+	}
+	if err := extractSevenZipMembers(archive, members); err != nil {
+		return "", fmt.Errorf("extract gbe_fork DLL archive members: %w", err)
+	}
+	if err := finalizeVersionedAssetDirectory(extractionDir, gbeForkDLLDirectory); err != nil {
+		return "", fmt.Errorf("finalize gbe_fork DLL asset directory: %w", err)
+	}
+
+	return gbeForkDLLDirectory, nil
+}
+
+func (m *ToolManager) downloadArchive(ctx context.Context, url, directory, expectedSHA256 string) (string, error) {
+	if err := os.MkdirAll(directory, 0755); err != nil {
+		return "", err
+	}
+
+	tmp, err := os.CreateTemp(directory, ".download-*")
+	if err != nil {
+		return "", err
 	}
 
 	tmpPath := tmp.Name()
-	defer os.Remove(tmpPath)
+	success := false
+	defer func() {
+		if !success {
+			_ = os.Remove(tmpPath)
+		}
+	}()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		_ = tmp.Close()
-		return err
+		return "", err
 	}
 
 	resp, err := m.httpClient.Do(req)
 	if err != nil {
 		_ = tmp.Close()
-		return err
+		return "", err
 	}
 
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		_ = tmp.Close()
-		return fmt.Errorf("download returned HTTP %d", resp.StatusCode)
+		return "", fmt.Errorf("download returned HTTP %d", resp.StatusCode)
 	}
 
 	if _, err := io.Copy(tmp, resp.Body); err != nil {
 		_ = tmp.Close()
-		return err
+		return "", err
 	}
 
 	if err := tmp.Close(); err != nil {
-		return err
+		return "", err
 	}
 
 	if err := verifyFileSHA256(tmpPath, expectedSHA256); err != nil {
-		return fmt.Errorf("verify downloaded asset: %w", err)
+		return "", fmt.Errorf("verify downloaded asset: %w", err)
 	}
 
 	if err := os.Chmod(tmpPath, 0644); err != nil {
-		return err
+		return "", err
 	}
 
-	return os.Rename(tmpPath, destination)
+	success = true
+	return tmpPath, nil
 }
 
 func writeGSETokenFile(path, accountName, refreshToken string) error {
@@ -240,11 +272,6 @@ func writeGSETokenFile(path, accountName, refreshToken string) error {
 		return err
 	}
 
-	info, err := os.Stat(tmpPath)
-	if err != nil || info.Mode().Perm() != 0600 {
-		return errors.New("temporary authentication handoff is not owner-only")
-	}
-
 	return os.Rename(tmpPath, path)
 }
 
@@ -263,6 +290,9 @@ func runGSEGenerator(parent context.Context, executable, appID string) (string, 
 	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
 		return output.String(), errors.New("generator timed out after five minutes")
 	}
+	if errors.Is(ctx.Err(), context.Canceled) {
+		return output.String(), ctx.Err()
+	}
 
 	return output.String(), err
 }
@@ -271,32 +301,19 @@ func sanitizeDiagnostics(value string) string {
 	return diagnosticSecret.ReplaceAllString(value, "[redacted]")
 }
 
-func cleanupGeneratorTransientData() error {
-	var cleanupErr error
-	gseRoot := filepath.Join(backend.GeneratorDir, "gse", backend.GSEToolsVersion)
-	_ = filepath.Walk(gseRoot, func(path string, info os.FileInfo, err error) error {
-		if err != nil || info == nil {
-			return nil
-		}
+func cleanupGeneratorTransientData() {
+	gseForkToolsDirectory := filepath.Join(backend.GeneratorDir, gseForkToolsAsset.cacheDirectoryName, gseForkToolsAsset.version)
+	generatorExecutable := filepath.Join(gseForkToolsDirectory, filepath.FromSlash(gseForkToolsExecutablePath))
+	removeGeneratorTransientPath(filepath.Join(filepath.Dir(generatorExecutable), gseTokenFilename), "stale GSE authentication handoff")
+	removeGeneratorTransientPath(filepath.Join(filepath.Dir(generatorExecutable), gseOutputDirectoryName), "stale GSE generated output")
+	removeGeneratorTransientPath(filepath.Join(backend.GeneratorDir, "operations"), "stale GBE operation workspaces")
+	removeGeneratorTransientPath(filepath.Join(backend.GeneratorDir, tempDirName), "stale generator temporary files")
+}
 
-		if info.Name() == "refresh_tokens.json" || (info.IsDir() && info.Name() == "_OUTPUT") {
-			if removeErr := os.RemoveAll(path); removeErr != nil && cleanupErr == nil {
-				cleanupErr = removeErr
-			}
-
-			if info.IsDir() {
-				return filepath.SkipDir
-			}
-		}
-
-		return nil
-	})
-
-	if err := os.RemoveAll(filepath.Join(backend.GeneratorDir, "staging")); err != nil && cleanupErr == nil {
-		cleanupErr = err
+func removeGeneratorTransientPath(path, resource string) {
+	if err := os.RemoveAll(path); err != nil {
+		slog.Warn("remove generator transient data", "resource", resource, "error", err)
 	}
-
-	return cleanupErr
 }
 
 func verifyFileSHA256(path, expected string) error {
@@ -480,9 +497,9 @@ func archiveMode(mode int64, fallback os.FileMode) os.FileMode {
 	return value
 }
 
-func gbeArchivePath(bitness DLLBitness) string {
-	if bitness == BitnessX86 {
-		return "release/experimental/x86/steam_api.dll"
+func finalizeVersionedAssetDirectory(temporaryDirectory, versionedDirectory string) error {
+	if err := os.RemoveAll(versionedDirectory); err != nil {
+		return err
 	}
-	return "release/experimental/x64/steam_api64.dll"
+	return os.Rename(temporaryDirectory, versionedDirectory)
 }
