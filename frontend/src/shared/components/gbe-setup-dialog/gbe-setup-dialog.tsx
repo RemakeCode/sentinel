@@ -4,7 +4,6 @@ import { Events } from '@wailsio/runtime';
 import { renderSVG } from 'uqr';
 import {
   CancelGBESetup,
-  InspectGBEBackups,
   SelectTargetDLL,
   SetupGBE,
   UndoGBESetup
@@ -14,7 +13,6 @@ import { Phase, SetupRequest, type Update } from '@wa/sentinel/backend/generator
 interface SetupTarget {
   appId: string;
   dllPath: string;
-  hasBackups: boolean;
 }
 
 interface SetupDialogRequest {
@@ -173,11 +171,9 @@ const DLLSelectionFlow: FC<{
         return;
       }
 
-      const backups = await InspectGBEBackups(request.appId, dllPath);
       onSelected({
         appId: request.appId,
-        dllPath,
-        hasBackups: backups.hasDllBackup || backups.hasSettingsBackup
+        dllPath
       });
     } catch (error) {
       onFailure(String(error));
@@ -233,7 +229,7 @@ const SetupFlow: FC<{
 
     setState({ kind: 'running', progressStage: dllSelectionStage });
     try {
-      await SetupGBE(new SetupRequest({ ...target, confirmExistingBackups: target.hasBackups }));
+      await SetupGBE(new SetupRequest(target));
     } catch (error) {
       setState((current) => {
         if (current.kind !== 'running') {
@@ -285,11 +281,7 @@ const SetupFlow: FC<{
         {state.kind === 'confirm' && (
           <div className='gbe-setup-dialog-copy'>
             <p>Continuing will require approval in the Steam Mobile app.</p>
-            <p className={target.hasBackups ? 'gbe-setup-dialog-warning' : undefined}>
-              {target.hasBackups
-                ? 'Existing Sentinel backups will be preserved while the current setup is replaced.'
-                : 'Sentinel will preserve the current DLL and any current steam_settings before replacement.'}
-            </p>
+            <p>Sentinel preserves the original DLL and any original steam_settings for Undo.</p>
             <code>{target.dllPath}</code>
           </div>
         )}
