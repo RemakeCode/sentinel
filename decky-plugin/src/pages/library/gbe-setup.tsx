@@ -21,11 +21,6 @@ export interface GBESetupUpdate {
   gbeVersion?: string;
 }
 
-interface BackupStatus {
-  hasDllBackup: boolean;
-  hasSettingsBackup: boolean;
-}
-
 interface SetupProgressStage {
   value: number;
   step: number;
@@ -323,9 +318,8 @@ const SetupModal: FC<{
   appId: string;
   gameName: string;
   dllPath: string;
-  hasBackups: boolean;
   closeModal?: () => void;
-}> = ({ appId, gameName, dllPath, hasBackups, closeModal }) => {
+}> = ({ appId, gameName, dllPath, closeModal }) => {
   const [state, setState] = useState<SetupState>({ kind: 'confirm', progressStage: dllSelectionStage });
 
   useEffect(() => {
@@ -341,8 +335,7 @@ const SetupModal: FC<{
     try {
       await fetcher.post(`${BASE_URL}/gbe-setup/start`, {
         appId,
-        dllPath,
-        confirmExistingBackups: hasBackups
+        dllPath
       });
     } catch (error) {
       setState((current) => {
@@ -431,16 +424,7 @@ const SetupModal: FC<{
         {state.kind === 'confirm' && (
           <>
             <DialogBodyText>Continuing will require approval in the Steam Mobile app.</DialogBodyText>
-            {hasBackups && (
-              <DialogBodyText style={{ color: '#f6c453' }}>
-                Existing Sentinel backups will be preserved while the current setup is replaced.
-              </DialogBodyText>
-            )}
-            {!hasBackups && (
-              <DialogBodyText>
-                Sentinel will preserve the current DLL and any current steam_settings before replacement.
-              </DialogBodyText>
-            )}
+            <DialogBodyText>Sentinel preserves the original DLL and any original steam_settings for Undo.</DialogBodyText>
             <code style={{ overflowWrap: 'anywhere' }}>{dllPath}</code>
           </>
         )}
@@ -590,17 +574,12 @@ export function openGBESetup(appId: string, gameName: string) {
         return;
       }
 
-      const backupStatus = await fetcher.post<BackupStatus>(`${BASE_URL}/gbe-setup/preflight`, {
-        appId,
-        dllPath: selected.realpath
-      });
       let setupModal: ReturnType<typeof showModal> | undefined;
       setupModal = showModal(
         <SetupModal
           appId={appId}
           gameName={gameName}
           dllPath={selected.realpath}
-          hasBackups={backupStatus.hasDllBackup || backupStatus.hasSettingsBackup}
           closeModal={() => setupModal?.Close()}
         />
       );
