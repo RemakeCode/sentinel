@@ -246,12 +246,52 @@ tasks:
         fi
 
 
+  decky:generate-types:
+    summary: Generate Decky Wails model types
+    dir: '{{.ROOT_DIR}}'
+    sources:
+      - backend/**/*.go
+      - go.mod
+      - go.sum
+      - build/Taskfile.yml
+    generates:
+      - decky-plugin/src/shared/types/_generated/**/*
+    cmds:
+      - cmd: |
+          set -euo pipefail
+
+          repo_root="$(pwd)"
+          output_dir="$repo_root/decky-plugin/src/shared/types/_generated"
+          staging_dir="$(mktemp -d)"
+
+          trap 'rm -rf "$staging_dir"' EXIT
+
+          wails3 generate bindings \
+            -d "$staging_dir" \
+            -clean=true \
+            -i \
+            -ts \
+            -noindex
+
+          rm -rf "$output_dir"
+          mkdir -p "$output_dir"
+
+          cd "$staging_dir"
+          find sentinel/backend \
+            -type f \
+            -name 'models.ts' \
+            -exec cp --parents {} "$output_dir" \;
+
+
   decky:frontend:
     summary: Build Decky Frontend
     dir: decky-plugin
+    deps:
+      - task: decky:generate-types
     sources:
       - package.json
       - package-lock.json
+      - src/shared/types/_generated/**/*
     generates:
       - dist
     cmds:
