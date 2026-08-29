@@ -5,23 +5,25 @@ package generator
 import "github.com/wailsapp/wails/v3/pkg/application"
 
 const (
-	EventGBESetup        = "sentinel::gbe-setup"
-	EventGBESetupRequest = "sentinel::gbe-setup-requested"
-	EventGBEUndoRequest  = "sentinel::gbe-undo-requested"
+	EventAchievementSetupSelected = "sentinel::achievement-setup-selected"
+	EventAchievementSetupUpdate   = "sentinel::achievement-setup-update"
 )
 
-type SetupDialogRequest struct {
-	AppID    string `json:"appId"`
-	GameName string `json:"gameName"`
-}
+type AchievementSetupAction string
 
-type UndoDialogRequest struct {
-	AppID    string `json:"appId"`
-	GameName string `json:"gameName"`
+const (
+	AchievementSetupActionSetup AchievementSetupAction = "setup"
+	AchievementSetupActionUndo  AchievementSetupAction = "undo"
+)
+
+type AchievementSetupSelection struct {
+	Action   AchievementSetupAction `json:"action"`
+	AppID    string                 `json:"appId"`
+	GameName string                 `json:"gameName"`
 }
 
 func (s *Service) emit(update Update) {
 	if app := application.Get(); app != nil {
-		app.Event.Emit(EventGBESetup, update)
+		app.Event.Emit(EventAchievementSetupUpdate, update)
 	}
 }

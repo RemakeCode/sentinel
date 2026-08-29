@@ -14,7 +14,7 @@ import missingCover from '@/assets/images/missing-cover.png';
 import { HeaderPortal } from '@/shared/components/header/header';
 import { ManagedGBESetupAppIDs } from '@wa/sentinel/backend/generator/service';
 import { Phase, type Update } from '@wa/sentinel/backend/generator/models';
-import { GBESetupDialog } from '@/shared/components/gbe-setup-dialog';
+import { AchievementSetup } from '@/shared/components/achievement-setup';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -51,13 +51,13 @@ const Dashboard: FC = () => {
     };
     refreshManaged();
 
-    const setupOff = Events.On('sentinel::gbe-setup', (event: { data: Update }) => {
+    const unsubscribe = Events.On('sentinel::achievement-setup-update', (event: { data: Update }) => {
       if (event.data.phase === Phase.PhaseCompleted || event.data.phase === Phase.PhaseUndoCompleted) {
         refreshManaged();
       }
     });
 
-    return setupOff;
+    return unsubscribe;
   }, []);
 
   return (
@@ -134,7 +134,7 @@ const Dashboard: FC = () => {
           </motion.div>
         )}
       </section>
-      <GBESetupDialog />
+      <AchievementSetup />
     </main>
   );
 };

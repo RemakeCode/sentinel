@@ -49,12 +49,6 @@
     overflow: hidden;
   }
 
-  &-content--failure {
-    height: auto;
-    min-height: 0;
-    padding-block-start: var(--space-4);
-  }
-
   &-copy {
     display: flex;
     flex-direction: column;
