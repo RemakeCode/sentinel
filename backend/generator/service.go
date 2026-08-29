@@ -22,6 +22,7 @@ type Phase string
 
 const (
 	PhasePreparing     Phase = "preparing"
+	PhaseDownloading   Phase = "downloading"
 	PhaseAwaitingQR    Phase = "awaitingQr"
 	PhaseGenerating    Phase = "generating"
 	PhaseInstalling    Phase = "installing"
@@ -57,7 +58,7 @@ type EventSink interface {
 }
 
 type ToolPreparer interface {
-	PrepareTools(context.Context, InstallTarget) (*PreparedTools, error)
+	PrepareTools(context.Context, InstallTarget, func(string)) (*PreparedTools, error)
 }
 
 type Service struct {
@@ -115,7 +116,9 @@ func (s *Service) SetupGBE(request SetupRequest) (result SetupResult, err error)
 	}()
 
 	s.emit(Update{Phase: PhasePreparing, Message: "Preparing pinned GSE Fork Tools and gbe_fork DLLs"})
-	tools, err := s.Tools.PrepareTools(ctx, target)
+	tools, err := s.Tools.PrepareTools(ctx, target, func(message string) {
+		s.emit(Update{Phase: PhaseDownloading, Message: message})
+	})
 	if err != nil {
 		return result, s.reportFailureOrCancellation(request.AppID, err)
 	}

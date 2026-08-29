@@ -17,13 +17,13 @@ import (
 
 type fakeTools struct{ prepared *PreparedTools }
 
-func (f fakeTools) PrepareTools(context.Context, InstallTarget) (*PreparedTools, error) {
+func (f fakeTools) PrepareTools(context.Context, InstallTarget, func(string)) (*PreparedTools, error) {
 	return f.prepared, nil
 }
 
 type failingTools struct{ called bool }
 
-func (f *failingTools) PrepareTools(context.Context, InstallTarget) (*PreparedTools, error) {
+func (f *failingTools) PrepareTools(context.Context, InstallTarget, func(string)) (*PreparedTools, error) {
 	f.called = true
 	return nil, errors.New("asset preparation stopped")
 }
