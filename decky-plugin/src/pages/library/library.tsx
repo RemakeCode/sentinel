@@ -7,7 +7,7 @@ import { BASE_URL, Fetcher } from '@/shared/utils/fetcher';
 import { computeProgress } from '@/shared/utils/utils';
 import type { GameBasics } from '@/shared/types/GameBasics';
 import { decorateGames, type AppConfig, type DeckyGameBasics } from '@/shared/utils/steamgrid';
-import { openGBESetup, openGBEUndo } from '@/pages/library/gbe-setup';
+import { AchievementSetupAction, openAchievementSetup } from '@/shared/components/achievement-setup';
 import { styles } from '@/shared/styles';
 
 //language=css
@@ -198,12 +198,18 @@ const LibraryPage: FC = () => {
         </MenuItem>
         <MenuItem
           onClick={() => {
-            openGBESetup(appId, gameName);
+            openAchievementSetup(AchievementSetupAction.AchievementSetupActionSetup, appId, gameName);
           }}
         >
           Setup Achievements
         </MenuItem>
-        {managed && <MenuItem onClick={() => openGBEUndo(appId, gameName)}>Undo Achievement Setup</MenuItem>}
+        {managed && (
+          <MenuItem
+            onClick={() => openAchievementSetup(AchievementSetupAction.AchievementSetupActionUndo, appId, gameName)}
+          >
+            Undo Achievement Setup
+          </MenuItem>
+        )}
       </Menu>,
       parent ?? undefined
     );

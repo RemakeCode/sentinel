@@ -16,7 +16,8 @@ import { playAudio } from '@/shared/utils/usePlayAudio';
 import { SSEController } from '@/shared/utils/sse-controller';
 import { sentinelLogger } from '@/shared/utils/logger';
 import { rareAchievementGlowStyles } from '@/shared/rare-achievement-glow';
-import { dispatchGBESetupUpdate, type GBESetupUpdate } from '@/pages/library/gbe-setup';
+import { dispatchGBESetupUpdate } from '@/shared/components/achievement-setup';
+import type { Update } from '@/shared/types/_generated/sentinel/backend/generator/models';
 
 let sseController: SSEController | null = null;
 
@@ -116,7 +117,7 @@ async function handleNotificationMessage(ev: MessageEvent<string>) {
     return;
   }
   if (envelope.messageType === 'gbeSetup') {
-    dispatchGBESetupUpdate(envelope.payload as GBESetupUpdate);
+    dispatchGBESetupUpdate(envelope.payload as Update);
     return;
   }
   if (envelope.messageType === 'achievement') {
