@@ -22,3 +22,4 @@ node_modules
 .DS_Store
 AGENTS.md
 /decky-plugin/out/
+/decky-plugin/src/shared/types/_generated/
