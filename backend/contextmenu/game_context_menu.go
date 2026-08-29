@@ -61,7 +61,8 @@ func setupAchievementsMenuItem(menu *application.ContextMenu, app *application.A
 			return
 		}
 
-		app.Event.Emit(generator.EventGBESetupRequest, generator.SetupDialogRequest{
+		app.Event.Emit(generator.EventAchievementSetupSelected, generator.AchievementSetupSelection{
+			Action:   generator.AchievementSetupActionSetup,
 			AppID:    data.AppID,
 			GameName: data.GameName,
 		})
@@ -76,7 +77,8 @@ func undoSetupMenuItem(menu *application.ContextMenu, app *application.App) {
 			return
 		}
 
-		app.Event.Emit(generator.EventGBEUndoRequest, generator.UndoDialogRequest{
+		app.Event.Emit(generator.EventAchievementSetupSelected, generator.AchievementSetupSelection{
+			Action:   generator.AchievementSetupActionUndo,
 			AppID:    data.AppID,
 			GameName: data.GameName,
 		})
