@@ -71,7 +71,7 @@ func NewToolManager() *ToolManager {
 	}
 }
 
-func (m *ToolManager) PrepareTools(ctx context.Context, target InstallTarget) (*PreparedTools, error) {
+func (m *ToolManager) PrepareTools(ctx context.Context, target InstallTarget, reportProgress func(string)) (*PreparedTools, error) {
 	if err := os.MkdirAll(backend.GeneratorDir, 0755); err != nil {
 		return nil, fmt.Errorf("create generator asset directory: %w", err)
 	}
@@ -79,12 +79,12 @@ func (m *ToolManager) PrepareTools(ctx context.Context, target InstallTarget) (*
 	temporaryDirectory := filepath.Join(backend.GeneratorDir, tempDirName)
 	defer os.RemoveAll(temporaryDirectory)
 
-	generatorExecutable, err := m.prepareGSEForkToolsExecutable(ctx, temporaryDirectory)
+	generatorExecutable, err := m.prepareGSEForkToolsExecutable(ctx, temporaryDirectory, reportProgress)
 	if err != nil {
 		return nil, err
 	}
 
-	gbeForkDLLDirectory, err := m.prepareGBEForkDLLDirectory(ctx, temporaryDirectory)
+	gbeForkDLLDirectory, err := m.prepareGBEForkDLLDirectory(ctx, temporaryDirectory, reportProgress)
 	if err != nil {
 		return nil, err
 	}
@@ -114,7 +114,7 @@ func (m *ToolManager) PrepareTools(ctx context.Context, target InstallTarget) (*
 	}, nil
 }
 
-func (m *ToolManager) prepareGSEForkToolsExecutable(ctx context.Context, temporaryDirectory string) (string, error) {
+func (m *ToolManager) prepareGSEForkToolsExecutable(ctx context.Context, temporaryDirectory string, progressCallbacks ...func(string)) (string, error) {
 	gseForkToolsDirectory := filepath.Join(backend.GeneratorDir, gseForkToolsAsset.cacheDirectoryName, gseForkToolsAsset.version)
 	if dirExists(gseForkToolsDirectory) {
 		return filepath.Join(gseForkToolsDirectory, filepath.FromSlash(gseForkToolsExecutablePath)), nil
@@ -123,6 +123,9 @@ func (m *ToolManager) prepareGSEForkToolsExecutable(ctx context.Context, tempora
 	gseForkToolsRoot := filepath.Dir(gseForkToolsDirectory)
 	if err := os.MkdirAll(gseForkToolsRoot, 0755); err != nil {
 		return "", fmt.Errorf("create GSE Fork Tools asset directory: %w", err)
+	}
+	if len(progressCallbacks) > 0 && progressCallbacks[0] != nil {
+		progressCallbacks[0]("Downloading GSE Fork Tools…")
 	}
 
 	archive, err := m.downloadArchive(ctx, gseForkToolsAsset.releaseURL, temporaryDirectory, gseForkToolsAsset.sha256)
@@ -147,7 +150,7 @@ func (m *ToolManager) prepareGSEForkToolsExecutable(ctx context.Context, tempora
 	return filepath.Join(gseForkToolsDirectory, filepath.FromSlash(gseForkToolsExecutablePath)), nil
 }
 
-func (m *ToolManager) prepareGBEForkDLLDirectory(ctx context.Context, temporaryDirectory string) (string, error) {
+func (m *ToolManager) prepareGBEForkDLLDirectory(ctx context.Context, temporaryDirectory string, progressCallbacks ...func(string)) (string, error) {
 	gbeForkDLLDirectory := filepath.Join(backend.GeneratorDir, gbeForkDLLAsset.cacheDirectoryName, gbeForkDLLAsset.version)
 	if dirExists(gbeForkDLLDirectory) {
 		return gbeForkDLLDirectory, nil
@@ -156,6 +159,9 @@ func (m *ToolManager) prepareGBEForkDLLDirectory(ctx context.Context, temporaryD
 	gbeRoot := filepath.Dir(gbeForkDLLDirectory)
 	if err := os.MkdirAll(gbeRoot, 0755); err != nil {
 		return "", fmt.Errorf("create gbe_fork DLL asset directory: %w", err)
+	}
+	if len(progressCallbacks) > 0 && progressCallbacks[0] != nil {
+		progressCallbacks[0]("Downloading gbe_fork DLLs…")
 	}
 
 	archive, err := m.downloadArchive(ctx, gbeForkDLLAsset.releaseURL, temporaryDirectory, gbeForkDLLAsset.sha256)
