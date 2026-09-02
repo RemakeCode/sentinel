@@ -1,14 +1,8 @@
 import './achievement-setup.scss';
 import { useEffect, useRef, useState, type FC } from 'react';
-import { Events } from '@wailsio/runtime';
 import { renderSVG } from 'uqr';
 import { CancelGBESetup, SelectTargetDLL, SetupGBE } from '@wa/sentinel/backend/generator/service';
-import {
-  Phase,
-  SetupRequest,
-  type AchievementSetupSelection,
-  type Update
-} from '@wa/sentinel/backend/generator/models';
+import { Phase, SetupRequest, type Update } from '@wa/sentinel/backend/generator/models';
 
 interface SetupProgressStage {
   value: number;
@@ -99,7 +93,7 @@ const SetupHeader: FC<{ stage: SetupProgressStage; label: string; showProgress?:
 );
 
 const DLLSelectionFlow: FC<{
-  request: AchievementSetupSelection;
+  request: { appId: string; gameName: string };
   dllPath: string;
   onSelected: (dllPath: string) => void;
   onContinue: () => void;
@@ -186,7 +180,7 @@ const SetupFlow: FC<{
     startRequestedRef.current = true;
     setCancelPending(false);
 
-    void SetupGBE(new SetupRequest({ appId, dllPath })).catch((error) => {
+    void SetupGBE(new SetupRequest({ appId, gameName, dllPath })).catch((error) => {
       setUpdate((current) => {
         if (current.phase !== Phase.PhasePreparing && current.phase !== Phase.PhaseDownloading) {
           return current;
@@ -194,7 +188,7 @@ const SetupFlow: FC<{
         return failedUpdate(String(error));
       });
     });
-  }, [appId, dllPath]);
+  }, [appId, gameName, dllPath]);
 
   const active = !isTerminalPhase(update.phase);
 
@@ -277,40 +271,33 @@ const SetupFlow: FC<{
   );
 };
 
-export const GBESetupModal: FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
+export const GBESetupModal: FC<{
+  isOpen: boolean;
+  appId: string;
+  gameName: string;
+  onClose: () => void;
+}> = ({ isOpen, appId, gameName, onClose }) => {
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const [request, setRequest] = useState<AchievementSetupSelection>();
   const [screen, setScreen] = useState<SetupScreen>('selection');
   const [dllPath, setDLLPath] = useState('');
   const [active, setActive] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = Events.On('sentinel::achievement-setup-selected', (event: { data: AchievementSetupSelection }) => {
-      if (event.data.action !== 'setup') {
-        return;
-      }
-
-      setRequest(event.data);
-      setScreen('selection');
-      setDLLPath('');
-      setActive(false);
-    });
-
-    return unsubscribe;
-  }, []);
+    setScreen('selection');
+    setDLLPath('');
+    setActive(false);
+  }, [appId, gameName, isOpen]);
 
   useEffect(() => {
-    if (isOpen && request && !dialogRef.current?.open) {
+    if (isOpen && !dialogRef.current?.open) {
       dialogRef.current?.showModal();
     }
     if (!isOpen && dialogRef.current?.open) {
       dialogRef.current.close();
     }
-  }, [isOpen, request]);
+  }, [isOpen]);
 
-  if (!request) {
-    return null;
-  }
+  const request = { appId, gameName };
 
   return (
     <dialog
@@ -336,7 +323,7 @@ export const GBESetupModal: FC<{ isOpen: boolean; onClose: () => void }> = ({ is
       )}
       {screen === 'setup' && (
         <SetupFlow
-          key={`${request.appId}:${dllPath}`}
+          key={`${appId}:${dllPath}`}
           appId={request.appId}
           dllPath={dllPath}
           gameName={request.gameName}
