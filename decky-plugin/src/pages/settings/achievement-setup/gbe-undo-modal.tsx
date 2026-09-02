@@ -1,7 +1,7 @@
 import { type FC, useState } from 'react';
 import { ConfirmModal, DialogBody, DialogBodyText } from '@decky/ui';
 import { BASE_URL, Fetcher } from '@/shared/utils/fetcher';
-import { achievementSetupStyles } from './achievement-setup-styles';
+import { achievementSetupStyles } from '@/pages/settings/achievement-setup/achievement-setup-styles';
 
 type UndoState = 'confirm' | 'restoring' | 'succeeded' | 'failed';
 
@@ -33,8 +33,7 @@ export const GBEUndoModal: FC<{ appId: string; gameName: string; closeModal: () 
 
   return (
     <ConfirmModal
-      modalClassName='sentinel-gbe-undo-modal'
-      strTitle='Undo Achievement Setup'
+      strTitle='Undo Achievements Setup'
       strOKButtonText={state === 'confirm' ? 'Restore backups' : finished ? 'Close' : 'Restoring…'}
       strCancelButtonText={state === 'confirm' ? 'Back' : undefined}
       bOKDisabled={restoring}

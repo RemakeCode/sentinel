@@ -7,7 +7,6 @@ import { BASE_URL, Fetcher } from '@/shared/utils/fetcher';
 import { computeProgress } from '@/shared/utils/utils';
 import type { GameBasics } from '@/shared/types/GameBasics';
 import { decorateGames, type AppConfig, type DeckyGameBasics } from '@/shared/utils/steamgrid';
-import { AchievementSetupAction, openAchievementSetup } from '@/shared/components/achievement-setup';
 import { styles } from '@/shared/styles';
 
 //language=css
@@ -183,9 +182,7 @@ const LibraryPage: FC = () => {
     }
   };
 
-  const openGameContextMenu = async (appId: string, gameName: string, parent?: EventTarget | null) => {
-    const managedAppIds = await fetcher.get<string[]>(`${BASE_URL}/gbe-setup/managed`).catch((): string[] => []);
-    const managed = managedAppIds.includes(appId);
+  const openGameContextMenu = (appId: string, parent?: EventTarget | null) => {
     showContextMenu(
       <Menu label='Game Actions'>
         <MenuItem
@@ -196,20 +193,6 @@ const LibraryPage: FC = () => {
         >
           {refreshingGameIds.includes(appId) ? 'Refreshing...' : 'Refresh Game'}
         </MenuItem>
-        <MenuItem
-          onClick={() => {
-            openAchievementSetup(AchievementSetupAction.AchievementSetupActionSetup, appId, gameName);
-          }}
-        >
-          Setup Achievements
-        </MenuItem>
-        {managed && (
-          <MenuItem
-            onClick={() => openAchievementSetup(AchievementSetupAction.AchievementSetupActionUndo, appId, gameName)}
-          >
-            Undo Achievement Setup
-          </MenuItem>
-        )}
       </Menu>,
       parent ?? undefined
     );
@@ -260,7 +243,7 @@ const LibraryPage: FC = () => {
                   progress={progress}
                   isRefreshing={isRefreshing}
                   onActivate={() => Navigation.Navigate(`/sentinel/games/${game.AppID}`)}
-                  onOpenContextMenu={(parent) => void openGameContextMenu(game.AppID, game.Name, parent)}
+                  onOpenContextMenu={(parent) => void openGameContextMenu(game.AppID, parent)}
                 />
               );
             })}
