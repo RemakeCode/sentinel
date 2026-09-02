@@ -8,7 +8,7 @@ import { ImgIcon } from '@/shared/components/img-icon';
 import { ToastBody, ToastTitle } from '@/shared/components/toast';
 import { initTracker, type TrackerCleanup } from '@/shared/utils/non-steam-game-tracker';
 import MainPage from '@/pages/main';
-import SettingsPage from '@/pages/settings';
+import SettingsPage from '@/pages/settings/settings';
 import LibraryPage from '@/pages/library';
 import AchievementsPage from '@/pages/achievements';
 import { PiTrophy } from 'react-icons/pi';
@@ -16,7 +16,7 @@ import { playAudio } from '@/shared/utils/usePlayAudio';
 import { SSEController } from '@/shared/utils/sse-controller';
 import { sentinelLogger } from '@/shared/utils/logger';
 import { rareAchievementGlowStyles } from '@/shared/rare-achievement-glow';
-import { dispatchGBESetupUpdate } from '@/shared/components/achievement-setup';
+import { dispatchGBESetupUpdate } from '@/shared/utils/gbe-setup-events';
 import type { Update } from '@/shared/types/_generated/sentinel/backend/generator/models';
 
 let sseController: SSEController | null = null;

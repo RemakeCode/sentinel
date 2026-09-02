@@ -6,8 +6,8 @@ import { BASE_URL, Fetcher } from '@/shared/utils/fetcher';
 import { sentinelLogger } from '@/shared/utils/logger';
 import type { Update } from '@/shared/types/_generated/sentinel/backend/generator/models';
 import { Phase } from '@/shared/types/_generated/sentinel/backend/generator/models';
-import { achievementSetupStyles } from './achievement-setup-styles';
-import type { GBESetupUpdateSubscription } from './achievement-setup';
+import { achievementSetupStyles } from '@/pages/settings/achievement-setup/achievement-setup-styles';
+import type { GBESetupUpdateSubscription } from '@/shared/utils/gbe-setup-events';
 
 interface SetupProgressStage {
   value: number;
@@ -168,8 +168,9 @@ const SetupFlow: FC<{
   gameName: string;
   dllPath: string;
   closeModal: () => void;
+  onSetupTerminal: () => void;
   subscribeGBESetupUpdates: GBESetupUpdateSubscription;
-}> = ({ appId, gameName, dllPath, closeModal, subscribeGBESetupUpdates }) => {
+}> = ({ appId, gameName, dllPath, closeModal, onSetupTerminal, subscribeGBESetupUpdates }) => {
   const [update, setUpdate] = useState<Update>(preparingUpdate);
   const [cancelPending, setCancelPending] = useState(false);
   const startRequestedRef = useRef(false);
@@ -182,10 +183,11 @@ const SetupFlow: FC<{
         }
         if (isTerminalPhase(next.phase)) {
           setCancelPending(false);
+          onSetupTerminal();
         }
         setUpdate(next);
       }),
-    []
+    [subscribeGBESetupUpdates]
   );
 
   useEffect(() => {
@@ -194,7 +196,8 @@ const SetupFlow: FC<{
     }
 
     startRequestedRef.current = true;
-    void fetcher.post(`${BASE_URL}/gbe-setup/start`, { appId, dllPath }).catch((error) => {
+    void fetcher.post(`${BASE_URL}/gbe-setup/start`, { appId, gameName, dllPath }).catch((error) => {
+      onSetupTerminal();
       setUpdate((current) => {
         if (isTerminalPhase(current.phase)) {
           return current;
@@ -202,7 +205,7 @@ const SetupFlow: FC<{
         return failedUpdate(String(error));
       });
     });
-  }, [appId, dllPath]);
+  }, [appId, gameName, dllPath]);
 
   const active = !isTerminalPhase(update.phase);
 
@@ -219,6 +222,7 @@ const SetupFlow: FC<{
       }
     } catch {
       setCancelPending(false);
+      onSetupTerminal();
       setUpdate((current) => {
         if (isTerminalPhase(current.phase)) {
           return current;
@@ -299,8 +303,9 @@ export const GBESetupModal: FC<{
   appId: string;
   gameName: string;
   closeModal: () => void;
+  onSetupTerminal: () => void;
   subscribeGBESetupUpdates: GBESetupUpdateSubscription;
-}> = ({ appId, gameName, closeModal, subscribeGBESetupUpdates }) => {
+}> = ({ appId, gameName, closeModal, onSetupTerminal, subscribeGBESetupUpdates }) => {
   const [screen, setScreen] = useState<SetupScreen>('selection');
   const [dllPath, setDLLPath] = useState('');
 
@@ -322,6 +327,7 @@ export const GBESetupModal: FC<{
       gameName={gameName}
       dllPath={dllPath}
       closeModal={closeModal}
+      onSetupTerminal={onSetupTerminal}
       subscribeGBESetupUpdates={subscribeGBESetupUpdates}
     />
   );
