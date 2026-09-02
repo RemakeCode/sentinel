@@ -16,7 +16,8 @@ import { clearMapping, type GameMapping, getAllMappings } from '@/shared/utils/g
 import { showConfirmModal } from '@/shared/components/confirm';
 import { BsTrash } from 'react-icons/bs';
 import { FaVolumeHigh, FaVolumeOff } from 'react-icons/fa6';
-import { FaBook, FaCircle, FaCog, FaLink } from 'react-icons/fa';
+import { FaBook, FaCircle, FaCog, FaLink, FaTrophy } from 'react-icons/fa';
+import { AchievementSetupContent } from '@/pages/settings/achievement-setup/achievement-setup';
 
 const fetcher = new Fetcher();
 
@@ -53,10 +54,10 @@ interface SoundOption {
 }
 
 const emulatorSearchPaths: Record<string, string> = {
-  gse: 'users/steamuser/AppData/Roaming/GSE Saves',
+  'gse': 'users/steamuser/AppData/Roaming/GSE Saves',
   'goldberg-steamemu': 'users/steamuser/AppData/Roaming/Goldberg SteamEmu Saves',
-  codex: 'users/Public/Documents/Steam/CODEX',
-  rune: 'users/Public/Documents/Steam/RUNE'
+  'codex': 'users/Public/Documents/Steam/CODEX',
+  'rune': 'users/Public/Documents/Steam/RUNE'
 };
 
 const MappingsContent: FC = () => {
@@ -263,7 +264,9 @@ const SettingsPage: FC = () => {
 
     try {
       await fetcher.put(`${BASE_URL}/config/decky/use-steam-grid`, { useSteamGrid: enabled });
-      setConfig((prev) => (prev ? { ...prev, decky: { ...(prev.decky ?? { UseSteamGrid: false }), UseSteamGrid: enabled } } : prev));
+      setConfig((prev) =>
+        prev ? { ...prev, decky: { ...(prev.decky ?? { UseSteamGrid: false }), UseSteamGrid: enabled } } : prev
+      );
     } catch {
       toaster.toast({ title: 'Error', body: 'Failed to update SteamGridDB image setting' });
     }
@@ -276,6 +279,12 @@ const SettingsPage: FC = () => {
     <SidebarNavigation
       title='Settings'
       pages={[
+        {
+          title: 'Achievement Setup',
+          identifier: 'achievement-setup',
+          icon: <FaTrophy />,
+          content: <AchievementSetupContent />
+        },
         {
           title: 'Settings',
           identifier: 'settings',

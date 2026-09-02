@@ -95,10 +95,6 @@ export const achievementSetupStyles = `
     align-items: flex-start;
   }
 
-  .sentinel-gbe-undo-modal {
-    width: min(420px, calc(100vw - 32px));
-  }
-
   @media (max-width: 600px) {
     .sentinel-gbe-setup-title {
       flex-direction: column;
