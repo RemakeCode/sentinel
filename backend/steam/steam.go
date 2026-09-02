@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"math"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"sentinel/backend"
@@ -70,6 +71,15 @@ type GlobalAchievementPercentage struct {
 	Percent string `json:"percent"`
 	IsRare  bool   `json:"isRare"`
 }
+
+// AppSearchResult is a Steam app returned by the community search endpoint.
+type AppSearchResult struct {
+	AppID string `json:"appId"`
+	Name  string `json:"name"`
+	Icon  string `json:"icon"`
+}
+
+var ErrInvalidSearchQuery = errors.New("game search query is required")
 
 const globalAchievementPercentageCacheTTL = 24 * time.Hour
 
@@ -177,6 +187,31 @@ func (s *Service) RefetchGameData(appID string) (*GameBasics, error) {
 
 	s.applyCachedAchievementProgress(game)
 	return game, nil
+}
+
+// SearchApps searches Steam's public app index by game name.
+func (s *Service) SearchApps(query string) ([]AppSearchResult, error) {
+	query = strings.TrimSpace(query)
+	if query == "" {
+		return nil, ErrInvalidSearchQuery
+	}
+
+	requestURL := "https://steamcommunity.com/actions/SearchApps/" + url.PathEscape(query)
+	response, err := s.httpClient().Get(requestURL)
+	if err != nil {
+		return nil, fmt.Errorf("search Steam apps: %w", err)
+	}
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("search Steam apps: unexpected status %s", response.Status)
+	}
+
+	var results []AppSearchResult
+	if err := json.NewDecoder(response.Body).Decode(&results); err != nil {
+		return nil, fmt.Errorf("decode Steam app search: %w", err)
+	}
+
+	return results[:min(10, len(results))], nil
 }
 
 func (s *Service) GetLibrarySyncStatus() LibrarySyncStatus {

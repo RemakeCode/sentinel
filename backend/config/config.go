@@ -82,10 +82,11 @@ type DeckyConfig struct {
 	UseSteamGrid bool `json:"UseSteamGrid"`
 }
 
-// ManagedGBESetup records the directory where Sentinel successfully installed
-// GBE for an app. The filesystem backups remain authoritative for Undo.
+// ManagedGBESetup records a successful GBE installation. The filesystem
+// backups remain authoritative for Undo.
 type ManagedGBESetup struct {
 	AppID string `json:"appId"`
+	Name  string `json:"name"`
 	Path  string `json:"path"`
 }
 
@@ -102,7 +103,9 @@ type File struct {
 	LogLevel                      string                        `json:"logLevel"`
 	StartOnLogin                  bool                          `json:"startOnLogin"`
 	Decky                         DeckyConfig                   `json:"decky"`
-	ManagedGBESetups              []ManagedGBESetup             `json:"managedGBESetups,omitempty"`
+	// ManagedGBESetups is persisted separately so public config responses and
+	// Wails settings bindings never expose installation paths.
+	ManagedGBESetups []ManagedGBESetup `json:"-"`
 }
 
 var defaultEmulatorSources = []EmulatorSource{
@@ -256,6 +259,13 @@ func (c *File) LoadConfig() (*File, error) {
 	if err := json.Unmarshal(data, c); err != nil {
 		return nil, errors.New("unable to unmarshal config")
 	}
+	var managed struct {
+		ManagedGBESetups []ManagedGBESetup `json:"managedGBESetups"`
+	}
+	if err := json.Unmarshal(data, &managed); err != nil {
+		return nil, errors.New("unable to unmarshal config")
+	}
+	c.ManagedGBESetups = managed.ManagedGBESetups
 
 	raw, err := legacyConfigFromJSON(data)
 	if err != nil {
@@ -283,6 +293,23 @@ func (c *File) SaveConfig() error {
 	if err != nil {
 		return fmt.Errorf("failed to marshal config: %w", err)
 	}
+	var persisted map[string]json.RawMessage
+	if err := json.Unmarshal(data, &persisted); err != nil {
+		return fmt.Errorf("failed to prepare config: %w", err)
+	}
+	if len(c.ManagedGBESetups) > 0 {
+		managed, err := json.Marshal(c.ManagedGBESetups)
+		if err != nil {
+			return fmt.Errorf("failed to marshal managed GBE setups: %w", err)
+		}
+		persisted["managedGBESetups"] = managed
+	} else {
+		delete(persisted, "managedGBESetups")
+	}
+	data, err = json.MarshalIndent(persisted, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal config: %w", err)
+	}
 
 	if err := os.MkdirAll(filepath.Dir(backend.ConfigPath), 0755); err != nil {
 		return fmt.Errorf("failed to create config dir: %w", err)
@@ -296,6 +323,8 @@ func (c *File) SaveConfig() error {
 }
 
 // GetManagedGBESetups returns a copy of the managed setup index.
+//
+//wails:internal
 func (c *File) GetManagedGBESetups() []ManagedGBESetup {
 	result := make([]ManagedGBESetup, len(c.ManagedGBESetups))
 	copy(result, c.ManagedGBESetups)
@@ -303,6 +332,8 @@ func (c *File) GetManagedGBESetups() []ManagedGBESetup {
 }
 
 // HasManagedGBESetup reports whether Sentinel has a managed setup for appID.
+//
+//wails:internal
 func (c *File) HasManagedGBESetup(appID string) bool {
 	for _, setup := range c.ManagedGBESetups {
 		if setup.AppID == appID {
@@ -313,6 +344,8 @@ func (c *File) HasManagedGBESetup(appID string) bool {
 }
 
 // GetManagedGBESetup returns the stored setup directory for appID.
+//
+//wails:internal
 func (c *File) GetManagedGBESetup(appID string) (ManagedGBESetup, bool) {
 	for _, setup := range c.ManagedGBESetups {
 		if setup.AppID == appID && setup.Path != "" {
@@ -323,23 +356,27 @@ func (c *File) GetManagedGBESetup(appID string) (ManagedGBESetup, bool) {
 }
 
 // SetManagedGBESetup records a successful installation for appID.
-func (c *File) SetManagedGBESetup(appID, path string) error {
-	appID = strings.TrimSpace(appID)
+//
+//wails:internal
+func (c *File) SetManagedGBESetup(appID, name, path string) error {
 	path = filepath.Clean(strings.TrimSpace(path))
-	if appID == "" || path == "." {
-		return errors.New("app ID and setup directory are required")
+	if path == "." {
+		return errors.New("setup directory is required")
 	}
 	for i := range c.ManagedGBESetups {
 		if c.ManagedGBESetups[i].AppID == appID {
+			c.ManagedGBESetups[i].Name = name
 			c.ManagedGBESetups[i].Path = path
 			return c.SaveConfig()
 		}
 	}
-	c.ManagedGBESetups = append(c.ManagedGBESetups, ManagedGBESetup{AppID: appID, Path: path})
+	c.ManagedGBESetups = append(c.ManagedGBESetups, ManagedGBESetup{AppID: appID, Name: name, Path: path})
 	return c.SaveConfig()
 }
 
 // RemoveManagedGBESetup removes the managed setup entry for appID.
+//
+//wails:internal
 func (c *File) RemoveManagedGBESetup(appID string) error {
 	filtered := c.ManagedGBESetups[:0]
 	for _, setup := range c.ManagedGBESetups {

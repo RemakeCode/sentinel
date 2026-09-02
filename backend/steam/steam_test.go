@@ -2,6 +2,7 @@ package steam
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -52,6 +53,28 @@ func TestPathHelpers(t *testing.T) {
 	assert.Equal(t, "/tmp/games/english/12345.json", svc.getGameCachePath(appID, lang))
 	assert.Equal(t, "/tmp/icons/12345/icon.png", svc.getIconCachePath(appID, "icon.png"))
 	assert.Equal(t, "/tmp/icons/12345/header.jpg", svc.getGameImageCachePath(appID, "header.jpg"))
+}
+
+func TestSearchAppsUsesSteamEndpointAndLimitsResults(t *testing.T) {
+	var requestedPath string
+	service := &Service{}
+	service.client = &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		requestedPath = req.URL.EscapedPath()
+		payload := make([]map[string]string, 0, 12)
+		for i := 0; i < 12; i++ {
+			payload = append(payload, map[string]string{"appid": fmt.Sprintf("%d", i+1), "name": fmt.Sprintf("Game %d", i+1), "icon": "icon"})
+		}
+		body, err := json.Marshal(payload)
+		require.NoError(t, err)
+		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(string(body))), Header: make(http.Header)}, nil
+	})}
+	service.clientOnce.Do(func() {})
+
+	results, err := service.SearchApps("Half Life 2")
+	require.NoError(t, err)
+	assert.Equal(t, "/actions/SearchApps/Half%20Life%202", requestedPath)
+	assert.Len(t, results, 10)
+	assert.Equal(t, "1", results[0].AppID)
 }
 
 func TestResponseParsing_GameDetails(t *testing.T) {

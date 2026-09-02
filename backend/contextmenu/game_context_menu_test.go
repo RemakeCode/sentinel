@@ -9,10 +9,9 @@ import (
 )
 
 func TestParseGameCardContextData(t *testing.T) {
-	data, ok := parseGameCardContextData(`{"appId":" 620 ","gameName":"Portal 2"}`)
+	data, ok := parseGameCardContextData(`{"appId":" 620 "}`)
 	require.True(t, ok)
 	require.Equal(t, "620", data.AppID)
-	require.Equal(t, "Portal 2", data.GameName)
 }
 
 func TestParseGameCardContextDataRejectsInvalidInput(t *testing.T) {

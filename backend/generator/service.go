@@ -14,8 +14,9 @@ import (
 )
 
 var (
-	ErrGBESetupRunning    = errors.New("a GBE setup is already running")
-	errQRApprovalTimedOut = errors.New("Steam sign-in approval timed out. Start setup again to get a new QR code.")
+	ErrGBESetupRunning     = errors.New("a GBE setup is already running")
+	ErrInvalidSetupRequest = errors.New("invalid GBE setup request")
+	errQRApprovalTimedOut  = errors.New("Steam sign-in approval timed out. Start setup again to get a new QR code.")
 )
 
 type Phase string
@@ -42,8 +43,9 @@ type Update struct {
 }
 
 type SetupRequest struct {
-	AppID   string `json:"appId"`
-	DLLPath string `json:"dllPath"`
+	AppID    string `json:"appId"`
+	GameName string `json:"gameName"`
+	DLLPath  string `json:"dllPath"`
 }
 
 type SetupResult struct {
@@ -91,9 +93,14 @@ func (s *Service) Start(_ context.Context) error {
 }
 
 func (s *Service) SetupGBE(request SetupRequest) (result SetupResult, err error) {
+	request.AppID = strings.TrimSpace(request.AppID)
+	request.GameName = strings.TrimSpace(request.GameName)
+	if request.GameName == "" {
+		return result, fmt.Errorf("%w: game name is required", ErrInvalidSetupRequest)
+	}
 	target, err := ValidateInstallTarget(request.AppID, request.DLLPath)
 	if err != nil {
-		return result, err
+		return result, fmt.Errorf("%w: %v", ErrInvalidSetupRequest, err)
 	}
 
 	s.mu.Lock()
@@ -187,7 +194,7 @@ func (s *Service) SetupGBE(request SetupRequest) (result SetupResult, err error)
 	}
 
 	installDirectory := target.InstallDirectory
-	if err := s.Config.SetManagedGBESetup(target.AppID, installDirectory); err != nil {
+	if err := s.Config.SetManagedGBESetup(target.AppID, request.GameName, installDirectory); err != nil {
 		// Installation succeeded. Keep the exact backups and report that only the
 		// managed index could not be recorded; Undo remains possible manually.
 		return result, s.reportFailure(request.AppID, fmt.Errorf("record managed GBE setup: %w", err))
@@ -213,20 +220,25 @@ func (s *Service) CancelGBESetup() bool {
 	return true
 }
 
-func (s *Service) ManagedGBESetupAppIDs() []string {
+type ManagedGBESetupSummary struct {
+	AppID string `json:"appId"`
+	Name  string `json:"name"`
+}
+
+func (s *Service) ManagedGBESetups() []ManagedGBESetupSummary {
 	if s.Config == nil {
 		return nil
 	}
 
 	setups := s.Config.GetManagedGBESetups()
-	appIDs := make([]string, 0, len(setups))
+	summaries := make([]ManagedGBESetupSummary, 0, len(setups))
 	for _, setup := range setups {
-		if setup.AppID != "" && setup.Path != "" {
-			appIDs = append(appIDs, setup.AppID)
+		if setup.AppID != "" && setup.Name != "" && setup.Path != "" {
+			summaries = append(summaries, ManagedGBESetupSummary{AppID: setup.AppID, Name: setup.Name})
 		}
 	}
 
-	return appIDs
+	return summaries
 }
 
 func (s *Service) UndoGBESetup(appID string) error {
