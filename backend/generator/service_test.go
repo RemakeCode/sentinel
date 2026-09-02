@@ -78,7 +78,7 @@ func TestSetupGBEInstallsOnlySuccessfulOpaqueGSEOutput(t *testing.T) {
 		Config: &config.File{}, Auth: approvedAuth{}, Events: events,
 		Tools: fakeTools{prepared: &PreparedTools{GeneratorExecutable: executable, ReplacementDLL: stagedDLL, WorkspaceDir: workspace}},
 	}
-	result, err := service.SetupGBE(SetupRequest{AppID: "620", DLLPath: targetDLL})
+	result, err := service.SetupGBE(SetupRequest{AppID: "620", GameName: "Portal 2", DLLPath: targetDLL})
 	require.NoError(t, err)
 	require.Equal(t, "620", result.AppID)
 	require.FileExists(t, filepath.Join(targetDir, steamSettingsDirectoryName, "custom.bin"))
@@ -86,7 +86,7 @@ func TestSetupGBEInstallsOnlySuccessfulOpaqueGSEOutput(t *testing.T) {
 	require.NoFileExists(t, filepath.Join(gseDir, gseTokenFilename))
 	require.NoDirExists(t, filepath.Join(gseDir, gseOutputDirectoryName, "620"))
 	require.NoDirExists(t, workspace)
-	require.Contains(t, service.ManagedGBESetupAppIDs(), "620")
+	require.Equal(t, []ManagedGBESetupSummary{{AppID: "620", Name: "Portal 2"}}, service.ManagedGBESetups())
 	for _, update := range events.updates {
 		require.NotContains(t, update.Message, "secret")
 	}
@@ -110,14 +110,14 @@ func TestFailedGSELeftoverOutputNeverInstalls(t *testing.T) {
 		Config: &config.File{}, Auth: approvedAuth{},
 		Tools: fakeTools{prepared: &PreparedTools{GeneratorExecutable: executable, ReplacementDLL: stagedDLL, WorkspaceDir: workspace}},
 	}
-	_, err := service.SetupGBE(SetupRequest{AppID: "620", DLLPath: targetDLL})
+	_, err := service.SetupGBE(SetupRequest{AppID: "620", GameName: "Portal 2", DLLPath: targetDLL})
 	require.Error(t, err)
 	data, readErr := os.ReadFile(targetDLL)
 	require.NoError(t, readErr)
 	require.Equal(t, "original", string(data))
 	require.NoFileExists(t, targetDLL+sentinelBackupSuffix)
 	require.NoDirExists(t, filepath.Join(gseDir, gseOutputDirectoryName, "620"))
-	require.NotContains(t, service.ManagedGBESetupAppIDs(), "620")
+	require.Empty(t, service.ManagedGBESetups())
 }
 
 func TestSuccessfulGSEWithoutOutputNeverInstalls(t *testing.T) {
@@ -139,7 +139,7 @@ func TestSuccessfulGSEWithoutOutputNeverInstalls(t *testing.T) {
 		Config: &config.File{}, Auth: approvedAuth{},
 		Tools: fakeTools{prepared: &PreparedTools{GeneratorExecutable: executable, ReplacementDLL: stagedDLL, WorkspaceDir: workspace}},
 	}
-	_, err := service.SetupGBE(SetupRequest{AppID: "620", DLLPath: targetDLL})
+	_, err := service.SetupGBE(SetupRequest{AppID: "620", GameName: "Portal 2", DLLPath: targetDLL})
 	require.ErrorContains(t, err, "without an available generated output folder")
 	require.Equal(t, []byte("original"), mustReadFile(t, targetDLL))
 	require.NoFileExists(t, targetDLL+sentinelBackupSuffix)
@@ -153,7 +153,7 @@ func TestExistingBackupsDoNotBlockPreparation(t *testing.T) {
 	tools := &failingTools{}
 	service := &Service{Config: &config.File{}, Tools: tools}
 
-	_, err := service.SetupGBE(SetupRequest{AppID: "620", DLLPath: targetDLL})
+	_, err := service.SetupGBE(SetupRequest{AppID: "620", GameName: "Portal 2", DLLPath: targetDLL})
 	require.ErrorContains(t, err, "asset preparation stopped")
 	require.True(t, tools.called)
 	require.Equal(t, []byte("current"), mustReadFile(t, targetDLL))
@@ -171,7 +171,7 @@ func TestSetupGBELogsOperationFailure(t *testing.T) {
 	require.NoError(t, os.WriteFile(targetDLL, []byte("current"), 0644))
 	service := &Service{Config: &config.File{}, Tools: &failingTools{}}
 
-	_, err := service.SetupGBE(SetupRequest{AppID: "620", DLLPath: targetDLL})
+	_, err := service.SetupGBE(SetupRequest{AppID: "620", GameName: "Portal 2", DLLPath: targetDLL})
 
 	require.ErrorContains(t, err, "asset preparation stopped")
 	require.Contains(t, logs.String(), "level=ERROR")
@@ -204,7 +204,7 @@ func TestSetupGBETimesOutQRApproval(t *testing.T) {
 		}},
 	}
 
-	_, err := service.SetupGBE(SetupRequest{AppID: "620", DLLPath: targetDLL})
+	_, err := service.SetupGBE(SetupRequest{AppID: "620", GameName: "Portal 2", DLLPath: targetDLL})
 	require.ErrorIs(t, err, errQRApprovalTimedOut)
 	require.FileExists(t, targetDLL)
 	require.NoFileExists(t, targetDLL+sentinelBackupSuffix)
@@ -217,10 +217,10 @@ func TestUndoRemovesStaleManagedEntryWithoutChangingDirectory(t *testing.T) {
 	originalConfigPath := backend.ConfigPath
 	backend.ConfigPath = filepath.Join(t.TempDir(), "config.json")
 	t.Cleanup(func() { backend.ConfigPath = originalConfigPath })
-	configuration := &config.File{ManagedGBESetups: []config.ManagedGBESetup{{AppID: "620", Path: root}}}
+	configuration := &config.File{ManagedGBESetups: []config.ManagedGBESetup{{AppID: "620", Name: "Portal 2", Path: root}}}
 	service := &Service{Config: configuration}
 	require.NoError(t, service.UndoGBESetup("620"))
-	require.NotContains(t, service.ManagedGBESetupAppIDs(), "620")
+	require.Empty(t, service.ManagedGBESetups())
 	require.FileExists(t, marker)
 }
 

@@ -132,6 +132,7 @@ func (r *Router) Handler() http.Handler {
 
 		// Games service endpoints
 		api.Get("/games", Wrap(r.handleGetAllGames))
+		api.Get("/games/search", Wrap(r.handleSearchGames))
 		api.Get("/games/sync-status", Wrap(r.handleGetLibrarySyncStatus))
 		api.Post("/games/{id}/refresh", Wrap(r.handleRefreshGame))
 		api.Get("/games/{id}/global-achievement-percentages", Wrap(r.handleGetGlobalAchievementPercentages))
@@ -141,7 +142,7 @@ func (r *Router) Handler() http.Handler {
 		api.Post("/notifications/test-progress", Wrap(r.handleTestNotificationProgress))
 		api.Get("/notifications", r.handleNotifications)
 
-		api.Get("/gbe-setup/managed", Wrap(r.handleManagedGBESetupAppIDs))
+		api.Get("/gbe-setup/managed", Wrap(r.handleManagedGBESetups))
 		api.Post("/gbe-setup/start", Wrap(r.handleSetupGBE))
 		api.Post("/gbe-setup/cancel", Wrap(r.handleCancelGBESetup))
 		api.Post("/gbe-setup/{id}/undo", Wrap(r.handleUndoGBESetup))
@@ -155,8 +156,20 @@ func (r *Router) Handler() http.Handler {
 	return router
 }
 
-func (r *Router) handleManagedGBESetupAppIDs(w http.ResponseWriter, _ *http.Request) error {
-	return JSON(w, http.StatusOK, r.Generator.ManagedGBESetupAppIDs())
+func (r *Router) handleManagedGBESetups(w http.ResponseWriter, _ *http.Request) error {
+	return JSON(w, http.StatusOK, r.Generator.ManagedGBESetups())
+}
+
+func (r *Router) handleSearchGames(w http.ResponseWriter, req *http.Request) error {
+	query := req.URL.Query().Get("query")
+	results, err := r.Steam.SearchApps(query)
+	if err != nil {
+		if errors.Is(err, steam.ErrInvalidSearchQuery) {
+			return AppError{Status: http.StatusBadRequest, Message: err.Error()}
+		}
+		return err
+	}
+	return JSON(w, http.StatusOK, results)
 }
 
 func (r *Router) handleSetupGBE(w http.ResponseWriter, req *http.Request) error {
@@ -169,7 +182,7 @@ func (r *Router) handleSetupGBE(w http.ResponseWriter, req *http.Request) error 
 		status := http.StatusInternalServerError
 		if errors.Is(err, generator.ErrGBESetupRunning) {
 			status = http.StatusConflict
-		} else if strings.Contains(err.Error(), "selected") {
+		} else if errors.Is(err, generator.ErrInvalidSetupRequest) || strings.Contains(err.Error(), "selected") {
 			status = http.StatusBadRequest
 		}
 		return AppError{Status: status, Message: err.Error()}

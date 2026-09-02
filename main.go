@@ -35,7 +35,6 @@ func init() {
 	application.RegisterEvent[application.Void](backend.EventDataUpdated)
 	application.RegisterEvent[string](backend.EventRefreshGameRequested)
 	application.RegisterEvent[generator.Update](generator.EventAchievementSetupUpdate)
-	application.RegisterEvent[generator.AchievementSetupSelection](generator.EventAchievementSetupSelected)
 }
 
 func main() {
