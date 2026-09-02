@@ -1,44 +1,30 @@
 import './achievement-setup.scss';
 import { useEffect, useRef, useState, type FC } from 'react';
-import { Events } from '@wailsio/runtime';
 import { UndoGBESetup } from '@wa/sentinel/backend/generator/service';
-import { type AchievementSetupSelection } from '@wa/sentinel/backend/generator/models';
 
 type UndoState = 'confirm' | 'restoring' | 'succeeded' | 'failed';
 
-export const GBEUndoModal: FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
+export const GBEUndoModal: FC<{ isOpen: boolean; appId: string; gameName: string; onClose: () => void }> = ({
+  isOpen,
+  appId,
+  gameName,
+  onClose
+}) => {
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const [request, setRequest] = useState<AchievementSetupSelection>();
   const [state, setState] = useState<UndoState>('confirm');
 
   useEffect(() => {
-    const unsubscribe = Events.On(
-      'sentinel::achievement-setup-selected',
-      (event: { data: AchievementSetupSelection }) => {
-        if (event.data.action !== 'undo') {
-          return;
-        }
-
-        setRequest(event.data);
-        setState('confirm');
-      }
-    );
-
-    return unsubscribe;
-  }, []);
+    setState('confirm');
+  }, [appId, gameName, isOpen]);
 
   useEffect(() => {
-    if (isOpen && request && !dialogRef.current?.open) {
+    if (isOpen && !dialogRef.current?.open) {
       dialogRef.current?.showModal();
     }
     if (!isOpen && dialogRef.current?.open) {
       dialogRef.current.close();
     }
-  }, [isOpen, request]);
-
-  if (!request) {
-    return null;
-  }
+  }, [isOpen]);
 
   const restoring = state === 'restoring';
   const finished = state === 'succeeded' || state === 'failed';
@@ -49,7 +35,7 @@ export const GBEUndoModal: FC<{ isOpen: boolean; onClose: () => void }> = ({ isO
     }
     setState('restoring');
     try {
-      await UndoGBESetup(request.appId);
+      await UndoGBESetup(appId);
       setState('succeeded');
     } catch {
       setState('failed');
@@ -70,12 +56,12 @@ export const GBEUndoModal: FC<{ isOpen: boolean; onClose: () => void }> = ({ isO
       }}
     >
       <header className='gbe-setup-dialog-header gbe-setup-dialog-header--without-progress'>
-        <h3>Undo Achievement Setup</h3>
+        <h3>Undo Achievements Setup</h3>
       </header>
       <div className='gbe-setup-dialog-content'>
         {state === 'confirm' && (
           <p>
-            Restore the matching DLL and steam_settings backups for <strong>{request.gameName || 'this game'}</strong>?
+            Restore the matching DLL and steam_settings backups for <strong>{gameName || 'this game'}</strong>?
           </p>
         )}
         {state === 'restoring' && <p>Restoring Sentinel backups…</p>}

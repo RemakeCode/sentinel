@@ -41,6 +41,7 @@ import type { AppInfo } from '@wa/sentinel/backend/config/models';
 import { AchievementProgressUpdateMode, Emulator, File, Prefix, SteamSource } from '@wa/sentinel/backend/config/models';
 
 import EmptyState from '@/shared/components/empty-state';
+import { AchievementSetupContent } from '@/pages/achievement-setup/achievement-setup';
 
 import { Dialogs } from '@wailsio/runtime';
 import { Start, Stop } from '@wa/sentinel/backend/watcher/service';
@@ -300,6 +301,9 @@ const Settings: FC = () => {
         </div>
       </HeaderPortal>
       <div className='page-content'>
+        <div className='card settings-section achievement-setup-settings'>
+          <AchievementSetupContent />
+        </div>
         <div className='card settings-section'>
           <div className='flex justify-between items-center'>
             <h4 className='settings-section-title'>
