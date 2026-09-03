@@ -31,6 +31,24 @@ export const achievementSetupStyles = `
     display: block;
   }
 
+  .sentinel-gbe-setup-qr-image {
+    position: relative;
+  }
+
+  .sentinel-gbe-setup-qr-overlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    box-sizing: border-box;
+    display: block;
+    width: 32px;
+    height: 32px;
+    padding: 3px;
+    border-radius: 50%;
+    background: white;
+    transform: translate(-50%, -50%);
+  }
+
   .sentinel-gbe-setup-qr-image--blurred {
     filter: blur(6px);
     transform: scale(1.04);
