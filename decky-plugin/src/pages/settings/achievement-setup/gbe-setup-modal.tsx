@@ -2,6 +2,7 @@ import { type FC, useEffect, useRef, useState } from 'react';
 import { FileSelectionType, openFilePicker } from '@decky/api';
 import { ConfirmModal, DialogBody, DialogBodyText, ProgressBar } from '@decky/ui';
 import { renderSVG } from 'uqr';
+import trophyOverlay from '../../../../assets/qr-overlay-trophy.png';
 import { BASE_URL, Fetcher } from '@/shared/utils/fetcher';
 import { sentinelLogger } from '@/shared/utils/logger';
 import type { Update } from '@/shared/types/_generated/sentinel/backend/generator/models';
@@ -77,8 +78,10 @@ const SetupQRCode: FC<{ value: string; message: string; blurred?: boolean; label
     <div className='sentinel-gbe-setup-qr-code' role='img' aria-label={label}>
       <div
         className={`sentinel-gbe-setup-qr-image${blurred ? ' sentinel-gbe-setup-qr-image--blurred' : ''}`}
-        dangerouslySetInnerHTML={{ __html: renderSVG(value, { border: 2 }) }}
-      />
+      >
+        <div dangerouslySetInnerHTML={{ __html: renderSVG(value, { border: 2, ecc: 'H' }) }} />
+        <img className='sentinel-gbe-setup-qr-overlay' src={trophyOverlay} alt='' />
+      </div>
     </div>
     <div className='sentinel-gbe-setup-qr-details'>
       <DialogBodyText className='sentinel-gbe-setup-qr-message'>{message}</DialogBodyText>
@@ -284,7 +287,7 @@ const SetupFlow: FC<{
             label='Expired Steam sign-in QR code'
           />
         )}
-        {update.phase === Phase.PhaseFailed && <DialogBodyText>{update.message ?? 'GBE setup failed.'}</DialogBodyText>}
+        {update.phase === Phase.PhaseFailed && <DialogBodyText>Achievement setup failed. Please try again.</DialogBodyText>}
         {update.phase === Phase.PhaseCompleted && (
           <>
             <DialogBodyText>
