@@ -34,7 +34,7 @@ const Others: FC = () => {
         <hr className='divider' />
         <div className='settings-grid'>
           <div className='settings-grid-item'>
-            <span className='badge success'>Console</span>
+            <span className='badge' data-variant='success'>Console</span>
             <span>Enable logging</span>
             <label className='switch' title='Toggle backend logging'>
               <input type='checkbox' role='switch' checked={loggingEnabled} onChange={handleLoggingToggle} />

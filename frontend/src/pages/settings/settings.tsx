@@ -263,7 +263,7 @@ const Settings: FC = () => {
             <>
               {allPrefixes.map((record) => (
                 <div key={record.index} className='settings-grid-item'>
-                  <span className='badge success'>Prefix</span>
+                  <span className='badge' data-variant='success'>Prefix</span>
                   <code>{record.prefix.path}</code>
                   <div className='settings-grid-actions' title={'Delete Prefix'}>
                     <Trash2 size={20} onClick={() => handleRemovePrefix(record.index)} />
@@ -289,7 +289,7 @@ const Settings: FC = () => {
             <>
               {allEmulators.map((record) => (
                 <div key={record.index} className='settings-grid-item'>
-                  <span className='badge success'>Emulator</span>
+                  <span className='badge' data-variant='success'>Emulator</span>
 
                   <code>{emulatorSearchPaths[record.emu.id] ?? record.emu.id}</code>
 
@@ -426,7 +426,7 @@ const Settings: FC = () => {
         <hr className='divider' />
         <div className='settings-grid'>
           <div className='settings-grid-item'>
-            <span className='badge success'>Autostart</span>
+            <span className='badge' data-variant='success'>Autostart</span>
             <span>Start on login (minimized to tray)</span>
             <label className='switch' title='Toggle autostart on login'>
               <input type='checkbox' role='switch' checked={startOnLogin} onChange={handleStartOnLoginToggle} />
