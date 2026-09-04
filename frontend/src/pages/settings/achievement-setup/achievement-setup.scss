@@ -176,7 +176,6 @@
       inset-block-start: 50%;
       translate: 0 -50%;
       pointer-events: none;
-      animation: achievement-setup-spin 0.9s linear infinite;
     }
   }
 
@@ -266,18 +265,6 @@
     }
   }
 
-
-
-
-
-  @keyframes achievement-setup-spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
-
 }
-
-
 
 
