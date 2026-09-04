@@ -21,6 +21,12 @@
 @import '@knadh/oat/css/utilities.css';
 
 
+:root {
+  --primary: light-dark(#4e4b4b, #f29422);
+  --primary-foreground: light-dark(#f29422, #18181b);
+}
+
+
 @font-face {
   font-family: 'Raleway';
   src: url('src/assets/fonts/Raleway.woff2') format('woff2');

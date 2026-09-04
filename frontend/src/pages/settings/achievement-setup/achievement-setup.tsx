@@ -1,6 +1,6 @@
 import './achievement-setup.scss';
 import { useEffect, useRef, useState, type FC } from 'react';
-import { LoaderCircle, Trophy } from 'lucide-react';
+import { Trophy } from 'lucide-react';
 import { Events } from '@wailsio/runtime';
 import { SearchApps } from '@wa/sentinel/backend/steam/service';
 import type { AppSearchResult } from '@wa/sentinel/backend/steam/models';
@@ -145,7 +145,13 @@ const AchievementSetup: FC = () => {
                         placeholder='Search Steam games'
                       />
                       {searchStatus === 'loading' && (
-                        <LoaderCircle className='achievement-setup-search-loading' size={18} aria-label='Searching' />
+                        <span
+                          className='achievement-setup-search-loading'
+                          role='status'
+                          aria-busy='true'
+                          data-spinner='small'
+                          aria-label='Searching'
+                        />
                       )}
                     </div>
                     {searchStatus === 'empty' && (
@@ -205,7 +211,7 @@ const AchievementSetup: FC = () => {
               {configured.length > 0 &&
                 configured.map((game) => (
                   <div className='settings-grid-item achievement-setup-configured-row' key={game.appId}>
-                    <span className='badge success'>Configured</span>
+                    <span className='badge' data-variant='success'>Configured</span>
                     <div className='achievement-setup-configured-details'>
                       <strong>{game.name}</strong>
                       <small>App ID {game.appId}</small>
