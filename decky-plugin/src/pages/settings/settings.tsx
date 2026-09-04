@@ -331,8 +331,8 @@ const SettingsPage: FC = () => {
                 <Field label='Data source' childrenContainerWidth='fixed'>
                   <Dropdown
                     rgOptions={[
-                      { data: 'external', label: 'External Source' },
-                      { data: 'key', label: 'Steam API' }
+                      { data: 'external', label: 'External Sources' },
+                      { data: 'key', label: 'Steam' }
                     ]}
                     selectedOption={stmSrc}
                     onChange={(option) => handleSteamDataSourceChange(option.data)}
