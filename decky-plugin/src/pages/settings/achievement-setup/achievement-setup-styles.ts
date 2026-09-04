@@ -59,6 +59,10 @@ export const achievementSetupStyles = `
     text-align: center;
   }
 
+  .sentinel-gbe-setup-error {
+    color: var(--gpColor-Red, #f04747);
+  }
+
   .sentinel-gbe-setup-qr-details {
     align-self: stretch;
     display: flex;

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FC } from 'react';
-import { Trophy } from 'lucide-react';
 import { renderSVG } from 'uqr';
+import trophyOverlay from '@/assets/images/qr-overlay-trophy.png';
 import { Events } from '@wailsio/runtime';
 import { CancelGBESetup, SelectTargetDLL, SetupGBE } from '@wa/sentinel/backend/generator/service';
 import { Phase, SetupRequest, type Update } from '@wa/sentinel/backend/generator/models';
@@ -13,6 +13,10 @@ interface SetupProgressStage {
 type SetupScreen = 'selection' | 'setup';
 
 const dllSelectionStage: SetupProgressStage = { value: 5, label: 'Select Steam API DLL' };
+
+function isSteamApiDLL(path: string): boolean {
+  return path.endsWith('/steam_api.dll') || path.endsWith('/steam_api64.dll');
+}
 
 function progressStageFor(phase: Phase): SetupProgressStage | undefined {
   switch (phase) {
@@ -66,9 +70,7 @@ const SetupQRCode: FC<{ value: string; message: string; blurred?: boolean; label
     <div className='gbe-dialog-qr-code' role='img' aria-label={label}>
       <div className={`gbe-dialog-qr-image${blurred ? ' gbe-dialog-qr-image--blurred' : ''}`}>
         <div dangerouslySetInnerHTML={{ __html: renderSVG(value, { border: 2, ecc: 'H' }) }} />
-        <span className='gbe-dialog-qr-overlay' aria-hidden='true'>
-          <Trophy size={32} />
-        </span>
+        <img className='gbe-dialog-qr-overlay' src={trophyOverlay} alt='' />
       </div>
     </div>
     <div className='gbe-dialog-qr-details'>
@@ -102,12 +104,19 @@ const DLLSelectionFlow: FC<{
   onContinue: () => void;
   onClose: () => void;
 }> = ({ request, dllPath, onSelected, onContinue, onClose }) => {
+  const [selectionError, setSelectionError] = useState(false);
+
   const selectDLL = async () => {
     try {
       const dllPath = await SelectTargetDLL();
       if (!dllPath) {
         return;
       }
+      if (!isSteamApiDLL(dllPath)) {
+        setSelectionError(true);
+        return;
+      }
+      setSelectionError(false);
       onSelected(dllPath);
     } catch (error) {
       console.error('Unable to open the Steam API DLL picker', error);
@@ -124,6 +133,9 @@ const DLLSelectionFlow: FC<{
               Sentinel uses the GBE Fork to set up achievements for <strong>{request.gameName || 'this game'}</strong>.
             </p>
             <p>Choose either steam_api64.dll or steam_api.dll from the game’s installation folder.</p>
+            {selectionError && (
+              <p className='gbe-dialog-error'>Select either steam_api.dll or steam_api64.dll from the game folder.</p>
+            )}
           </div>
         ) : (
           <div className='gbe-dialog-copy'>
