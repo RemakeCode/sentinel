@@ -43,13 +43,13 @@ const SettingsLayout: FC = () => {
           <nav>
             <ul>
               <li>
-                <NavLink to='achievement-setup'>
-                  <Trophy size={18} /> Achievement Setup
+                <NavLink to='general'>
+                  <SlidersHorizontal size={18} /> Settings
                 </NavLink>
               </li>
               <li>
-                <NavLink to='general'>
-                  <SlidersHorizontal size={18} /> Settings
+                <NavLink to='achievement-setup'>
+                  <Trophy size={18} /> Achievement Setup
                 </NavLink>
               </li>
               <li>
