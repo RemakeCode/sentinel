@@ -91,13 +91,11 @@
     position: absolute;
     top: 50%;
     left: 50%;
-    display: grid;
-    place-items: center;
     width: 48px;
     height: 48px;
-    color: var(--foreground);
     background: white;
     border-radius: 50%;
+    object-fit: contain;
     transform: translate(-50%, -50%);
   }
 
@@ -279,7 +277,6 @@
   }
 
 }
-
 
 
 
