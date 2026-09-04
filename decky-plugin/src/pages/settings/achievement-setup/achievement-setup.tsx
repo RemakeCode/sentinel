@@ -258,7 +258,7 @@ export const AchievementSetupContent: FC = () => {
                             setQuery(event.target.value);
                             setSelected(null);
                           }}
-                          label='Search Steam games'
+                          label='Search game name on Steam'
                         />
                         {searchStatus === 'loading' && <Spinner className='sentinel-achievement-search-spinner' />}
                       </div>
