@@ -1,4 +1,3 @@
-import './achievement-setup.scss';
 import { useEffect, useRef, useState, type FC } from 'react';
 import { UndoGBESetup } from '@wa/sentinel/backend/generator/service';
 
@@ -45,7 +44,7 @@ export const GBEUndoModal: FC<{ isOpen: boolean; appId: string; gameName: string
   return (
     <dialog
       ref={dialogRef}
-      className='gbe-setup-dialog'
+      className='gbe-dialog'
       onCancel={(event) => {
         if (restoring) {
           event.preventDefault();
@@ -55,10 +54,10 @@ export const GBEUndoModal: FC<{ isOpen: boolean; appId: string; gameName: string
         onClose();
       }}
     >
-      <header className='gbe-setup-dialog-header gbe-setup-dialog-header--without-progress'>
+      <header className='gbe-dialog-header gbe-dialog-header--without-progress'>
         <h3>Undo Achievements Setup</h3>
       </header>
-      <div className='gbe-setup-dialog-content'>
+      <div className='gbe-dialog-content'>
         {state === 'confirm' && (
           <p>
             Restore the matching DLL and steam_settings backups for <strong>{gameName || 'this game'}</strong>?
@@ -66,7 +65,7 @@ export const GBEUndoModal: FC<{ isOpen: boolean; appId: string; gameName: string
         )}
         {state === 'restoring' && <p>Restoring Sentinel backups…</p>}
         {state === 'failed' && (
-          <p className='gbe-setup-dialog-error'>Unable to undo achievement setup. Please try again.</p>
+          <p className='gbe-dialog-error'>Unable to undo achievement setup. Please try again.</p>
         )}
         {state === 'succeeded' && <p>Achievement setup was undone.</p>}
       </div>

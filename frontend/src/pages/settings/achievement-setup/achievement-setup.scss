@@ -1,0 +1,286 @@
+.gbe-dialog {
+  width: min(40rem, calc(100vw - 2rem));
+
+  &::backdrop {
+    background: rgb(0 0 0 / 50%);
+    backdrop-filter: blur(0);
+    -webkit-backdrop-filter: blur(0);
+    transition: backdrop-filter 0.3s ease-in-out;
+  }
+
+  &[open]::backdrop {
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+  }
+
+  &-header {
+    display: grid;
+    grid-template-columns: max-content minmax(180px, 1fr);
+    align-items: start;
+    gap: var(--space-4);
+    padding-block-end: var(--space-3);
+    margin-block-end: var(--space-4);
+    background-color: var(--faint);
+    border-bottom: 1px solid var(--border);
+
+    h3 {
+      color: var(--muted-foreground);
+      white-space: nowrap;
+    }
+
+    .gbe-dialog-progress {
+      margin-top: 0;
+      justify-self: end;
+      width: min(100%, 240px);
+    }
+  }
+
+  &-header--without-progress {
+    grid-template-columns: 1fr;
+  }
+
+  &-content {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    height: 160px;
+    padding: 0 var(--space-6);
+    overflow: hidden;
+  }
+
+  &-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  &-content p {
+    margin: 0;
+  }
+
+  &-qr {
+    display: grid;
+    grid-template-columns: 160px minmax(0, 1fr);
+    align-items: center;
+    gap: 1rem;
+    min-height: 160px;
+  }
+
+  &-qr-code {
+    width: 160px;
+    height: 160px;
+    background: white;
+    border-radius: 0.35rem;
+    overflow: hidden;
+  }
+
+  &-qr-image,
+  &-qr-image > div,
+  &-qr-image svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  &-qr-image {
+    position: relative;
+  }
+
+  &-qr-overlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    display: grid;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+    color: var(--foreground);
+    background: white;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  &-qr-image--blurred {
+    filter: blur(6px);
+    transform: scale(1.04);
+  }
+
+  &-qr-details {
+    display: flex;
+    flex-direction: column;
+    align-self: stretch;
+  }
+
+  &-qr-message,
+  &-content code {
+    overflow-wrap: anywhere;
+  }
+
+  &-qr-message {
+    display: flex;
+    flex: 1;
+    align-items: center;
+  }
+
+  &-progress {
+    display: grid;
+    gap: var(--space-1);
+    line-height: 1;
+    text-align: right;
+  }
+
+  &-progress span {
+    color: var(--muted-foreground);
+    font-size: var(--text-8);
+  }
+
+  &-progress progress {
+    width: 100%;
+  }
+
+  &-warning {
+    color: var(--warning);
+  }
+
+  &-error {
+    color: var(--danger);
+  }
+
+  @media (max-width: 34rem) {
+    &-header {
+      grid-template-columns: 1fr;
+
+      .gbe-dialog-progress {
+        justify-self: stretch;
+        width: 100%;
+        text-align: left;
+      }
+    }
+  }
+}
+
+
+.achievement-setup {
+  &-content {
+    height: -webkit-fill-available;
+  }
+  &-search {
+    position: relative;
+
+    &-control {
+      position: relative;
+    }
+
+    &-loading {
+      position: absolute;
+      inset-inline-end: var(--space-3);
+      inset-block-start: 50%;
+      translate: 0 -50%;
+      pointer-events: none;
+      animation: achievement-setup-spin 0.9s linear infinite;
+    }
+  }
+
+  &-search-error {
+    color: var(--danger);
+    font-size: var(--text-7);
+  }
+
+  &-results {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    gap: 1px;
+    max-height: min(28rem, calc(100vh - 24rem));
+    overflow-y: auto;
+    margin-block-end: var(--space-4);
+    position: absolute;
+    top: 65px;
+
+    button {
+      display: flex;
+      width: 100%;
+      align-items: center;
+      justify-content: start;
+      padding:var(--space-2);
+      text-align: start;
+      animation: fade-in-up 0.2s both;
+      img {
+        width: 40px;
+        height: 40px;
+        object-fit: cover;
+        border-radius: var(--radius-small);
+        background: var(--muted);
+      }
+      small {
+        color: var(--muted-foreground);
+      }
+    }
+  }
+
+  &-selected {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-2);
+    margin-block-start: var(--space-4);
+    padding: var(--space-4);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-medium);
+
+    > img {
+      width: 40px;
+      height: 40px;
+      object-fit: cover;
+      border-radius: var(--radius-small);
+      background: var(--muted);
+    }
+    &-title {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    &-actions {
+      display: flex;
+      gap: var(--space-2);
+      flex-direction: column;
+      margin-inline-start: auto;
+    }
+
+  }
+
+  &-configured-details {
+    display: grid;
+    gap: var(--space-1);
+    min-width: 0;
+
+    strong,
+    small {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    small {
+      color: var(--muted-foreground);
+    }
+  }
+
+
+
+
+
+  @keyframes achievement-setup-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+}
+
+
+
+
+

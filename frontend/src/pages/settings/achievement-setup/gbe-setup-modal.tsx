@@ -1,6 +1,7 @@
-import './achievement-setup.scss';
 import { useEffect, useRef, useState, type FC } from 'react';
+import { Trophy } from 'lucide-react';
 import { renderSVG } from 'uqr';
+import { Events } from '@wailsio/runtime';
 import { CancelGBESetup, SelectTargetDLL, SetupGBE } from '@wa/sentinel/backend/generator/service';
 import { Phase, SetupRequest, type Update } from '@wa/sentinel/backend/generator/models';
 
@@ -11,7 +12,7 @@ interface SetupProgressStage {
 
 type SetupScreen = 'selection' | 'setup';
 
-const dllSelectionStage: SetupProgressStage = { value: 15, label: 'Select Steam API DLL' };
+const dllSelectionStage: SetupProgressStage = { value: 5, label: 'Select Steam API DLL' };
 
 function progressStageFor(phase: Phase): SetupProgressStage | undefined {
   switch (phase) {
@@ -61,21 +62,23 @@ const SetupQRCode: FC<{ value: string; message: string; blurred?: boolean; label
   blurred = false,
   label = 'Steam sign-in QR code'
 }) => (
-  <div className='gbe-setup-dialog-qr'>
-    <div className='gbe-setup-dialog-qr-code' role='img' aria-label={label}>
-      <div
-        className={`gbe-setup-dialog-qr-image${blurred ? ' gbe-setup-dialog-qr-image--blurred' : ''}`}
-        dangerouslySetInnerHTML={{ __html: renderSVG(value, { border: 2 }) }}
-      />
+  <div className='gbe-dialog-qr'>
+    <div className='gbe-dialog-qr-code' role='img' aria-label={label}>
+      <div className={`gbe-dialog-qr-image${blurred ? ' gbe-dialog-qr-image--blurred' : ''}`}>
+        <div dangerouslySetInnerHTML={{ __html: renderSVG(value, { border: 2, ecc: 'H' }) }} />
+        <span className='gbe-dialog-qr-overlay' aria-hidden='true'>
+          <Trophy size={32} />
+        </span>
+      </div>
     </div>
-    <div className='gbe-setup-dialog-qr-details'>
-      <p className='gbe-setup-dialog-qr-message'>{message}</p>
+    <div className='gbe-dialog-qr-details'>
+      <p className='gbe-dialog-qr-message'>{message}</p>
     </div>
   </div>
 );
 
 const SetupProgress: FC<{ stage?: SetupProgressStage; label: string }> = ({ stage, label }) => (
-  <div className='gbe-setup-dialog-progress'>
+  <div className='gbe-dialog-progress'>
     <span>{label}</span>
     <progress value={stage?.value ?? 0} max={100} />
   </div>
@@ -86,7 +89,7 @@ const SetupHeader: FC<{ stage: SetupProgressStage; label: string; showProgress?:
   label,
   showProgress = true
 }) => (
-  <header className='gbe-setup-dialog-header'>
+  <header className='gbe-dialog-header'>
     <h3>Setup Achievements</h3>
     {showProgress && <SetupProgress stage={stage} label={label} />}
   </header>
@@ -114,16 +117,16 @@ const DLLSelectionFlow: FC<{
   return (
     <>
       <SetupHeader stage={dllSelectionStage} label={dllSelectionStage.label} />
-      <div className='gbe-setup-dialog-content'>
+      <div className='gbe-dialog-content'>
         {!dllPath ? (
-          <div className='gbe-setup-dialog-copy'>
+          <div className='gbe-dialog-copy'>
             <p>
               Sentinel uses the GBE Fork to set up achievements for <strong>{request.gameName || 'this game'}</strong>.
             </p>
             <p>Choose either steam_api64.dll or steam_api.dll from the game’s installation folder.</p>
           </div>
         ) : (
-          <div className='gbe-setup-dialog-copy'>
+          <div className='gbe-dialog-copy'>
             <p>Continuing will require approval in the Steam Mobile app.</p>
             <p>Sentinel preserves the original DLL and any original steam_settings for Undo.</p>
             <code>{dllPath}</code>
@@ -150,19 +153,25 @@ const SetupFlow: FC<{
   dllPath: string;
   gameName: string;
   onActiveChange: (active: boolean) => void;
+  onSetupTerminal: () => void;
   onClose: () => void;
-}> = ({ appId, dllPath, gameName, onActiveChange, onClose }) => {
+}> = ({ appId, dllPath, gameName, onActiveChange, onSetupTerminal, onClose }) => {
   const [update, setUpdate] = useState<Update>({
     phase: Phase.PhasePreparing,
     message: 'Preparing required tools…'
   });
   const [cancelPending, setCancelPending] = useState(false);
   const startRequestedRef = useRef(false);
+  const terminalReportedRef = useRef(false);
 
   useEffect(() => {
     const unsubscribe = Events.On('sentinel::achievement-setup-update', (event: { data: Update }) => {
       if (isTerminalPhase(event.data.phase)) {
         setCancelPending(false);
+        if (!terminalReportedRef.current) {
+          terminalReportedRef.current = true;
+          onSetupTerminal();
+        }
       }
       if (event.data.phase !== Phase.PhaseUndoCompleted) {
         setUpdate(event.data);
@@ -170,7 +179,7 @@ const SetupFlow: FC<{
     });
 
     return unsubscribe;
-  }, []);
+  }, [onSetupTerminal]);
 
   useEffect(() => {
     if (startRequestedRef.current) {
@@ -181,6 +190,7 @@ const SetupFlow: FC<{
     setCancelPending(false);
 
     void SetupGBE(new SetupRequest({ appId, gameName, dllPath })).catch((error) => {
+      onSetupTerminal();
       setUpdate((current) => {
         if (current.phase !== Phase.PhasePreparing && current.phase !== Phase.PhaseDownloading) {
           return current;
@@ -188,7 +198,7 @@ const SetupFlow: FC<{
         return failedUpdate(String(error));
       });
     });
-  }, [appId, gameName, dllPath]);
+  }, [appId, gameName, dllPath, onSetupTerminal]);
 
   const active = !isTerminalPhase(update.phase);
 
@@ -206,6 +216,7 @@ const SetupFlow: FC<{
       }
     } catch (error) {
       setCancelPending(false);
+      onSetupTerminal();
       setUpdate((current) => {
         if (!current || isTerminalPhase(current.phase)) {
           return current;
@@ -222,7 +233,7 @@ const SetupFlow: FC<{
   return (
     <>
       <SetupHeader stage={progressStage} label={progressLabel} showProgress={showsHeaderProgress(update.phase)} />
-      <div className='gbe-setup-dialog-content'>
+      <div className='gbe-dialog-content'>
         {update.phase === Phase.PhaseAwaitingQR && update.challengeUrl && (
           <SetupQRCode value={update.challengeUrl} message='Scan and approve with the Steam Mobile app.' />
         )}
@@ -247,10 +258,10 @@ const SetupFlow: FC<{
           />
         )}
         {update.phase === Phase.PhaseFailed && (
-          <p className='gbe-setup-dialog-error'>{update.message ?? 'GBE setup failed.'}</p>
+          <p className='gbe-dialog-error'>Achievement setup failed. Please try again.</p>
         )}
         {update.phase === Phase.PhaseCompleted && (
-          <div className='gbe-setup-dialog-copy'>
+          <div className='gbe-dialog-copy'>
             <p>
               Achievement setup completed for <strong>{gameName || 'this game'}</strong>.
             </p>
@@ -275,8 +286,9 @@ export const GBESetupModal: FC<{
   isOpen: boolean;
   appId: string;
   gameName: string;
+  onSetupTerminal: () => void;
   onClose: () => void;
-}> = ({ isOpen, appId, gameName, onClose }) => {
+}> = ({ isOpen, appId, gameName, onSetupTerminal, onClose }) => {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [screen, setScreen] = useState<SetupScreen>('selection');
   const [dllPath, setDLLPath] = useState('');
@@ -302,7 +314,7 @@ export const GBESetupModal: FC<{
   return (
     <dialog
       ref={dialogRef}
-      className='gbe-setup-dialog'
+      className='gbe-dialog'
       onCancel={(event) => {
         event.preventDefault();
         if (!active) {
@@ -328,6 +340,7 @@ export const GBESetupModal: FC<{
           dllPath={dllPath}
           gameName={request.gameName}
           onActiveChange={setActive}
+          onSetupTerminal={onSetupTerminal}
           onClose={onClose}
         />
       )}

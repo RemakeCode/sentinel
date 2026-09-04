@@ -1,30 +1,16 @@
 import './settings.scss';
 import type { ChangeEvent, FC } from 'react';
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router';
-import {
-  ArrowLeft,
-  DatabaseSearchIcon,
-  FolderOpen,
-  Globe,
-  Info,
-  Rocket,
-  Terminal,
-  Trash2,
-  Volume2,
-  VolumeOff
-} from 'lucide-react';
+import { DatabaseSearchIcon, FolderOpen, Globe, Rocket, Trash2, Volume2, VolumeOff } from 'lucide-react';
 
 import {
   AddPrefix,
-  GetAppInfo,
   GetAvailableSounds,
   GetSteamLanguages,
   LoadConfig,
   RemovePrefix,
   SetAchievementProgressUpdateMode,
   SetLanguage,
-  SetLoggingEnabled,
   SetNotificationSound,
   SetSteamDataSource,
   ToggleEmulatorNotification
@@ -37,16 +23,12 @@ import {
   TestNotificationProgress
 } from '@wa/sentinel/backend/notifier/service';
 
-import type { AppInfo } from '@wa/sentinel/backend/config/models';
 import { AchievementProgressUpdateMode, Emulator, File, Prefix, SteamSource } from '@wa/sentinel/backend/config/models';
 
 import EmptyState from '@/shared/components/empty-state';
-import { AchievementSetupContent } from '@/pages/achievement-setup/achievement-setup';
 
 import { Dialogs } from '@wailsio/runtime';
 import { Start, Stop } from '@wa/sentinel/backend/watcher/service';
-import AboutDialog from './about-dialog';
-import { HeaderPortal } from '@/shared/components/header/header';
 
 interface EmulatorItem {
   emu: Emulator;
@@ -65,10 +47,10 @@ const achievementProgressUpdateModes: { name: string; value: AchievementProgress
 ];
 
 const emulatorSearchPaths: Record<string, string> = {
-  gse: 'users/steamuser/AppData/Roaming/GSE Saves',
+  'gse': 'users/steamuser/AppData/Roaming/GSE Saves',
   'goldberg-steamemu': 'users/steamuser/AppData/Roaming/Goldberg SteamEmu Saves',
-  codex: 'users/Public/Documents/Steam/CODEX',
-  rune: 'users/Public/Documents/Steam/RUNE'
+  'codex': 'users/Public/Documents/Steam/CODEX',
+  'rune': 'users/Public/Documents/Steam/RUNE'
 };
 
 const Settings: FC = () => {
@@ -80,9 +62,6 @@ const Settings: FC = () => {
   const [selectedSound, setSelectedSound] = useState<string>('');
   const [selectedAchievementProgressUpdateMode, setSelectedAchievementProgressUpdateMode] =
     useState<AchievementProgressUpdateMode>(AchievementProgressUpdateMode.AchievementProgressUpdateModeDefault);
-  const [selectedLogLevel, setSelectedLogLevel] = useState<string>('');
-  const [aboutDialogOpen, setAboutDialogOpen] = useState(false);
-  const [appInfo, setAppInfo] = useState<AppInfo | null>(null);
   const [testNotificationDisabled, setTestNotificationDisabled] = useState(false);
   const [startOnLogin, setStartOnLogin] = useState(false);
   const testNotificationTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -113,7 +92,6 @@ const Settings: FC = () => {
       setSelectedAchievementProgressUpdateMode(
         cfg?.achievementProgressUpdateMode || AchievementProgressUpdateMode.AchievementProgressUpdateModeDefault
       );
-      setSelectedLogLevel(cfg?.logLevel || 'info');
       setStartOnLogin(cfg?.startOnLogin ?? false);
     } catch (err) {
       window.ot?.toast('Failed to load settings', 'Error', { variant: 'danger' });
@@ -135,17 +113,6 @@ const Settings: FC = () => {
       setAvailableSounds(sounds);
     } catch (err) {
       console.error('Failed to load available sounds:', err);
-    }
-  };
-
-  const handleLoggingToggle = async () => {
-    const newValue = selectedLogLevel !== 'info';
-    try {
-      await SetLoggingEnabled(newValue);
-      setSelectedLogLevel(newValue ? 'info' : 'off');
-      window.ot?.toast(`Logging ${newValue ? 'enabled' : 'disabled'}`, 'Success', { variant: 'success' });
-    } catch (err) {
-      window.ot?.toast('Failed to update logging setting', 'Error', { variant: 'danger' });
     }
   };
 
@@ -271,16 +238,6 @@ const Settings: FC = () => {
     }
   };
 
-  const handleAboutDialog = async () => {
-    try {
-      const info = await GetAppInfo();
-      setAppInfo(info);
-      setAboutDialogOpen(true);
-    } catch (err) {
-      console.error('Failed to load app info:', err);
-    }
-  };
-
   const emulators = appConfig?.emulators || [];
   const prefixes = appConfig?.prefixes || [];
 
@@ -288,240 +245,197 @@ const Settings: FC = () => {
   const allPrefixes: PrefixItem[] = prefixes.map((prefix: Prefix, index: number) => ({ prefix, index }));
 
   return (
-    <main className='full-layout'>
-      <HeaderPortal>
-        <div className='header-nav'>
-          <Link to='/'>
-            <ArrowLeft />
-          </Link>
-          <h2>Settings</h2>
+    <section className='settings-pane page-content'>
+      <div className='card settings-section settings-section-first'>
+        <div className='flex justify-between items-center'>
+          <h4 className='settings-section-title'>
+            <FolderOpen /> <span>Prefix Paths</span>
+          </h4>
+          <button className='outline' onClick={handleAddPrefix}>
+            <FolderOpen /> Add Prefix Folder
+          </button>
         </div>
-        <div onClick={handleAboutDialog} title='About' className='settings-header-about-icon'>
-          <Info size={20} />
-        </div>
-      </HeaderPortal>
-      <div className='page-content'>
-        <div className='card settings-section achievement-setup-settings'>
-          <AchievementSetupContent />
-        </div>
-        <div className='card settings-section'>
-          <div className='flex justify-between items-center'>
-            <h4 className='settings-section-title'>
-              <FolderOpen /> <span>Prefix Paths</span>
-            </h4>
-            <button className='outline' onClick={handleAddPrefix}>
-              <FolderOpen /> Add Prefix Folder
-            </button>
-          </div>
-          <hr className='divider' />
-          <div className='settings-grid'>
-            {allPrefixes.length === 0 ? (
-              <EmptyState message='No prefix paths configured' />
-            ) : (
-              <>
-                {allPrefixes.map((record) => (
-                  <div key={record.index} className='settings-grid-item'>
-                    <span className='badge success'>Prefix</span>
-                    <code>{record.prefix.path}</code>
-                    <div className='settings-grid-actions' title={'Delete Prefix'}>
-                      <Trash2 size={20} onClick={() => handleRemovePrefix(record.index)} />
-                    </div>
+        <hr className='divider' />
+        <div className='settings-grid'>
+          {allPrefixes.length === 0 ? (
+            <EmptyState message='No prefix paths configured' />
+          ) : (
+            <>
+              {allPrefixes.map((record) => (
+                <div key={record.index} className='settings-grid-item'>
+                  <span className='badge success'>Prefix</span>
+                  <code>{record.prefix.path}</code>
+                  <div className='settings-grid-actions' title={'Delete Prefix'}>
+                    <Trash2 size={20} onClick={() => handleRemovePrefix(record.index)} />
                   </div>
+                </div>
+              ))}
+            </>
+          )}
+        </div>
+      </div>
+
+      <div className='card settings-section'>
+        <div className='flex justify-between items-center'>
+          <h4 className='settings-section-title'>
+            <FolderOpen /> <span>Emulators</span>
+          </h4>
+        </div>
+        <hr className='divider' />
+        <div className='settings-grid'>
+          {allEmulators.length === 0 ? (
+            <EmptyState message='No emulators configured' />
+          ) : (
+            <>
+              {allEmulators.map((record) => (
+                <div key={record.index} className='settings-grid-item'>
+                  <span className='badge success'>Emulator</span>
+
+                  <code>{emulatorSearchPaths[record.emu.id] ?? record.emu.id}</code>
+
+                  <label className='switch' title={'Toggle Notification for this emulator'}>
+                    <input
+                      type='checkbox'
+                      role='switch'
+                      checked={record.emu.shouldNotify}
+                      onChange={() => handleToggleNotify(record.index)}
+                    />
+                    {record.emu.shouldNotify ? <Volume2 size={18} /> : <VolumeOff size={18} />}
+                  </label>
+                  <div />
+                </div>
+              ))}
+            </>
+          )}
+        </div>
+      </div>
+
+      <div className='card settings-section'>
+        <h4 className='settings-section-title'>
+          <DatabaseSearchIcon /> Steam Data Source
+        </h4>
+        <hr className='divider' />
+
+        <div className='settings-table-form'>
+          <fieldset className='hstack'>
+            <legend>Preference</legend>
+            <label className='radio-option'>
+              <input
+                type='radio'
+                name='steamDataSource'
+                value={SteamSource.Key}
+                checked={stmSrc === SteamSource.Key}
+                onChange={handleSteamDataSourceChange}
+              />
+              Steam API
+            </label>
+            <label className='radio-option'>
+              <input
+                type='radio'
+                name='steamDataSource'
+                value={SteamSource.External}
+                checked={stmSrc === SteamSource.External}
+                onChange={handleSteamDataSourceChange}
+              />
+              External Source
+            </label>
+          </fieldset>
+          {/* TODO: restore API key input and masked key display if Steam ever requires key auth */}
+        </div>
+      </div>
+
+      <div className='card settings-section'>
+        <h4 className='settings-section-title'>
+          <Volume2 /> Notification
+        </h4>
+        <hr className='divider' />
+        <div className='settings-table-form'>
+          <fieldset className='hstack'>
+            <legend>Sound Selection</legend>
+            <label>
+              <select className='settings-select' value={selectedSound} onChange={handleSoundChange}>
+                {availableSounds.map((sound) => (
+                  <option key={sound.value} value={sound.value}>
+                    {sound.name}
+                  </option>
                 ))}
-              </>
-            )}
-          </div>
-        </div>
-
-        <div className='card settings-section'>
-          <div className='flex justify-between items-center'>
-            <h4 className='settings-section-title'>
-              <FolderOpen /> <span>Emulators</span>
-            </h4>
-          </div>
-          <hr className='divider' />
-          <div className='settings-grid'>
-            {allEmulators.length === 0 ? (
-              <EmptyState message='No emulators configured' />
-            ) : (
-              <>
-                {allEmulators.map((record) => (
-                  <div key={record.index} className='settings-grid-item'>
-                    <span className='badge success'>Emulator</span>
-
-                    <code>{emulatorSearchPaths[record.emu.id] ?? record.emu.id}</code>
-
-                    <label className='switch' title={'Toggle Notification for this emulator'}>
-                      <input
-                        type='checkbox'
-                        role='switch'
-                        checked={record.emu.shouldNotify}
-                        onChange={() => handleToggleNotify(record.index)}
-                      />
-                      {record.emu.shouldNotify ? <Volume2 size={18} /> : <VolumeOff size={18} />}
-                    </label>
-                    <div />
-                  </div>
+              </select>
+            </label>
+          </fieldset>
+          <fieldset className='hstack'>
+            <legend>Achievement Progress Updates</legend>
+            <label>
+              <select
+                className='settings-select'
+                value={selectedAchievementProgressUpdateMode}
+                onChange={handleAchievementProgressUpdateModeChange}
+              >
+                {achievementProgressUpdateModes.map((mode) => (
+                  <option key={mode.value} value={mode.value}>
+                    {mode.name}
+                  </option>
                 ))}
-              </>
-            )}
-          </div>
-        </div>
-
-        <div className='card settings-section'>
-          <h4 className='settings-section-title'>
-            <DatabaseSearchIcon /> Steam Data Source
-          </h4>
-          <hr className='divider' />
-
-          <div className='settings-table-form'>
-            <fieldset className='hstack'>
-              <legend>Preference</legend>
-              <label className='radio-option'>
-                <input
-                  type='radio'
-                  name='steamDataSource'
-                  value={SteamSource.Key}
-                  checked={stmSrc === SteamSource.Key}
-                  onChange={handleSteamDataSourceChange}
-                />
-                Steam API
-              </label>
-              <label className='radio-option'>
-                <input
-                  type='radio'
-                  name='steamDataSource'
-                  value={SteamSource.External}
-                  checked={stmSrc === SteamSource.External}
-                  onChange={handleSteamDataSourceChange}
-                />
-                External Source
-              </label>
-            </fieldset>
-            {/* TODO: restore API key input and masked key display if Steam ever requires key auth */}
-          </div>
-        </div>
-
-        <div className='card settings-section'>
-          <h4 className='settings-section-title'>
-            <Volume2 /> Notification
-          </h4>
-          <hr className='divider' />
-          <div className='settings-table-form'>
-            <fieldset className='hstack'>
-              <legend>Sound Selection</legend>
-              <label>
-                <select className='settings-select' value={selectedSound} onChange={handleSoundChange}>
-                  {availableSounds.map((sound) => (
-                    <option key={sound.value} value={sound.value}>
-                      {sound.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </fieldset>
-            <fieldset className='hstack'>
-              <legend>Achievement Progress Updates</legend>
-              <label>
-                <select
-                  className='settings-select'
-                  value={selectedAchievementProgressUpdateMode}
-                  onChange={handleAchievementProgressUpdateModeChange}
-                >
-                  {achievementProgressUpdateModes.map((mode) => (
-                    <option key={mode.value} value={mode.value}>
-                      {mode.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </fieldset>
-            <fieldset className='hstack'>
-              <legend>Test Notification</legend>
-              <div className='hstack'>
-                <button className='outline' onClick={handleTestNotification} disabled={testNotificationDisabled}>
-                  Normal
-                </button>
-                <button
-                  className='outline'
-                  onClick={handleTestNotificationProgress}
-                  disabled={testNotificationDisabled}
-                >
-                  Progress
-                </button>
-              </div>
-            </fieldset>
-          </div>
-        </div>
-
-        <div className='card settings-section'>
-          <h4 className='settings-section-title'>
-            <Globe /> Language
-          </h4>
-          <hr className='divider' />
-          <div className='settings-table-form'>
-            <fieldset className='hstack'>
-              <legend>Preferred Language</legend>
-              <label>
-                <select
-                  className='settings-select'
-                  value={selectedLanguage}
-                  onChange={handleLanguageChange}
-                  disabled={true}
-                >
-                  {languages.map((lang: { api: string; displayName: string }) => (
-                    <option key={lang.api} value={lang.api}>
-                      {lang.displayName}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <span className='badge'>Coming Soon</span>
-            </fieldset>
-          </div>
-        </div>
-
-        <div className='card settings-section'>
-          <h4 className='settings-section-title'>
-            <Rocket /> Startup
-          </h4>
-          <hr className='divider' />
-          <div className='settings-grid'>
-            <div className='settings-grid-item'>
-              <span className='badge success'>Autostart</span>
-              <span>Start on login (minimized to tray)</span>
-              <label className='switch' title='Toggle autostart on login'>
-                <input type='checkbox' role='switch' checked={startOnLogin} onChange={handleStartOnLoginToggle} />
-              </label>
-              <div />
+              </select>
+            </label>
+          </fieldset>
+          <fieldset className='hstack'>
+            <legend>Test Notification</legend>
+            <div className='hstack'>
+              <button className='outline' onClick={handleTestNotification} disabled={testNotificationDisabled}>
+                Normal
+              </button>
+              <button className='outline' onClick={handleTestNotificationProgress} disabled={testNotificationDisabled}>
+                Progress
+              </button>
             </div>
-          </div>
+          </fieldset>
         </div>
+      </div>
 
-        <div className='card settings-section'>
-          <h4 className='settings-section-title'>
-            <Terminal /> Logging
-          </h4>
-          <hr className='divider' />
-          <div className='settings-grid'>
-            <div className='settings-grid-item'>
-              <span className='badge success'>Console</span>
-              <span>Enable logging</span>
-              <label className='switch' title='Toggle backend logging'>
-                <input
-                  type='checkbox'
-                  role='switch'
-                  checked={selectedLogLevel === 'info'}
-                  onChange={handleLoggingToggle}
-                />
-              </label>
-              <div />
-            </div>
+      <div className='card settings-section'>
+        <h4 className='settings-section-title'>
+          <Globe /> Language
+        </h4>
+        <hr className='divider' />
+        <div className='settings-table-form'>
+          <fieldset className='hstack'>
+            <legend>Preferred Language</legend>
+            <label>
+              <select
+                className='settings-select'
+                value={selectedLanguage}
+                onChange={handleLanguageChange}
+                disabled={true}
+              >
+                {languages.map((lang: { api: string; displayName: string }) => (
+                  <option key={lang.api} value={lang.api}>
+                    {lang.displayName}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <span className='badge'>Coming Soon</span>
+          </fieldset>
+        </div>
+      </div>
+
+      <div className='card settings-section'>
+        <h4 className='settings-section-title'>
+          <Rocket /> Startup
+        </h4>
+        <hr className='divider' />
+        <div className='settings-grid'>
+          <div className='settings-grid-item'>
+            <span className='badge success'>Autostart</span>
+            <span>Start on login (minimized to tray)</span>
+            <label className='switch' title='Toggle autostart on login'>
+              <input type='checkbox' role='switch' checked={startOnLogin} onChange={handleStartOnLoginToggle} />
+            </label>
+            <div />
           </div>
         </div>
       </div>
-      <AboutDialog isOpen={aboutDialogOpen} appInfo={appInfo} onClose={() => setAboutDialogOpen(false)} />
-    </main>
+    </section>
   );
 };
 
