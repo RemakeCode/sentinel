@@ -17,7 +17,11 @@ interface SetupProgressStage {
 
 type SetupScreen = 'selection' | 'setup';
 
-const dllSelectionStage: SetupProgressStage = { value: 15, label: 'Select Steam API DLL' };
+const dllSelectionStage: SetupProgressStage = { value: 5, label: 'Select Steam API DLL' };
+
+function isSteamApiDLL(path: string): boolean {
+  return path.endsWith('/steam_api.dll') || path.endsWith('/steam_api64.dll');
+}
 
 const preparingUpdate: Update = {
   phase: Phase.PhasePreparing,
@@ -112,6 +116,8 @@ const DLLSelectionFlow: FC<{
   onContinue: () => void;
   onClose: () => void;
 }> = ({ gameName, dllPath, onSelected, onContinue, onClose }) => {
+  const [selectionError, setSelectionError] = useState(false);
+
   const selectDLL = async () => {
     try {
       const selected = await openFilePicker(
@@ -125,6 +131,11 @@ const DLLSelectionFlow: FC<{
         true
       );
       if (selected.realpath) {
+        if (!isSteamApiDLL(selected.realpath)) {
+          setSelectionError(true);
+          return;
+        }
+        setSelectionError(false);
         onSelected(selected.realpath);
       }
     } catch (error) {
@@ -151,6 +162,11 @@ const DLLSelectionFlow: FC<{
             <DialogBodyText>
               Choose either steam_api64.dll or steam_api.dll from the game’s installation folder.
             </DialogBodyText>
+            {selectionError && (
+              <DialogBodyText className='sentinel-gbe-setup-error'>
+                Select either steam_api.dll or steam_api64.dll from the game folder.
+              </DialogBodyText>
+            )}
           </>
         ) : (
           <>
