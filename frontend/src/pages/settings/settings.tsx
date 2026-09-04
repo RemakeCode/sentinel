@@ -327,7 +327,7 @@ const Settings: FC = () => {
                 checked={stmSrc === SteamSource.Key}
                 onChange={handleSteamDataSourceChange}
               />
-              Steam API
+              Steam
             </label>
             <label className='radio-option'>
               <input
@@ -337,7 +337,7 @@ const Settings: FC = () => {
                 checked={stmSrc === SteamSource.External}
                 onChange={handleSteamDataSourceChange}
               />
-              External Source
+              External Sources
             </label>
           </fieldset>
           {/* TODO: restore API key input and masked key display if Steam ever requires key auth */}
