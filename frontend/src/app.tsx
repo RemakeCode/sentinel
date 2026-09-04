@@ -45,7 +45,7 @@ const App: FC = () => {
   const getDepth = (path: string) => {
     if (path === '/') return 0;
     if (path.startsWith('/game/')) return 1;
-    if (path === '/settings') return 1;
+    if (path.startsWith('/settings')) return 1;
     return 0;
   };
 
@@ -89,7 +89,7 @@ const App: FC = () => {
       </Header>
       <AnimatePresence mode='wait' custom={direction} onExitComplete={onExitComplete}>
         <motion.div
-          key={location.pathname}
+          key={location.pathname.startsWith('/settings') ? '/settings' : location.pathname}
           custom={direction}
           initial='initial'
           animate='animate'

@@ -1,3 +1,7 @@
+.settings-layout {
+  min-height: calc(100dvh - 80px);
+}
+
 .settings {
   &-header {
     display: flex;
@@ -5,7 +9,42 @@
 
     &-about-icon {
       color: var(--muted-foreground);
+      padding: var(--space-2);
+      background: transparent;
+      border: 0;
     }
+  }
+
+  &-workspace {
+    --sidebar-width: 18rem;
+    height: calc(100dvh - 80px);
+
+    > main.full-layout {
+      min-height: 0;
+      padding: 0;
+      background-color: var(--background);
+    }
+
+    > aside[data-sidebar] {
+      padding-block-start: var(--space-6);
+
+      > nav {
+        a {
+          padding-inline-start: var(--space-8);
+          padding-block: var(--space-4);
+          font-weight: var(--font-bold);
+          font-size: var(--font-);
+
+          &:hover, &.active {
+            border-radius: var(--radius-medium);
+          }
+        }
+      }
+    }
+  }
+
+  &-pane {
+    min-height: 100%;
   }
 
   &-section {
@@ -15,7 +54,11 @@
       display: flex;
       align-items: center;
       gap: var(--space-1);
-      margin-block-end: var(--space-5);
+      margin: 0;
+    }
+
+    &-first {
+      margin-block-start: 0;
     }
   }
 
