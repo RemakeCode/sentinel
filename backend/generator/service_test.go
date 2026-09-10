@@ -210,6 +210,25 @@ func TestSetupGBETimesOutQRApproval(t *testing.T) {
 	require.NoFileExists(t, targetDLL+sentinelBackupSuffix)
 }
 
+func TestInstallationPhaseDoesNotAcceptCancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	service := &Service{setupDone: make(chan struct{}), activeCancel: cancel}
+
+	require.NoError(t, service.beginNonCancellableInstallation(ctx))
+	require.False(t, service.CancelGBESetup())
+	require.NoError(t, ctx.Err())
+}
+
+func TestCancelledSetupDoesNotEnterInstallationPhase(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	service := &Service{setupDone: make(chan struct{}), activeCancel: cancel}
+
+	require.ErrorIs(t, service.beginNonCancellableInstallation(ctx), context.Canceled)
+	require.True(t, service.CancelGBESetup())
+}
+
 func TestUndoRemovesStaleManagedEntryWithoutChangingDirectory(t *testing.T) {
 	root := t.TempDir()
 	marker := filepath.Join(root, "keep.txt")
