@@ -163,8 +163,10 @@
   &-content {
     height: -webkit-fill-available;
   }
+
   &-search {
     position: relative;
+    padding: 0 4px;
 
     &-control {
       position: relative;
@@ -200,9 +202,10 @@
       width: 100%;
       align-items: center;
       justify-content: start;
-      padding:var(--space-2);
+      padding: var(--space-2);
       text-align: start;
       animation: fade-in-up 0.2s both;
+
       img {
         width: 40px;
         height: 40px;
@@ -210,6 +213,7 @@
         border-radius: var(--radius-small);
         background: var(--muted);
       }
+
       small {
         color: var(--muted-foreground);
       }
@@ -233,6 +237,7 @@
       border-radius: var(--radius-small);
       background: var(--muted);
     }
+
     &-title {
       overflow: hidden;
       text-overflow: ellipsis;
