@@ -161,13 +161,22 @@ func InstallGBESetup(target InstallTarget, stagedDLL, generatedOutput string) er
 	settingsRollbackSource := ""
 	if hadSettings {
 		settingsRollbackSource = settingsBackup
-		if dirExists(settingsBackup) {
+		if dirExists(settingsBackup) || dllRollbackSource == dllTemporaryBackup {
 			if err := copyDirectory(settingsPath, settingsTemporaryBackup); err != nil {
 				return fmt.Errorf("snapshot current steam_settings for redo: %w", err)
 			}
 			settingsRollbackSource = settingsTemporaryBackup
 		} else if err := copyDirectory(settingsPath, settingsBackup); err != nil {
-			_ = os.RemoveAll(settingsBackup)
+			// Both backups belong to this first attempt. Leaving the DLL backup
+			// behind would make a retry treat it as a previous installation.
+			if cleanupErr := os.Remove(dllBackup); cleanupErr != nil {
+				err = errors.Join(err, fmt.Errorf("remove new DLL backup: %w", cleanupErr))
+			}
+
+			if cleanupErr := os.RemoveAll(settingsBackup); cleanupErr != nil {
+				err = errors.Join(err, fmt.Errorf("remove incomplete steam_settings backup: %w", cleanupErr))
+			}
+
 			return fmt.Errorf("backup original steam_settings: %w", err)
 		}
 	}
@@ -181,7 +190,7 @@ func InstallGBESetup(target InstallTarget, stagedDLL, generatedOutput string) er
 		return fmt.Errorf("install GBE DLL: %w", err)
 	}
 
-	if err := replaceDirectory(settingsPath, generatedOutput); err != nil {
+	if err := installSettings(settingsPath, generatedOutput, hadSettings); err != nil {
 		if restoreErr := restoreInstallState(target, dllRollbackSource, settingsRollbackSource, hadSettings); restoreErr != nil {
 			retainTemporaryBackups = true
 			return fmt.Errorf("install generated steam_settings: %w (restore failed: %v)", err, restoreErr)
@@ -251,12 +260,35 @@ func restoreInstallState(target InstallTarget, dllRollbackSource, settingsRollba
 	return nil
 }
 
-func replaceDirectory(destination, source string) error {
-	if err := removePath(destination); err != nil {
+func installSettings(destination, source string, existing bool) error {
+	if !existing {
+		return copyDirectory(source, destination)
+	}
+
+	entries, err := os.ReadDir(source)
+	if err != nil {
 		return err
 	}
 
-	return copyDirectory(source, destination)
+	for _, entry := range entries {
+		switch entry.Name() {
+		case "achievements.json", "stats.json":
+			if err := copyFile(filepath.Join(source, entry.Name()), filepath.Join(destination, entry.Name()), 0644); err != nil {
+				return err
+			}
+		case "img":
+			imagesPath := filepath.Join(destination, "img")
+			if err := removePath(imagesPath); err != nil {
+				return err
+			}
+
+			if err := copyDirectory(filepath.Join(source, "img"), imagesPath); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 func restoreFileBackup(destination, backup string) error {
