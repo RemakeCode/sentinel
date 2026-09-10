@@ -133,7 +133,7 @@ const AchievementSetup: FC = () => {
               <>
                 <div className='achievement-setup-search'>
                   <label data-field>
-                    Search game name on Steam ({searchStatus.toString()})
+                    Search game name on Steam
                     <div className='achievement-setup-search-control'>
                       <input
                         autoComplete='off'
