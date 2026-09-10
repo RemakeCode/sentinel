@@ -104,7 +104,7 @@ func (s *Service) SetupGBE(request SetupRequest) (result SetupResult, err error)
 	}
 
 	s.mu.Lock()
-	if s.activeCancel != nil {
+	if s.setupDone != nil {
 		s.mu.Unlock()
 		return result, ErrGBESetupRunning
 	}
@@ -188,6 +188,10 @@ func (s *Service) SetupGBE(request SetupRequest) (result SetupResult, err error)
 		return result, s.reportFailure(request.AppID, fmt.Errorf("copy generated output into operation workspace: %w", err))
 	}
 
+	if err := s.beginNonCancellableInstallation(ctx); err != nil {
+		return result, s.reportFailureOrCancellation(request.AppID, err)
+	}
+
 	s.emit(Update{Phase: PhaseInstalling, Message: "Backing up existing files and installing GBE setup"})
 	if err := InstallGBESetup(target, tools.ReplacementDLL, workspaceSettings); err != nil {
 		return result, s.reportFailure(request.AppID, err)
@@ -218,6 +222,18 @@ func (s *Service) CancelGBESetup() bool {
 	}
 	s.activeCancel()
 	return true
+}
+
+func (s *Service) beginNonCancellableInstallation(ctx context.Context) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
+	s.activeCancel = nil
+	return nil
 }
 
 type ManagedGBESetupSummary struct {
