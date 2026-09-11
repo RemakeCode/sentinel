@@ -38,12 +38,6 @@ type EmulatorSource struct {
 	ShouldNotify    bool
 }
 
-type legacyEmulator struct {
-	ID           string `json:"id"`
-	Path         string `json:"path"`
-	ShouldNotify bool   `json:"shouldNotify"`
-}
-
 type SteamSource string
 
 const (
@@ -118,6 +112,12 @@ var defaultEmulatorSources = []EmulatorSource{
 	{
 		ID:              "goldberg-steamemu",
 		Path:            backend.GoldbergSteamEmuDir,
+		AchievementFile: "achievements.json",
+		ShouldNotify:    true,
+	},
+	{
+		ID:              "uplay-r2",
+		Path:            backend.GoldbergUplayR2EmuDir,
 		AchievementFile: "achievements.json",
 		ShouldNotify:    true,
 	},
@@ -267,12 +267,7 @@ func (c *File) LoadConfig() (*File, error) {
 	}
 	c.ManagedGBESetups = managed.ManagedGBESetups
 
-	raw, err := legacyConfigFromJSON(data)
-	if err != nil {
-		return nil, errors.New("unable to unmarshal config")
-	}
-
-	changed := c.migrateLegacyEmulators(raw.Emulators)
+	changed := false
 	if c.applyDefaults() {
 		changed = true
 	}
@@ -395,46 +390,6 @@ func (c *File) applyProgressModeDefaults() {
 	if c.AchievementProgressUpdateMode == "" {
 		c.AchievementProgressUpdateMode = AchievementProgressUpdateModeDefault
 	}
-}
-
-func legacyConfigFromJSON(data []byte) (*struct {
-	Emulators []legacyEmulator `json:"emulators"`
-}, error) {
-	raw := &struct {
-		Emulators []legacyEmulator `json:"emulators"`
-	}{}
-	if err := json.Unmarshal(data, raw); err != nil {
-		return nil, err
-	}
-	return raw, nil
-}
-
-func (c *File) migrateLegacyEmulators(rawEmulators []legacyEmulator) bool {
-	if len(rawEmulators) == 0 {
-		return false
-	}
-
-	changed := false
-	migrated := make([]Emulator, 0, len(rawEmulators))
-	for _, raw := range rawEmulators {
-		id := raw.ID
-		if raw.Path != "" {
-			changed = true
-			if id == "" {
-				id = legacySourceIDForPath(raw.Path)
-			}
-		}
-		migrated = append(migrated, Emulator{
-			ID:           id,
-			ShouldNotify: raw.ShouldNotify,
-		})
-	}
-
-	if !changed {
-		return false
-	}
-	c.Emulators = migrated
-	return true
 }
 
 func (c *File) applyDefaults() bool {
@@ -707,21 +662,6 @@ func sourceForID(id string) (EmulatorSource, bool) {
 		}
 	}
 	return EmulatorSource{}, false
-}
-
-func legacySourceIDForPath(path string) string {
-	switch path {
-	case filepath.Join("AppData", "Roaming", "GSE Saves"), backend.EmuDir:
-		return "gse"
-	case filepath.Join("AppData", "Roaming", "Goldberg SteamEmu Saves"), backend.GoldbergSteamEmuDir:
-		return "goldberg-steamemu"
-	case backend.CodexEmuDir:
-		return "codex"
-	case backend.RuneEmuDir:
-		return "rune"
-	default:
-		return ""
-	}
 }
 
 // ToggleEmulatorNotification toggles the notification setting for an emulator by index
