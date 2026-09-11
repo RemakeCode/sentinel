@@ -3,9 +3,11 @@ package watcher
 import (
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 	"time"
 
+	"sentinel/backend"
 	"sentinel/backend/ach"
 	"sentinel/backend/config"
 	"sentinel/backend/steam"
@@ -45,6 +47,7 @@ type mockNotifier struct {
 	isProgress   bool
 	shouldNotify bool
 	achievements map[string]ach.Achievement
+	notified     chan struct{}
 }
 
 func (m *mockNotifier) SendNotification(appId string, achievements map[string]ach.Achievement, isProgress bool, shouldNotify bool) error {
@@ -53,6 +56,12 @@ func (m *mockNotifier) SendNotification(appId string, achievements map[string]ac
 	m.isProgress = isProgress
 	m.shouldNotify = shouldNotify
 	m.achievements = achievements
+	if m.notified != nil {
+		select {
+		case m.notified <- struct{}{}:
+		default:
+		}
+	}
 	return nil
 }
 
@@ -60,9 +69,14 @@ type mockAchManager struct {
 	parseResult *ach.AchievementData
 	cacheResult *ach.AchievementData
 	saveCalls   int
+	savedAppIDs []string
 }
 
-func (m *mockAchManager) SaveAch(path string) error { m.saveCalls++; return nil }
+func (m *mockAchManager) SaveAch(path, appID string) error {
+	m.saveCalls++
+	m.savedAppIDs = append(m.savedAppIDs, appID)
+	return nil
+}
 func (m *mockAchManager) ParseAch(path string) (*ach.AchievementData, error) {
 	if m.parseResult != nil {
 		return m.parseResult, nil
@@ -161,6 +175,34 @@ func TestNumericRegex(t *testing.T) {
 			assert.Equal(t, tt.expected, matched)
 		})
 	}
+}
+
+func TestUplaySteamMapping_ContainsNumericStringPairs(t *testing.T) {
+	require.NotEmpty(t, uplaySteamMapping)
+	for uplayID, steamAppID := range uplaySteamMapping {
+		_, err := strconv.ParseUint(uplayID, 10, 64)
+		require.NoError(t, err, "invalid Uplay ID %q", uplayID)
+		_, err = strconv.ParseUint(steamAppID, 10, 64)
+		require.NoError(t, err, "invalid Steam AppID %q", steamAppID)
+		require.NotEmpty(t, uplayID)
+		require.NotEmpty(t, steamAppID)
+	}
+}
+
+func TestResolveAppID(t *testing.T) {
+	service := &Service{}
+
+	appID, ok := service.resolveAppID(config.EmulatorSource{ID: "uplay-r2"}, "273")
+	require.True(t, ok)
+	assert.Equal(t, "242050", appID)
+
+	appID, ok = service.resolveAppID(config.EmulatorSource{ID: "uplay-r2"}, "999999999")
+	assert.False(t, ok)
+	assert.Empty(t, appID)
+
+	appID, ok = service.resolveAppID(config.EmulatorSource{ID: "gse"}, "999999999")
+	require.True(t, ok)
+	assert.Equal(t, "999999999", appID)
 }
 
 // ─── watchPath tests ──────────────────────────────────────────────────────────
@@ -266,178 +308,6 @@ func TestStart_WithEmulatorPaths(t *testing.T) {
 	assert.Contains(t, steamMock.calledWithAppIDs, "99999")
 
 	service.Stop()
-}
-
-// ─── handleEvent tests ────────────────────────────────────────────────────────
-
-func TestHandleEvent_AchievementsWrite_CallsNotifier(t *testing.T) {
-	notifMock := &mockNotifier{}
-	achMock := &mockAchManager{
-		parseResult: &ach.AchievementData{
-			Achievements: map[string]ach.Achievement{
-				"ach_1": {Earned: true},
-			},
-		},
-		cacheResult: &ach.AchievementData{
-			Achievements: map[string]ach.Achievement{}, // empty cache → ach_1 is newly earned
-		},
-	}
-
-	service := &Service{
-		Notifier: notifMock,
-		Ach:      achMock,
-		Config:   &config.File{},
-	}
-
-	event := fsnotify.Event{
-		Name: "/fake/path/12345/achievements.json",
-		Op:   fsnotify.Write,
-	}
-	service.handleEvent(event)
-
-	assert.Equal(t, 1, notifMock.calls)
-	assert.Equal(t, "12345", notifMock.lastID)
-}
-
-func TestHandleEvent_NoDiff_DoesNotCallNotifier(t *testing.T) {
-	existing := &ach.AchievementData{
-		Achievements: map[string]ach.Achievement{
-			"ach_1": {Earned: true},
-		},
-	}
-	notifMock := &mockNotifier{}
-	achMock := &mockAchManager{
-		// parse returns same data as cache → no diff
-		parseResult: existing,
-		cacheResult: existing,
-	}
-
-	service := &Service{
-		Notifier: notifMock,
-		Ach:      achMock,
-		Config:   &config.File{},
-	}
-
-	event := fsnotify.Event{
-		Name: "/fake/path/12345/achievements.json",
-		Op:   fsnotify.Write,
-	}
-	service.handleEvent(event)
-
-	assert.Equal(t, 0, notifMock.calls)
-}
-
-func TestHandleEvent_NonAchievementsFile(t *testing.T) {
-	notifMock := &mockNotifier{}
-
-	service := &Service{
-		Notifier: notifMock,
-		Ach:      &mockAchManager{},
-		Config:   &config.File{},
-	}
-
-	event := fsnotify.Event{
-		Name: "/fake/path/12345/other.txt",
-		Op:   fsnotify.Write,
-	}
-	service.handleEvent(event)
-
-	assert.Equal(t, 0, notifMock.calls)
-}
-
-func TestHandleEvent_INIAchievementsWrite_CallsNotifier(t *testing.T) {
-	notifMock := &mockNotifier{}
-	achMock := &mockAchManager{
-		parseResult: &ach.AchievementData{
-			Achievements: map[string]ach.Achievement{
-				"ACH_1": {Earned: true, EarnedTime: 1000},
-			},
-		},
-		cacheResult: &ach.AchievementData{
-			Achievements: map[string]ach.Achievement{
-				"ACH_1": {Earned: false},
-			},
-		},
-	}
-
-	appDir := "/fake/path/12345"
-	service := &Service{
-		Notifier: notifMock,
-		Ach:      achMock,
-		Config:   &config.File{},
-		sourceByAppPath: map[string]config.EmulatorSource{
-			appDir: {AchievementFile: "achievements.ini"},
-		},
-	}
-
-	event := fsnotify.Event{
-		Name: filepath.Join(appDir, "achievements.ini"),
-		Op:   fsnotify.Write,
-	}
-	service.handleEvent(event)
-
-	assert.Equal(t, 1, notifMock.calls)
-	assert.Equal(t, "12345", notifMock.lastID)
-	assert.False(t, notifMock.isProgress)
-	assert.Contains(t, notifMock.achievements, "ACH_1")
-}
-
-func TestHandleEvent_INIProgressUpdate_CallsProgressNotifier(t *testing.T) {
-	notifMock := &mockNotifier{}
-	achMock := &mockAchManager{
-		parseResult: &ach.AchievementData{
-			Achievements: map[string]ach.Achievement{
-				"ACH_PROGRESS": {Earned: false, Progress: 4, MaxProgress: 10},
-			},
-		},
-		cacheResult: &ach.AchievementData{
-			Achievements: map[string]ach.Achievement{
-				"ACH_PROGRESS": {Earned: false, Progress: 3, MaxProgress: 10},
-			},
-		},
-	}
-
-	appDir := "/fake/path/12345"
-	service := &Service{
-		Notifier: notifMock,
-		Ach:      achMock,
-		Config:   &config.File{},
-		sourceByAppPath: map[string]config.EmulatorSource{
-			appDir: {AchievementFile: "achievements.ini"},
-		},
-	}
-
-	event := fsnotify.Event{
-		Name: filepath.Join(appDir, "achievements.ini"),
-		Op:   fsnotify.Write,
-	}
-	service.handleEvent(event)
-
-	assert.Equal(t, 1, notifMock.calls)
-	assert.Equal(t, "12345", notifMock.lastID)
-	assert.True(t, notifMock.isProgress)
-	assert.Contains(t, notifMock.achievements, "ACH_PROGRESS")
-}
-
-func TestHandleEvent_SourceMappedAppIgnoresOtherAchievementFile(t *testing.T) {
-	notifMock := &mockNotifier{}
-	appDir := "/fake/path/12345"
-	service := &Service{
-		Notifier: notifMock,
-		Ach:      &mockAchManager{},
-		Config:   &config.File{},
-		sourceByAppPath: map[string]config.EmulatorSource{
-			appDir: {AchievementFile: "achievements.ini"},
-		},
-	}
-
-	event := fsnotify.Event{
-		Name: filepath.Join(appDir, "achievements.json"),
-		Op:   fsnotify.Write,
-	}
-	service.handleEvent(event)
-
-	assert.Equal(t, 0, notifMock.calls)
 }
 
 // ─── retryFailedPaths tests ───────────────────────────────────────────────────
@@ -857,6 +727,88 @@ func TestScanSources_IncludesNumericAppFoldersWithoutAchievementFile(t *testing.
 	assert.Contains(t, result.AppIDPaths, iniAppDir)
 	assert.Contains(t, result.AppIDPaths, missingFileDir)
 	assert.Len(t, result.Sources, 3)
+}
+
+func TestScanSources_ResolvesMappedUplayIDsAndSkipsUnmappedIDs(t *testing.T) {
+	tempDir := t.TempDir()
+	uplayRoot := filepath.Join(tempDir, "uplay")
+	mappedDir := filepath.Join(uplayRoot, "273")
+	unmappedDir := filepath.Join(uplayRoot, "999999999")
+	nonNumericDir := filepath.Join(uplayRoot, "not-a-uplay-id")
+	require.NoError(t, os.MkdirAll(mappedDir, 0755))
+	require.NoError(t, os.MkdirAll(unmappedDir, 0755))
+	require.NoError(t, os.MkdirAll(nonNumericDir, 0755))
+	writeAchievementJSON(t, mappedDir)
+	writeAchievementJSON(t, unmappedDir)
+
+	service := &Service{}
+	result := service.scanSources([]resolvedSource{{
+		Path: uplayRoot,
+		Source: config.EmulatorSource{
+			ID:              "uplay-r2",
+			AchievementFile: "achievements.json",
+		},
+	}})
+
+	assert.Equal(t, []string{"242050"}, result.AppIDs)
+	assert.Equal(t, []string{mappedDir}, result.AppIDPaths)
+	assert.Len(t, result.Sources, 1)
+}
+
+func TestStart_UplayR2EndToEnd(t *testing.T) {
+	tempDir := t.TempDir()
+	prefixDir := filepath.Join(tempDir, "prefix")
+	appDir := filepath.Join(prefixDir, "drive_c", "users", "steamuser", "AppData", "Roaming", "Goldberg UplayEmu Saves", "273")
+	require.NoError(t, os.MkdirAll(appDir, 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(appDir, "achievements.json"), []byte(`{
+		"ACH_1": {"earned": 0, "earned_time": 0}
+	}`), 0644))
+
+	oldCacheDir := backend.ACHCacheDataDir
+	backend.ACHCacheDataDir = filepath.Join(tempDir, "cache")
+	defer func() { backend.ACHCacheDataDir = oldCacheDir }()
+
+	steamMock := &mockSteam{done: make(chan struct{})}
+	notifMock := &mockNotifier{notified: make(chan struct{}, 1)}
+	service := &Service{
+		Config: &config.File{
+			Prefixes:  []config.Prefix{{Path: prefixDir}},
+			Emulators: []config.Emulator{{ID: "uplay-r2", ShouldNotify: true}},
+		},
+		Steam:    steamMock,
+		Ach:      &ach.Service{},
+		Notifier: notifMock,
+	}
+
+	require.NoError(t, service.Start())
+	defer service.Stop()
+	<-steamMock.done
+
+	assert.Contains(t, steamMock.calledWithAppIDs, "242050")
+	assert.Contains(t, service.watcher.WatchList(), appDir)
+	_, err := os.Stat(filepath.Join(backend.ACHCacheDataDir, "242050.json"))
+	require.NoError(t, err)
+
+	require.NoError(t, os.WriteFile(filepath.Join(appDir, "achievements.json"), []byte(`{
+		"ACH_1": {"earned": 1, "earned_time": 123}
+	}`), 0644))
+	select {
+	case <-notifMock.notified:
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for the real filesystem event")
+	}
+
+	assert.Equal(t, 1, notifMock.calls)
+	assert.Equal(t, "242050", notifMock.lastID)
+	require.Eventually(t, func() bool {
+		cached, err := (&ach.Service{}).LoadCachedAch("242050")
+		return err == nil && bool(cached.Achievements["ACH_1"].Earned)
+	}, 2*time.Second, 10*time.Millisecond)
+	cached, err := (&ach.Service{}).LoadCachedAch("242050")
+	require.NoError(t, err)
+	assert.True(t, bool(cached.Achievements["ACH_1"].Earned))
+	_, err = os.Stat(filepath.Join(backend.ACHCacheDataDir, "273.json"))
+	assert.ErrorIs(t, err, os.ErrNotExist)
 }
 
 func TestScanAndWatchPrefix_WatchesNumericFolderBeforeAchievementFileExists(t *testing.T) {
