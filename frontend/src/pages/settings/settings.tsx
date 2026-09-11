@@ -49,6 +49,7 @@ const achievementProgressUpdateModes: { name: string; value: AchievementProgress
 const emulatorSearchPaths: Record<string, string> = {
   'gse': 'users/steamuser/AppData/Roaming/GSE Saves',
   'goldberg-steamemu': 'users/steamuser/AppData/Roaming/Goldberg SteamEmu Saves',
+  'uplay-r2': 'users/steamuser/AppData/Roaming/Goldberg UplayEmu Saves',
   'codex': 'users/Public/Documents/Steam/CODEX',
   'rune': 'users/Public/Documents/Steam/RUNE'
 };

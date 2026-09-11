@@ -64,6 +64,7 @@ func TestLoadConfig_ValidFile(t *testing.T) {
 	assert.Equal(t, "external", string(result.SteamDataSource))
 	assert.Contains(t, emulatorIDs(result.Emulators), "gse")
 	assert.Contains(t, emulatorIDs(result.Emulators), "goldberg-steamemu")
+	assert.Contains(t, emulatorIDs(result.Emulators), "uplay-r2")
 	assert.Contains(t, emulatorIDs(result.Emulators), "codex")
 	assert.Contains(t, emulatorIDs(result.Emulators), "rune")
 }
@@ -445,9 +446,10 @@ func TestDecrypt_TooShort(t *testing.T) {
 
 func TestDefaultEmulators(t *testing.T) {
 	// Verify default emulators store only stable IDs and notification defaults.
-	require.Len(t, defaultEmulators, 4)
+	require.Len(t, defaultEmulators, 5)
 	assert.Contains(t, emulatorIDs(defaultEmulators), "gse")
 	assert.Contains(t, emulatorIDs(defaultEmulators), "goldberg-steamemu")
+	assert.Contains(t, emulatorIDs(defaultEmulators), "uplay-r2")
 	assert.Contains(t, emulatorIDs(defaultEmulators), "codex")
 	assert.Contains(t, emulatorIDs(defaultEmulators), "rune")
 
@@ -458,7 +460,7 @@ func TestDefaultEmulators(t *testing.T) {
 }
 
 func TestDefaultEmulatorSources(t *testing.T) {
-	require.Len(t, defaultEmulatorSources, 4)
+	require.Len(t, defaultEmulatorSources, 5)
 
 	sourcesByID := map[string]EmulatorSource{}
 	for _, source := range defaultEmulatorSources {
@@ -471,6 +473,10 @@ func TestDefaultEmulatorSources(t *testing.T) {
 	assert.Equal(t, backend.GoldbergSteamEmuDir, sourcesByID["goldberg-steamemu"].Path)
 	assert.Equal(t, "achievements.json", sourcesByID["goldberg-steamemu"].AchievementFile)
 
+	assert.Equal(t, backend.GoldbergUplayR2EmuDir, sourcesByID["uplay-r2"].Path)
+	assert.Equal(t, "achievements.json", sourcesByID["uplay-r2"].AchievementFile)
+	assert.True(t, sourcesByID["uplay-r2"].ShouldNotify)
+
 	assert.Equal(t, backend.CodexEmuDir, sourcesByID["codex"].Path)
 	assert.Equal(t, "achievements.ini", sourcesByID["codex"].AchievementFile)
 
@@ -478,7 +484,7 @@ func TestDefaultEmulatorSources(t *testing.T) {
 	assert.Equal(t, "achievements.ini", sourcesByID["rune"].AchievementFile)
 }
 
-func TestLoadConfig_MigratesLegacyPathsAndDropsUnknownEmulators(t *testing.T) {
+func TestLoadConfig_DiscardsLegacyPathsAndRestoresDefaults(t *testing.T) {
 	_, _ = setupTestConfig(t)
 
 	configJSON := `{
@@ -495,40 +501,33 @@ func TestLoadConfig_MigratesLegacyPathsAndDropsUnknownEmulators(t *testing.T) {
 	require.NoError(t, err)
 
 	ids := emulatorIDs(result.Emulators)
-	assert.ElementsMatch(t, []string{"gse", "goldberg-steamemu", "codex", "rune"}, ids)
-	assert.Len(t, result.Emulators, 4)
-	assert.False(t, emulatorByID(result.Emulators, "gse").ShouldNotify)
+	assert.ElementsMatch(t, []string{"gse", "goldberg-steamemu", "uplay-r2", "codex", "rune"}, ids)
+	assert.Len(t, result.Emulators, 5)
+	assert.True(t, emulatorByID(result.Emulators, "gse").ShouldNotify)
 	assert.True(t, emulatorByID(result.Emulators, "goldberg-steamemu").ShouldNotify)
 }
 
-func TestMigrateLegacyEmulators_MapsKnownPaths(t *testing.T) {
-	cfg := &File{}
+func TestLoadConfig_NormalizesCurrentEmulators(t *testing.T) {
+	_, _ = setupTestConfig(t)
 
-	changed := cfg.migrateLegacyEmulators([]legacyEmulator{
-		{Path: filepath.Join("AppData", "Roaming", "GSE Saves"), ShouldNotify: false},
-		{Path: backend.CodexEmuDir, ShouldNotify: true},
-	})
+	configJSON := `{
+		"emulators": [
+			{"id": "gse", "shouldNotify": false},
+			{"id": "gse", "shouldNotify": true},
+			{"id": "uplay-r2", "shouldNotify": false},
+			{"id": "unknown", "shouldNotify": true}
+		],
+		"steamDataSource": "external"
+	}`
+	require.NoError(t, os.WriteFile(backend.ConfigPath, []byte(configJSON), 0644))
 
-	require.True(t, changed)
-	assert.ElementsMatch(t, []string{"gse", "codex"}, emulatorIDs(cfg.Emulators))
-	assert.False(t, emulatorByID(cfg.Emulators, "gse").ShouldNotify)
-	assert.True(t, emulatorByID(cfg.Emulators, "codex").ShouldNotify)
-}
+	result, err := (&File{}).LoadConfig()
+	require.NoError(t, err)
 
-func TestMigrateLegacyEmulators_IgnoresCurrentIDShape(t *testing.T) {
-	cfg := &File{
-		Emulators: []Emulator{
-			{ID: "gse", ShouldNotify: true},
-		},
-	}
-
-	changed := cfg.migrateLegacyEmulators([]legacyEmulator{
-		{ID: "gse", ShouldNotify: true},
-	})
-
-	require.False(t, changed)
-	assert.Equal(t, []string{"gse"}, emulatorIDs(cfg.Emulators))
-	assert.True(t, cfg.Emulators[0].ShouldNotify)
+	assert.Len(t, result.Emulators, 5)
+	assert.False(t, emulatorByID(result.Emulators, "gse").ShouldNotify)
+	assert.False(t, emulatorByID(result.Emulators, "uplay-r2").ShouldNotify)
+	assert.Equal(t, 1, countEmulatorID(result.Emulators, "gse"))
 }
 
 func TestLoadConfig_DoesNotDuplicateDefaultEmulators(t *testing.T) {
@@ -622,6 +621,16 @@ func emulatorByID(emulators []Emulator, id string) Emulator {
 		}
 	}
 	return Emulator{}
+}
+
+func countEmulatorID(emulators []Emulator, id string) int {
+	count := 0
+	for _, emulator := range emulators {
+		if emulator.ID == id {
+			count++
+		}
+	}
+	return count
 }
 
 func TestSetLanguage_Valid(t *testing.T) {
