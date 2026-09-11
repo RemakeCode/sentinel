@@ -64,6 +64,7 @@
       padding: var(--space-2);
       gap: var(--space-1);
       position: relative;
+      overflow: hidden;
     }
 
     &-icon {
@@ -73,7 +74,7 @@
       width: 80%;
       height: 80%;
       color: var(--warning);
-      opacity: 0.1;
+      opacity: 0.2;
       transition: var(--transition-fast);
     }
 
