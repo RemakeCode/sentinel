@@ -19,12 +19,27 @@ func (s *Service) Start(ctx context.Context) error {
 	return nil
 }
 
+type flexibleBool bool
+
+func (b *flexibleBool) UnmarshalJSON(data []byte) error {
+	switch strings.TrimSpace(string(data)) {
+	case "true", "1":
+		*b = true
+	case "false", "0", "null":
+		*b = false
+	default:
+		return fmt.Errorf("invalid boolean value: %s", data)
+	}
+
+	return nil
+}
+
 // Achievement represents a single achievement's progress
 type Achievement struct {
-	Earned      bool  `json:"earned"`
-	EarnedTime  int64 `json:"earned_time"`
-	MaxProgress int   `json:"max_progress,omitempty"`
-	Progress    int   `json:"progress,omitempty"`
+	Earned      flexibleBool `json:"earned"`
+	EarnedTime  int64        `json:"earned_time"`
+	MaxProgress int          `json:"max_progress,omitempty"`
+	Progress    int          `json:"progress,omitempty"`
 }
 
 // AchievementData contains all achievements for a game
@@ -174,14 +189,12 @@ func (s *Service) LoadAllCachedAch() (map[string]*AchievementData, error) {
 	return result, nil
 }
 
-// SaveAch saves the given achievements to the cache
-func (s *Service) SaveAch(path string) error {
+//wails:internal
+func (s *Service) SaveAch(path, appID string) error {
 	if err := os.MkdirAll(backend.ACHCacheDataDir, 0755); err != nil {
 		slog.Error("Failed to create achievement cache directory", "error", err)
 		return err
 	}
-
-	appId := filepath.Base(path)
 
 	achData, err := s.parseFromDirectory(path)
 	if err != nil {
@@ -193,7 +206,7 @@ func (s *Service) SaveAch(path string) error {
 		return err
 	}
 
-	cachePath := filepath.Join(backend.ACHCacheDataDir, appId+".json")
+	cachePath := filepath.Join(backend.ACHCacheDataDir, appID+".json")
 
 	return os.WriteFile(cachePath, file, 0644)
 }

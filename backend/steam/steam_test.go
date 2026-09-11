@@ -805,7 +805,7 @@ func TestRefetchGameData_ReturnsCachedAchievementProgress(t *testing.T) {
 	game, err := svc.RefetchGameData(appID)
 
 	assert.NoError(t, err)
-	assert.True(t, game.Achievement.List[0].CurrentAch.Earned)
+	assert.True(t, bool(game.Achievement.List[0].CurrentAch.Earned))
 	assert.Equal(t, int64(123), game.Achievement.List[0].CurrentAch.EarnedTime)
 	assert.Equal(t, 1, game.Achievement.List[0].CurrentAch.Progress)
 }

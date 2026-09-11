@@ -318,7 +318,7 @@ func (s *Service) SendNotification(appId string, achievements map[string]ach.Ach
 					Progress:    a.Progress,
 					MaxProgress: a.MaxProgress,
 					IsProgress:  isProgress,
-					IsRare:      !isProgress && a.Earned && rareAchievements[strings.ToLower(id)],
+					IsRare:      !isProgress && bool(a.Earned) && rareAchievements[strings.ToLower(id)],
 				}
 
 				select {
