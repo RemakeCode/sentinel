@@ -214,7 +214,6 @@ const AchievementSetup: FC = () => {
                     <span className='badge' data-variant='success'>Configured</span>
                     <div className='achievement-setup-configured-details'>
                       <strong>{game.name}</strong>
-                      <small>App ID {game.appId}</small>
                     </div>
                     <div className='settings-grid-actions'>
                       <button type='button' className='outline' onClick={() => setUndoGame(game)}>
