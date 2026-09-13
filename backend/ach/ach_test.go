@@ -100,6 +100,35 @@ func TestParseAch_InvalidJSON(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestParseAch_JSONEarnedValues(t *testing.T) {
+	tests := []struct {
+		name     string
+		value    string
+		expected bool
+	}{
+		{name: "true", value: "true", expected: true},
+		{name: "false", value: "false", expected: false},
+		{name: "one", value: "1", expected: true},
+		{name: "zero", value: "0", expected: false},
+		{name: "null", value: "null", expected: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := parseJSONAchievements([]byte(`{"ACH": {"earned": ` + tt.value + `}}`))
+			require.NoError(t, err)
+			assert.Equal(t, tt.expected, bool(result.Achievements["ACH"].Earned))
+		})
+	}
+}
+
+func TestParseAch_JSONRejectsInvalidEarnedValues(t *testing.T) {
+	for _, value := range []string{`2`, `"true"`, `{}`, `[]`} {
+		_, err := parseJSONAchievements([]byte(`{"ACH": {"earned": ` + value + `}}`))
+		assert.Error(t, err, "earned value %s should be rejected", value)
+	}
+}
+
 func TestParseAch_UnsupportedExtension(t *testing.T) {
 	tempDir := t.TempDir()
 	achievementsPath := filepath.Join(tempDir, "achievements.txt")
@@ -136,9 +165,9 @@ Count=2
 	require.NoError(t, err)
 
 	require.Len(t, result.Achievements, 2)
-	assert.True(t, result.Achievements["ACH02"].Earned)
+	assert.True(t, bool(result.Achievements["ACH02"].Earned))
 	assert.Equal(t, int64(1721215291), result.Achievements["ACH02"].EarnedTime)
-	assert.False(t, result.Achievements["ACH_PROGRESS"].Earned)
+	assert.False(t, bool(result.Achievements["ACH_PROGRESS"].Earned))
 	assert.Equal(t, 4, result.Achievements["ACH_PROGRESS"].Progress)
 	assert.Equal(t, 10, result.Achievements["ACH_PROGRESS"].MaxProgress)
 	assert.NotContains(t, result.Achievements, "SteamAchievements")
@@ -170,9 +199,9 @@ Count=2
 	require.NoError(t, err)
 
 	require.Len(t, result.Achievements, 2)
-	assert.True(t, result.Achievements["13"].Earned)
+	assert.True(t, bool(result.Achievements["13"].Earned))
 	assert.Equal(t, int64(1724340111), result.Achievements["13"].EarnedTime)
-	assert.False(t, result.Achievements["23"].Earned)
+	assert.False(t, bool(result.Achievements["23"].Earned))
 	assert.Equal(t, 2, result.Achievements["23"].Progress)
 	assert.Equal(t, 5, result.Achievements["23"].MaxProgress)
 }
@@ -204,7 +233,7 @@ Count=1
 
 	require.Len(t, result.Achievements, 1)
 	achievement := result.Achievements["ACH_SAFE"]
-	assert.False(t, achievement.Earned)
+	assert.False(t, bool(achievement.Earned))
 	assert.Equal(t, 0, achievement.Progress)
 	assert.Equal(t, 12, achievement.MaxProgress)
 	assert.Equal(t, int64(0), achievement.EarnedTime)
@@ -253,7 +282,7 @@ func TestSaveAch(t *testing.T) {
 	backend.ACHCacheDataDir = t.TempDir()
 	defer func() { backend.ACHCacheDataDir = oldCacheDir }()
 
-	err = svc.SaveAch(achievementsDir)
+	err = svc.SaveAch(achievementsDir, appID)
 	if err != nil {
 		t.Fatalf("SaveAch returned error: %v", err)
 	}
@@ -322,13 +351,34 @@ func TestSaveAch_CreatesDirectory(t *testing.T) {
 	backend.ACHCacheDataDir = newCacheDir
 	defer func() { backend.ACHCacheDataDir = oldCacheDir }()
 
-	err = svc.SaveAch(achievementsDir)
+	err = svc.SaveAch(achievementsDir, appID)
 	require.NoError(t, err)
 
 	// Verify directory was created and file was written
 	cachePath := filepath.Join(newCacheDir, appID+".json")
 	_, err = os.Stat(cachePath)
 	require.NoError(t, err, "Cache file should be created in newly created directory")
+}
+
+func TestSaveAch_UsesProvidedAppIDAndNormalizesEarned(t *testing.T) {
+	tempDir := t.TempDir()
+	sourceDir := filepath.Join(tempDir, "273")
+	require.NoError(t, os.MkdirAll(sourceDir, 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(sourceDir, "achievements.json"), []byte(`{
+		"ACH_1": {"earned": 1, "earned_time": 123}
+	}`), 0644))
+
+	oldCacheDir := backend.ACHCacheDataDir
+	backend.ACHCacheDataDir = t.TempDir()
+	defer func() { backend.ACHCacheDataDir = oldCacheDir }()
+
+	require.NoError(t, svc.SaveAch(sourceDir, "242050"))
+
+	cacheData, err := os.ReadFile(filepath.Join(backend.ACHCacheDataDir, "242050.json"))
+	require.NoError(t, err)
+	assert.Contains(t, string(cacheData), `"earned": true`)
+	_, err = os.Stat(filepath.Join(backend.ACHCacheDataDir, "273.json"))
+	assert.ErrorIs(t, err, os.ErrNotExist)
 }
 
 func TestSaveAch_NormalizesINIToJSONCache(t *testing.T) {
@@ -347,7 +397,7 @@ UnlockTime=1721215291
 	backend.ACHCacheDataDir = t.TempDir()
 	defer func() { backend.ACHCacheDataDir = oldCacheDir }()
 
-	require.NoError(t, svc.SaveAch(achievementsDir))
+	require.NoError(t, svc.SaveAch(achievementsDir, appID))
 
 	cachePath := filepath.Join(backend.ACHCacheDataDir, appID+".json")
 	fileData, err := os.ReadFile(cachePath)
@@ -356,7 +406,7 @@ UnlockTime=1721215291
 	var cachedAchievements map[string]Achievement
 	require.NoError(t, json.Unmarshal(fileData, &cachedAchievements))
 	require.Contains(t, cachedAchievements, "ACH02")
-	assert.True(t, cachedAchievements["ACH02"].Earned)
+	assert.True(t, bool(cachedAchievements["ACH02"].Earned))
 	assert.Equal(t, int64(1721215291), cachedAchievements["ACH02"].EarnedTime)
 }
 
@@ -385,7 +435,7 @@ func TestLoadCachedAch_ValidFile(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	assert.Len(t, result.Achievements, 2)
-	assert.True(t, result.Achievements["TROPHY_001"].Earned)
+	assert.True(t, bool(result.Achievements["TROPHY_001"].Earned))
 	assert.Equal(t, 50, result.Achievements["TROPHY_002"].Progress)
 }
 

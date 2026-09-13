@@ -26,7 +26,7 @@ type SteamService interface {
 }
 
 type AchService interface {
-	SaveAch(path string) error
+	SaveAch(path, appID string) error
 	ParseAch(path string) (*ach.AchievementData, error)
 	LoadCachedAch(appId string) (*ach.AchievementData, error)
 }
@@ -181,6 +181,7 @@ func (s *Service) Start() error {
 
 	// Add all appId paths to the watcher
 	for i, path := range scanResult.AppIDPaths {
+		appID := scanResult.AppIDs[i]
 		source := config.EmulatorSource{}
 		if i < len(scanResult.Sources) {
 			source = scanResult.Sources[i]
@@ -188,7 +189,7 @@ func (s *Service) Start() error {
 		}
 
 		if achievementFileExists(path, source) {
-			if err := s.Ach.SaveAch(path); err != nil {
+			if err := s.Ach.SaveAch(path, appID); err != nil {
 				slog.Warn("Could not cache ach from path", "path", path, "error", err)
 			}
 		}
@@ -310,7 +311,7 @@ func (s *Service) scanAndWatchPrefix(prefix string) {
 		}
 
 		if i < len(result.Sources) && achievementFileExists(path, result.Sources[i]) {
-			if err := s.Ach.SaveAch(path); err != nil {
+			if err := s.Ach.SaveAch(path, appID); err != nil {
 				slog.Warn("Failed to cache ach from path", "path", path, "error", err)
 			}
 		}
@@ -402,10 +403,16 @@ func (s *Service) processEvents() {
 // handleEvent processes a file system event
 // Currently logs events for future implementation
 func (s *Service) handleEvent(event fsnotify.Event) {
-	// Extract appId from the event path if it's a numeric directory
 	path := event.Name
 
 	appId := filepath.Base(filepath.Dir(path))
+	if source, ok := s.sourceByAppPath[filepath.Dir(path)]; ok {
+		resolvedAppID, ok := s.resolveAppID(source, appId)
+		if !ok {
+			return
+		}
+		appId = resolvedAppID
+	}
 
 	// Log the event with relevant details
 	slog.Info("File system event detected",
@@ -465,7 +472,7 @@ func (s *Service) handleAchievementsWriteEvent(path, appId string) {
 	}
 
 	if oldAch == nil || len(diff.NewlyEarned) > 0 || len(diff.ProgressUpdated) > 0 {
-		if err := s.Ach.SaveAch(filepath.Dir(path)); err != nil {
+		if err := s.Ach.SaveAch(filepath.Dir(path), appId); err != nil {
 			slog.Error("Failed to save achievements", "error", err)
 		}
 	}
@@ -511,7 +518,12 @@ func (s *Service) scanSources(sources []resolvedSource) scanResult {
 			}
 
 			appPath := filepath.Join(source.Path, entry.Name())
-			appIDs = append(appIDs, entry.Name())
+			appID, ok := s.resolveAppID(source.Source, entry.Name())
+			if !ok {
+				continue
+			}
+
+			appIDs = append(appIDs, appID)
 			appIDPaths = append(appIDPaths, appPath)
 			sourceResults = append(sourceResults, source.Source)
 		}
@@ -593,4 +605,18 @@ func achievementFileExists(appPath string, source config.EmulatorSource) bool {
 	}
 	_, err := os.Stat(filepath.Join(appPath, source.AchievementFile))
 	return err == nil
+}
+
+func (s *Service) resolveAppID(source config.EmulatorSource, directoryID string) (string, bool) {
+	if source.ID != "uplay-r2" {
+		return directoryID, true
+	}
+
+	appID, ok := uplaySteamMapping[directoryID]
+	if !ok {
+		slog.Warn("Skipping unmapped Uplay R2 directory", "uplayID", directoryID)
+		return "", false
+	}
+
+	return appID, true
 }

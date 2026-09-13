@@ -18,6 +18,7 @@ const (
 
 var EmuDir = filepath.Join("users", "steamuser", "AppData", "Roaming", "GSE Saves")
 var GoldbergSteamEmuDir = filepath.Join("users", "steamuser", "AppData", "Roaming", "Goldberg SteamEmu Saves")
+var GoldbergUplayR2EmuDir = filepath.Join("users", "steamuser", "AppData", "Roaming", "Goldberg UplayEmu Saves")
 var CodexEmuDir = filepath.Join("users", "Public", "Documents", "Steam", "CODEX")
 var RuneEmuDir = filepath.Join("users", "Public", "Documents", "Steam", "RUNE")
 
