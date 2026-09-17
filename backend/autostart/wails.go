@@ -5,6 +5,8 @@ package autostart
 import (
 	"errors"
 
+	"sentinel/backend"
+
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
@@ -15,7 +17,8 @@ func setEnabled(enabled bool) error {
 	}
 	if enabled {
 		err := app.Autostart.EnableWithOptions(application.AutostartOptions{
-			Arguments: []string{"--startminimized"},
+			Identifier: backend.ApplicationID,
+			Arguments:  []string{"--startminimized"},
 		})
 		if errors.Is(err, application.ErrAutostartNotSupported) {
 			return nil

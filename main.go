@@ -77,7 +77,7 @@ func main() {
 			ProgramName: "sentinel",
 		},
 		SingleInstance: &application.SingleInstanceOptions{
-			UniqueID: "dev.sentinel.app",
+			UniqueID: backend.ApplicationID,
 			OnSecondInstanceLaunch: func(data application.SecondInstanceData) {
 				if window != nil {
 					window.Show()
