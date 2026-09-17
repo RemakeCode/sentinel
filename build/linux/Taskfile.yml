@@ -191,17 +191,17 @@ tasks:
   generate:deb:
     summary: Creates a deb package
     cmds:
-      - APP_NAME="{{.APP_NAME}}" APP_ID="{{.APP_ID}}" WAILS_LINUX_APP_ID="{{.WAILS_LINUX_APP_ID}}" wails3 tool package -name "{{.APP_NAME}}" -format deb -config ./build/linux/nfpm/nfpm.yaml -out {{.ROOT_DIR}}/bin
+      - APP_NAME="{{.APP_NAME}}" APP_ID="{{.APP_ID}}" wails3 tool package -name "{{.APP_NAME}}" -format deb -config ./build/linux/nfpm/nfpm.yaml -out {{.ROOT_DIR}}/bin
 
   generate:rpm:
     summary: Creates a rpm package
     cmds:
-      - APP_NAME="{{.APP_NAME}}" APP_ID="{{.APP_ID}}" WAILS_LINUX_APP_ID="{{.WAILS_LINUX_APP_ID}}" wails3 tool package -name "{{.APP_NAME}}" -format rpm -config ./build/linux/nfpm/nfpm.yaml -out {{.ROOT_DIR}}/bin
+      - APP_NAME="{{.APP_NAME}}" APP_ID="{{.APP_ID}}" wails3 tool package -name "{{.APP_NAME}}" -format rpm -config ./build/linux/nfpm/nfpm.yaml -out {{.ROOT_DIR}}/bin
 
   generate:aur:
     summary: Creates a arch linux packager package
     cmds:
-      - APP_NAME="{{.APP_NAME}}" APP_ID="{{.APP_ID}}" WAILS_LINUX_APP_ID="{{.WAILS_LINUX_APP_ID}}" wails3 tool package -name "{{.APP_NAME}}" -format archlinux -config ./build/linux/nfpm/nfpm.yaml -out {{.ROOT_DIR}}/bin
+      - APP_NAME="{{.APP_NAME}}" APP_ID="{{.APP_ID}}" wails3 tool package -name "{{.APP_NAME}}" -format archlinux -config ./build/linux/nfpm/nfpm.yaml -out {{.ROOT_DIR}}/bin
 
   generate:dotdesktop:
     summary: Generates a `.desktop` file
@@ -219,7 +219,7 @@ tasks:
       OUTPUTFILE: '{{.ROOT_DIR}}/build/linux/{{.APP_NAME}}.desktop'
       COMMENT: 'An Achievement Watcher for Linux'
       KEYWORDS: 'steam, achievements, watcher, trophy'
-      STARTUP_WM_CLASS: 'sentinel'
+      STARTUP_WM_CLASS: '{{.APP_ID}}'
 
   run:
     cmds:

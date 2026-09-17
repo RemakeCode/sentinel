@@ -8,9 +8,6 @@ includes:
 vars:
   APP_NAME: "sentinel"
   APP_ID: "io.github.remakecode.sentinel"
-  # Wails currently derives the Linux GTK application ID from Options.Name.
-  # Keep this separate until Wails exposes an override for that ID.
-  WAILS_LINUX_APP_ID: "org.wails.sentinel"
   BIN_DIR: "bin"
   VITE_PORT: '{{.WAILS_VITE_PORT | default 9245}}'
   APP_VERSION: '{{.APP_VERSION | default "0.0.0-dev"}}'

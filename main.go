@@ -74,7 +74,7 @@ func main() {
 			ApplicationShouldTerminateAfterLastWindowClosed: false,
 		},
 		Linux: application.LinuxOptions{
-			ProgramName: "sentinel",
+			ApplicationID: backend.ApplicationID,
 		},
 		SingleInstance: &application.SingleInstanceOptions{
 			UniqueID: backend.ApplicationID,
