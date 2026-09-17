@@ -11,7 +11,7 @@ require (
 	github.com/godbus/dbus/v5 v5.2.2
 	github.com/gopxl/beep/v2 v2.1.1
 	github.com/stretchr/testify v1.11.1
-	github.com/wailsapp/wails/v3 v3.0.0-beta.14
+	github.com/wailsapp/wails/v3 v3.0.0-beta.23
 	golang.org/x/text v0.40.0
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
@@ -29,7 +29,6 @@ require (
 	github.com/ebitengine/purego v0.10.2 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
-	github.com/jchv/go-winloader v0.0.0-20250406163304-c1995be93bd1 // indirect
 	github.com/klauspost/compress v1.19.0 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/mattn/go-colorable v0.1.15 // indirect
