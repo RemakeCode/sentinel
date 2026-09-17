@@ -128,41 +128,6 @@ tasks:
       - task: create:deb
       - task: create:rpm
       - task: create:aur
-      # Disabled until the generated AppImage crash is resolved.
-      # - task: create:appimage
-      - task: cleanup:artifacts
-
-  create:appimage:
-    summary: Creates an AppImage
-    dir: build/linux/appimage
-    deps:
-      - task: build
-      - task: generate:dotdesktop
-        vars:
-          APP_NAME: '{{.APP_NAME}}'
-    cmds:
-      - cp "{{.APP_BINARY}}" "{{.APP_NAME}}"
-      - cp ../../appicon.png "{{.ICON}}"
-      - touch .appimage-build-marker
-      - wails3 generate appimage -binary "{{.APP_NAME}}" -icon {{.ICON}} -desktopfile {{.DESKTOP_FILE}} -outputdir {{.OUTPUT_DIR}} -builddir {{.ROOT_DIR}}/build/linux/appimage/build
-      - |
-        if [ -n "${APP_VERSION}" ]; then
-          find {{.OUTPUT_DIR}} -maxdepth 1 -type f -name '{{.APP_NAME}}*.AppImage' -newer .appimage-build-marker | while IFS= read -r artifact; do
-            case "$artifact" in
-              *"${APP_VERSION}"*.AppImage) continue ;;
-            esac
-            dir=$(dirname "$artifact")
-            file=$(basename "$artifact")
-            mv "$artifact" "$dir/${file%.AppImage}-${APP_VERSION}.AppImage"
-          done
-        fi
-      - rm -f .appimage-build-marker
-    vars:
-      APP_NAME: '{{.APP_NAME}}'
-      APP_BINARY: '../../../bin/{{.APP_NAME}}'
-      ICON: '{{.APP_ID}}.png'
-      DESKTOP_FILE: '../{{.APP_NAME}}.desktop'
-      OUTPUT_DIR: '../../../bin'
 
   create:deb:
     summary: Creates a deb package
@@ -188,6 +153,27 @@ tasks:
       - task: generate:dotdesktop
       - task: generate:aur
 
+  create:flatpak:
+    summary: Creates a Flatpak bundle
+    cmds:
+      - mkdir -p "{{.BIN_DIR}}"
+      - rm -f "{{.FLATPAK_BUNDLE}}"
+      - flatpak-builder --user --install-deps-from=flathub --force-clean --repo="{{.FLATPAK_REPO_DIR}}" "{{.FLATPAK_BUILD_DIR}}" "{{.FLATPAK_MANIFEST}}"
+      - flatpak build-bundle --runtime-repo="{{.FLATPAK_RUNTIME_REPO}}" "{{.FLATPAK_REPO_DIR}}" "{{.FLATPAK_BUNDLE}}" "{{.APP_ID}}"
+    preconditions:
+      - sh: command -v flatpak >/dev/null 2>&1
+        msg: "flatpak is required to build the Flatpak bundle."
+      - sh: command -v flatpak-builder >/dev/null 2>&1
+        msg: "flatpak-builder is required to build the Flatpak bundle."
+      - sh: flatpak remote-list --user --columns=name | grep -Fxq flathub
+        msg: "A user Flathub remote is required. Add it with: flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo"
+    vars:
+      FLATPAK_MANIFEST: '{{.ROOT_DIR}}/build/flatpak/{{.APP_ID}}.yml'
+      FLATPAK_BUILD_DIR: '{{.ROOT_DIR}}/flatpak_app'
+      FLATPAK_REPO_DIR: '{{.ROOT_DIR}}/repo'
+      FLATPAK_BUNDLE: '{{.ROOT_DIR}}/{{.BIN_DIR}}/{{.APP_NAME}}-x86_64.flatpak'
+      FLATPAK_RUNTIME_REPO: 'https://flathub.org/repo/flathub.flatpakrepo'
+
   generate:deb:
     summary: Creates a deb package
     cmds:
@@ -207,7 +193,6 @@ tasks:
     summary: Generates a `.desktop` file
     dir: build
     cmds:
-      - mkdir -p {{.ROOT_DIR}}/build/linux/appimage
       - wails3 generate .desktop -name "{{.NAME}}" -exec "{{.EXEC}}" -icon "{{.ICON}}" -outputfile "{{.OUTPUTFILE}}" -categories "{{.CATEGORIES}}" -comment "{{.COMMENT}}" -keywords "{{.KEYWORDS}}"
       - sed -i '/^StartupWMClass=/d' "{{.OUTPUTFILE}}"
       - sed -i '$aStartupWMClass={{.STARTUP_WM_CLASS}}' "{{.OUTPUTFILE}}"
@@ -477,15 +462,3 @@ tasks:
     preconditions:
       - sh: '[ -n "{{.PGP_KEY}}" ]'
         msg: "PGP_KEY is required. Set it in the vars section at the top of build/linux/Taskfile.yml"
-
-  cleanup:artifacts:
-    summary: Cleans up temporary build artifacts
-    dir: build/linux/appimage
-    cmds:
-      # Remove downloaded linuxdeploy AppImage files
-      - rm -f linuxdeploy-*-AppImage
-      # Remove copied binary and icon files
-      - rm -f "{{.APP_NAME}}"
-      - rm -f "{{.APP_NAME}}.png"
-    vars:
-      APP_NAME: '{{.APP_NAME}}'

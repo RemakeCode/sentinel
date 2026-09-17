@@ -7,7 +7,7 @@ This project uses [semantic-release](https://semantic-release.gitbook.io/) with 
 - Every push to `main` branch runs tests and build checks
 - GitHub Release is created manually via "Run Workflow" button
 - Commit messages are analyzed to determine version bumps
-- Linux packages (AppImage, .deb, .rpm) are built automatically
+- Linux packages (`.deb`, `.rpm`, `.pkg.tar.zst`, and `.flatpak`) are built automatically
 - GitHub Release is created with changelog
 - Version tags are created automatically
 
