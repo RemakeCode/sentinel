@@ -16,9 +16,11 @@ openspec/
 /build/.task/
 /build/bin/
 /bin
-/flatpak_app/
+/.flatpak/
 /.flatpak-builder/
+/flatpak_app/
 /repo/
+/build/flatpak/io.github.remakecode.sentinel.metainfo.xml
 node_modules
 
 */**/.DS_Store

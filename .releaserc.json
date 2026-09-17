@@ -47,7 +47,7 @@
     [
       "@semantic-release/exec",
       {
-        "prepareCmd": "APP_VERSION=${nextRelease.version} task linux:package linux:decky:package"
+        "prepareCmd": "APP_VERSION=${nextRelease.version} task linux:package linux:create:flatpak linux:decky:package"
       }
     ],
     [

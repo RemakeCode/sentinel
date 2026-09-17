@@ -69,9 +69,11 @@ docs: update installation instructions
 ## Release Assets
 
 Each release includes:
-- `sentinel.deb` - Debian/Ubuntu package
-- `sentinel.rpm` - Fedora/RHEL package  
-- `sentinel.pkg.tar.zst` - Arch Linux package
+- `sentinel-<version>.deb` - Debian/Ubuntu package
+- `sentinel-<version>.rpm` - Fedora/RHEL package
+- `sentinel-<version>.pkg.tar.zst` - Arch Linux package
+- `sentinel-decky-plugin-<version>.zip` - Decky plugin
+- `sentinel-<version>-x86_64.flatpak` - Flatpak bundle
 
 ## Troubleshooting
 
