@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.remakecode.sentinel</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <name>Sentinel</name>
+  <summary>An achievement watcher for Steam emulator games</summary>
+  <developer id="io.github.remakecode">
+    <name>Remake Code</name>
+  </developer>
+  <description>
+    <p>
+      Sentinel monitors Steam emulator achievement files and sends desktop
+      notifications when achievements are unlocked or progress is updated.
+    </p>
+    <p>
+      It also provides a game library with completion statistics and global
+      achievement percentages.
+    </p>
+  </description>
+  <launchable type="desktop-id">io.github.remakecode.sentinel.desktop</launchable>
+  <provides>
+    <binary>sentinel</binary>
+  </provides>
+  <url type="homepage">https://github.com/RemakeCode/sentinel</url>
+  <url type="bugtracker">https://github.com/RemakeCode/sentinel/issues</url>
+  <content_rating type="oars-1.1" />
+</component>

@@ -1,0 +1,49 @@
+id: io.github.remakecode.sentinel
+runtime: org.gnome.Platform
+runtime-version: '50'
+sdk: org.gnome.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.golang
+  - org.freedesktop.Sdk.Extension.node24
+command: sentinel
+
+finish-args:
+  - --socket=wayland
+  - --device=dri
+  - --share=network
+  - --socket=pulseaudio
+  - --filesystem=home
+  - --talk-name=org.freedesktop.Notifications
+  - --talk-name=org.kde.StatusNotifierWatcher
+
+build-options:
+  append-path: /usr/lib/sdk/golang/bin:/usr/lib/sdk/node24/bin
+  env:
+    GOCACHE: /run/build/sentinel/.cache/go-build
+  build-args:
+    - --share=network
+
+modules:
+  - name: sentinel
+    buildsystem: simple
+    build-commands:
+      - npm ci --prefix frontend --include=dev
+      - go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.23
+      - $(go env GOPATH)/bin/wails3 generate bindings -f '-tags production' -clean=true -ts
+      - npm --prefix frontend run build --silent
+      - go build -tags production -trimpath -buildvcs=false -ldflags='-w -s -X sentinel/backend.Version=0.0.0-flatpak' -o sentinel
+      - install -Dm755 sentinel /app/bin/sentinel
+      - install -Dm644 build/linux/sentinel.desktop /app/share/applications/io.github.remakecode.sentinel.desktop
+      - install -Dm644 build/appicon.png /app/share/icons/hicolor/256x256/apps/io.github.remakecode.sentinel.png
+      - install -Dm644 build/flatpak/io.github.remakecode.sentinel.metainfo.xml /app/share/metainfo/io.github.remakecode.sentinel.metainfo.xml
+    sources:
+      - type: dir
+        path: ../..
+        skip:
+          - .git
+          - .flatpak-builder
+          - bin
+          - decky-plugin/node_modules
+          - flatpak_app
+          - frontend/node_modules
+          - repo

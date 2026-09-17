@@ -16,6 +16,9 @@ openspec/
 /build/.task/
 /build/bin/
 /bin
+/flatpak_app/
+/.flatpak-builder/
+/repo/
 node_modules
 
 */**/.DS_Store

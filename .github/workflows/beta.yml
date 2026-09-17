@@ -112,6 +112,24 @@ jobs:
           path: bin/sentinel-decky-plugin.zip
           retention-days: 30
 
+  flatpak:
+    name: Build Flatpak
+    needs: test
+    runs-on: ubuntu-24.04
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-50
+      options: --privileged
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Flatpak bundle
+        uses: flatpak/flatpak-github-actions/flatpak-builder@v6
+        with:
+          bundle: sentinel-x86_64.flatpak
+          manifest-path: build/flatpak/io.github.remakecode.sentinel.yml
+          artifact-name: sentinel-flatpak
+          cache-key: flatpak-${{ github.workflow }}-${{ hashFiles('build/flatpak/io.github.remakecode.sentinel.yml', 'go.sum', 'frontend/package-lock.json') }}
+
   semantic-dry-run:
     needs: test
     if: github.event_name == 'push' && github.ref == 'refs/heads/beta'
@@ -152,6 +170,7 @@ jobs:
 
   beta:
     # This job ONLY runs when you manually click "Run Workflow" in Actions tab
+    needs: [test, flatpak]
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     environment: production
@@ -173,6 +192,12 @@ jobs:
           token: ${{ steps.app-token.outputs.token }}
           fetch-depth: 0
           persist-credentials: true
+
+      - name: Download Flatpak bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: sentinel-flatpak
+          path: bin
 
       - name: Set up Go
         uses: actions/setup-go@v5
