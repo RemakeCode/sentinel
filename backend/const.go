@@ -6,7 +6,10 @@ import (
 	"time"
 )
 
-const AppName = "sentinel"
+const (
+	AppName       = "sentinel"
+	ApplicationID = "io.github.remakecode.sentinel"
+)
 
 var Version = "0.0.0"
 
