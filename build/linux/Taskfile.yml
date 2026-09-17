@@ -14,6 +14,16 @@ vars:
 
   CROSS_IMAGE: wails-cross
   MODULE: { sh: "go list -m" }
+  BUILD_DATE: { sh: 'date -u +%F' }
+  RELEASE_ARTIFACT_NAME: '{{.APP_NAME}}-{{.APP_VERSION}}'
+  DECKY_ARCHIVE: '{{.ROOT_DIR}}/{{.BIN_DIR}}/{{.APP_NAME}}-decky-plugin-{{.APP_VERSION}}.zip'
+  FLATPAK_MANIFEST: '{{.ROOT_DIR}}/build/flatpak/{{.APP_ID}}.yml'
+  FLATPAK_METAINFO_TEMPLATE: '{{.ROOT_DIR}}/build/flatpak/{{.APP_ID}}.metainfo.xml.in'
+  FLATPAK_METAINFO: '{{.ROOT_DIR}}/build/flatpak/{{.APP_ID}}.metainfo.xml'
+  FLATPAK_BUILD_DIR: '{{.ROOT_DIR}}/.flatpak/build'
+  FLATPAK_REPO_DIR: '{{.ROOT_DIR}}/.flatpak/repo'
+  FLATPAK_BUNDLE: '{{.ROOT_DIR}}/{{.BIN_DIR}}/{{.RELEASE_ARTIFACT_NAME}}-x86_64.flatpak'
+  FLATPAK_RUNTIME_REPO: 'https://flathub.org/repo/flathub.flatpakrepo'
 
 tasks:
   build:
@@ -155,10 +165,12 @@ tasks:
 
   create:flatpak:
     summary: Creates a Flatpak bundle
+    deps:
+      - task: generate:flatpak:metainfo
     cmds:
       - mkdir -p "{{.BIN_DIR}}"
       - rm -f "{{.FLATPAK_BUNDLE}}"
-      - flatpak-builder --user --install-deps-from=flathub --force-clean --repo="{{.FLATPAK_REPO_DIR}}" "{{.FLATPAK_BUILD_DIR}}" "{{.FLATPAK_MANIFEST}}"
+      - flatpak-builder --user --disable-rofiles-fuse --install-deps-from=flathub --force-clean --repo="{{.FLATPAK_REPO_DIR}}" "{{.FLATPAK_BUILD_DIR}}" "{{.FLATPAK_MANIFEST}}"
       - flatpak build-bundle --runtime-repo="{{.FLATPAK_RUNTIME_REPO}}" "{{.FLATPAK_REPO_DIR}}" "{{.FLATPAK_BUNDLE}}" "{{.APP_ID}}"
     preconditions:
       - sh: command -v flatpak >/dev/null 2>&1
@@ -167,27 +179,27 @@ tasks:
         msg: "flatpak-builder is required to build the Flatpak bundle."
       - sh: flatpak remote-list --user --columns=name | grep -Fxq flathub
         msg: "A user Flathub remote is required. Add it with: flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo"
-    vars:
-      FLATPAK_MANIFEST: '{{.ROOT_DIR}}/build/flatpak/{{.APP_ID}}.yml'
-      FLATPAK_BUILD_DIR: '{{.ROOT_DIR}}/flatpak_app'
-      FLATPAK_REPO_DIR: '{{.ROOT_DIR}}/repo'
-      FLATPAK_BUNDLE: '{{.ROOT_DIR}}/{{.BIN_DIR}}/{{.APP_NAME}}-x86_64.flatpak'
-      FLATPAK_RUNTIME_REPO: 'https://flathub.org/repo/flathub.flatpakrepo'
+
+  generate:flatpak:metainfo:
+    summary: Generates Flatpak AppStream metadata with the build version
+    internal: true
+    cmds:
+      - sed -e 's|@APP_VERSION@|{{.APP_VERSION}}|g' -e 's|@BUILD_DATE@|{{.BUILD_DATE}}|g' "{{.FLATPAK_METAINFO_TEMPLATE}}" > "{{.FLATPAK_METAINFO}}"
 
   generate:deb:
     summary: Creates a deb package
     cmds:
-      - APP_NAME="{{.APP_NAME}}" APP_ID="{{.APP_ID}}" wails3 tool package -name "{{.APP_NAME}}" -format deb -config ./build/linux/nfpm/nfpm.yaml -out {{.ROOT_DIR}}/bin
+      - APP_NAME="{{.APP_NAME}}" APP_ID="{{.APP_ID}}" APP_VERSION="{{.APP_VERSION}}" wails3 tool package -name "{{.RELEASE_ARTIFACT_NAME}}" -format deb -config ./build/linux/nfpm/nfpm.yaml -out {{.ROOT_DIR}}/bin
 
   generate:rpm:
     summary: Creates a rpm package
     cmds:
-      - APP_NAME="{{.APP_NAME}}" APP_ID="{{.APP_ID}}" wails3 tool package -name "{{.APP_NAME}}" -format rpm -config ./build/linux/nfpm/nfpm.yaml -out {{.ROOT_DIR}}/bin
+      - APP_NAME="{{.APP_NAME}}" APP_ID="{{.APP_ID}}" APP_VERSION="{{.APP_VERSION}}" wails3 tool package -name "{{.RELEASE_ARTIFACT_NAME}}" -format rpm -config ./build/linux/nfpm/nfpm.yaml -out {{.ROOT_DIR}}/bin
 
   generate:aur:
     summary: Creates a arch linux packager package
     cmds:
-      - APP_NAME="{{.APP_NAME}}" APP_ID="{{.APP_ID}}" wails3 tool package -name "{{.APP_NAME}}" -format archlinux -config ./build/linux/nfpm/nfpm.yaml -out {{.ROOT_DIR}}/bin
+      - APP_NAME="{{.APP_NAME}}" APP_ID="{{.APP_ID}}" APP_VERSION="{{.APP_VERSION}}" wails3 tool package -name "{{.RELEASE_ARTIFACT_NAME}}" -format archlinux -config ./build/linux/nfpm/nfpm.yaml -out {{.ROOT_DIR}}/bin
 
   generate:dotdesktop:
     summary: Generates a `.desktop` file
@@ -304,8 +316,8 @@ tasks:
         fi
       - chmod +x out/{{.APP_NAME}}/bin/{{.APP_NAME}}-decky
       - mkdir -p {{.ROOT_DIR}}/bin
-      - rm -f {{.ROOT_DIR}}/bin/{{.APP_NAME}}-decky-plugin.zip
-      - bsdtar -a -cf {{.ROOT_DIR}}/bin/{{.APP_NAME}}-decky-plugin.zip -C out {{.APP_NAME}}
+      - rm -f "{{.DECKY_ARCHIVE}}"
+      - bsdtar -a -cf "{{.DECKY_ARCHIVE}}" -C out {{.APP_NAME}}
 
    # add to visudo
    # deck ALL=(root) NOPASSWD: /bin/chown -R deck /home/deck/homebrew/plugins/sentinel, /bin/mkdir -p /home/deck/homebrew/plugins/sentinel, /bin/mv /home/deck/homebrew/plugins/sentinel/bin/sentinel /home/deck/homebrew/plugins/sentinel/bin/sentinel.old, /bin/cp -R * /home/deck/homebrew/plugins/sentinel, /bin/rm -f /home/deck/homebrew/plugins/sentinel/bin/sentinel.old, /bin/touch /home/deck/homebrew/plugins/sentinel/main.py

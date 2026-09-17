@@ -28,8 +28,9 @@ modules:
     buildsystem: simple
     build-commands:
       - npm ci --prefix frontend --include=dev
-      - go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.23
-      - $(go env GOPATH)/bin/wails3 generate bindings -f '-tags production' -clean=true -ts
+      - mkdir -p .bin
+      - GOBIN="$PWD/.bin" go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.23
+      - .bin/wails3 generate bindings -f '-tags production' -clean=true -ts
       - npm --prefix frontend run build --silent
       - go build -tags production -trimpath -buildvcs=false -ldflags='-w -s -X sentinel/backend.Version=0.0.0-flatpak' -o sentinel
       - install -Dm755 sentinel /app/bin/sentinel
@@ -44,6 +45,7 @@ modules:
           - .flatpak-builder
           - bin
           - decky-plugin/node_modules
+          - .flatpak
           - flatpak_app
           - frontend/node_modules
           - repo
