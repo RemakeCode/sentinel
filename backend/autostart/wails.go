@@ -3,31 +3,14 @@
 package autostart
 
 import (
-	"errors"
-
-	"sentinel/backend"
-
-	"github.com/wailsapp/wails/v3/pkg/application"
+	"context"
+	"os"
 )
 
-func setEnabled(enabled bool) error {
-	app := application.Get()
-	if app == nil {
-		return nil
+func setEnabled(ctx context.Context, enabled bool) error {
+	if _, err := os.Stat("/.flatpak-info"); err == nil {
+		return setFlatpakAutostart(ctx, enabled)
 	}
-	if enabled {
-		err := app.Autostart.EnableWithOptions(application.AutostartOptions{
-			Identifier: backend.ApplicationID,
-			Arguments:  []string{"--startminimized"},
-		})
-		if errors.Is(err, application.ErrAutostartNotSupported) {
-			return nil
-		}
-		return err
-	}
-	err := app.Autostart.Disable()
-	if errors.Is(err, application.ErrAutostartNotSupported) {
-		return nil
-	}
-	return err
+
+	return setNativeAutostart(enabled)
 }
