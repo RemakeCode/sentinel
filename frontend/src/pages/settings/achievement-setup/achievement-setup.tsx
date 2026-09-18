@@ -141,8 +141,8 @@ const AchievementSetup: FC = () => {
           <section role='tabpanel'>
             {!selected && (
               <>
-                <div className='achievement-setup-search'>
-                  <label data-field>
+                <div>
+                  <label data-field className='achievement-setup-search'>
                     Search game name on Steam
                     <div className='achievement-setup-search-control'>
                       <input
@@ -176,10 +176,9 @@ const AchievementSetup: FC = () => {
                   {searchStatus === 'results' && (
                     <div className='achievement-setup-results' role='listbox' aria-label='Steam search results'>
                       {results.map((result) => (
-                        <button
-                          type='button'
+                        <div
+                          className='achievement-setup-results-item'
                           role='option'
-                          className='outline'
                           key={result.appId}
                           onClick={() => selectGame(result)}
                         >
@@ -188,7 +187,7 @@ const AchievementSetup: FC = () => {
                             <span>{result.name}</span>
                             <small>App ID {result.appId}</small>
                           </div>
-                        </button>
+                        </div>
                       ))}
                     </div>
                   )}

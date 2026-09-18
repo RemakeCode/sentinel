@@ -30,11 +30,13 @@
 
       > nav {
         a {
+          display: flex;
+          align-content: center;
           padding-inline-start: var(--space-8);
           padding-block: var(--space-4);
           font-weight: var(--font-bold);
-          font-size: var(--font-);
-
+          font-size: var(--text-6);
+          line-height: normal;
           &:hover, &.active {
             border-radius: var(--radius-medium);
           }

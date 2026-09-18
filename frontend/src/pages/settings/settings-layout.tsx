@@ -33,7 +33,13 @@ const SettingsLayout: FC = () => {
           </Link>
           <h2>Settings</h2>
         </div>
-        <button className='settings-header-about-icon' onClick={handleAboutDialog} title='About' aria-label='About'>
+        <button
+          className='settings-header-about-icon'
+          onClick={handleAboutDialog}
+          title='About'
+          aria-label='About'
+          data-tooltip-placement='left'
+        >
           <Info size={20} />
         </button>
       </HeaderPortal>
@@ -44,17 +50,17 @@ const SettingsLayout: FC = () => {
             <ul>
               <li>
                 <NavLink to='general'>
-                  <SlidersHorizontal size={18} /> Settings
+                  <SlidersHorizontal size={18} /> <span>Settings</span>
                 </NavLink>
               </li>
               <li>
                 <NavLink to='achievement-setup'>
-                  <Trophy size={18} /> Achievement Setup
+                  <Trophy size={18} /> <span>Achievement Setup</span>
                 </NavLink>
               </li>
               <li>
                 <NavLink to='others'>
-                  <Ellipsis size={18} /> Others
+                  <Ellipsis size={18} /> <span>Others</span>
                 </NavLink>
               </li>
             </ul>
