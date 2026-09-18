@@ -1,5 +1,6 @@
 import './achievement-setup.scss';
 import { useEffect, useRef, useState, type FC } from 'react';
+import { motion } from 'framer-motion';
 import { Trophy } from 'lucide-react';
 import { Events } from '@wailsio/runtime';
 import { SearchApps } from '@wa/sentinel/backend/steam/service';
@@ -9,6 +10,7 @@ import type { ManagedGBESetupSummary } from '@wa/sentinel/backend/generator/mode
 import EmptyState from '@/shared/components/empty-state';
 import { GBESetupModal } from './gbe-setup-modal';
 import { GBEUndoModal } from './gbe-undo-modal';
+import { settingsContentVariants, settingsSectionVariants } from '../settings-motion';
 
 type SearchStatus = 'idle' | 'loading' | 'results' | 'empty' | 'error';
 
@@ -113,8 +115,16 @@ const AchievementSetup: FC = () => {
   };
 
   return (
-    <section className='settings-pane page-content'>
-      <div className='card settings-section settings-section-first achievement-setup-content'>
+    <motion.section
+      className='settings-pane page-content'
+      variants={settingsContentVariants}
+      initial='hidden'
+      animate='visible'
+    >
+      <motion.div
+        className='card settings-section settings-section-first achievement-setup-content'
+        variants={settingsSectionVariants}
+      >
         <h4 className='settings-section-title'>
           <Trophy /> <span>Achievement Setup</span>
         </h4>
@@ -211,7 +221,9 @@ const AchievementSetup: FC = () => {
               {configured.length > 0 &&
                 configured.map((game) => (
                   <div className='settings-grid-item achievement-setup-configured-row' key={game.appId}>
-                    <span className='badge' data-variant='success'>Configured</span>
+                    <span className='badge' data-variant='success'>
+                      Configured
+                    </span>
                     <div className='achievement-setup-configured-details'>
                       <strong>{game.name}</strong>
                     </div>
@@ -246,8 +258,8 @@ const AchievementSetup: FC = () => {
             }}
           />
         )}
-      </div>
-    </section>
+      </motion.div>
+    </motion.section>
   );
 };
 

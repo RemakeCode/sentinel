@@ -1,6 +1,7 @@
 import './settings.scss';
 import type { ChangeEvent, FC } from 'react';
 import { useEffect, useRef, useState } from 'react';
+import { motion } from 'framer-motion';
 import { DatabaseSearchIcon, FolderOpen, Globe, Rocket, Trash2, Volume2, VolumeOff } from 'lucide-react';
 
 import {
@@ -26,6 +27,7 @@ import {
 import { AchievementProgressUpdateMode, Emulator, File, Prefix, SteamSource } from '@wa/sentinel/backend/config/models';
 
 import EmptyState from '@/shared/components/empty-state';
+import { settingsContentVariants, settingsSectionVariants } from './settings-motion';
 
 import { Dialogs } from '@wailsio/runtime';
 import { Start, Stop } from '@wa/sentinel/backend/watcher/service';
@@ -246,8 +248,13 @@ const Settings: FC = () => {
   const allPrefixes: PrefixItem[] = prefixes.map((prefix: Prefix, index: number) => ({ prefix, index }));
 
   return (
-    <section className='settings-pane page-content'>
-      <div className='card settings-section settings-section-first'>
+    <motion.section
+      className='settings-pane page-content'
+      variants={settingsContentVariants}
+      initial='hidden'
+      animate='visible'
+    >
+      <motion.div className='card settings-section settings-section-first' variants={settingsSectionVariants}>
         <div className='flex justify-between items-center'>
           <h4 className='settings-section-title'>
             <FolderOpen /> <span>Prefix Paths</span>
@@ -264,7 +271,9 @@ const Settings: FC = () => {
             <>
               {allPrefixes.map((record) => (
                 <div key={record.index} className='settings-grid-item'>
-                  <span className='badge' data-variant='success'>Prefix</span>
+                  <span className='badge' data-variant='success'>
+                    Prefix
+                  </span>
                   <code>{record.prefix.path}</code>
                   <div className='settings-grid-actions' title={'Delete Prefix'}>
                     <Trash2 size={20} onClick={() => handleRemovePrefix(record.index)} />
@@ -274,9 +283,9 @@ const Settings: FC = () => {
             </>
           )}
         </div>
-      </div>
+      </motion.div>
 
-      <div className='card settings-section'>
+      <motion.div className='card settings-section' variants={settingsSectionVariants}>
         <div className='flex justify-between items-center'>
           <h4 className='settings-section-title'>
             <FolderOpen /> <span>Emulators</span>
@@ -290,7 +299,9 @@ const Settings: FC = () => {
             <>
               {allEmulators.map((record) => (
                 <div key={record.index} className='settings-grid-item'>
-                  <span className='badge' data-variant='success'>Emulator</span>
+                  <span className='badge' data-variant='success'>
+                    Emulator
+                  </span>
 
                   <code>{emulatorSearchPaths[record.emu.id] ?? record.emu.id}</code>
 
@@ -309,9 +320,9 @@ const Settings: FC = () => {
             </>
           )}
         </div>
-      </div>
+      </motion.div>
 
-      <div className='card settings-section'>
+      <motion.div className='card settings-section' variants={settingsSectionVariants}>
         <h4 className='settings-section-title'>
           <DatabaseSearchIcon /> Steam Data Source
         </h4>
@@ -343,9 +354,9 @@ const Settings: FC = () => {
           </fieldset>
           {/* TODO: restore API key input and masked key display if Steam ever requires key auth */}
         </div>
-      </div>
+      </motion.div>
 
-      <div className='card settings-section'>
+      <motion.div className='card settings-section' variants={settingsSectionVariants}>
         <h4 className='settings-section-title'>
           <Volume2 /> Notification
         </h4>
@@ -391,9 +402,9 @@ const Settings: FC = () => {
             </div>
           </fieldset>
         </div>
-      </div>
+      </motion.div>
 
-      <div className='card settings-section'>
+      <motion.div className='card settings-section' variants={settingsSectionVariants}>
         <h4 className='settings-section-title'>
           <Globe /> Language
         </h4>
@@ -418,16 +429,18 @@ const Settings: FC = () => {
             <span className='badge'>Coming Soon</span>
           </fieldset>
         </div>
-      </div>
+      </motion.div>
 
-      <div className='card settings-section'>
+      <motion.div className='card settings-section' variants={settingsSectionVariants}>
         <h4 className='settings-section-title'>
           <Rocket /> Startup
         </h4>
         <hr className='divider' />
         <div className='settings-grid'>
           <div className='settings-grid-item'>
-            <span className='badge' data-variant='success'>Autostart</span>
+            <span className='badge' data-variant='success'>
+              Autostart
+            </span>
             <span>Start on login (minimized to tray)</span>
             <label className='switch' title='Toggle autostart on login'>
               <input type='checkbox' role='switch' checked={startOnLogin} onChange={handleStartOnLoginToggle} />
@@ -435,8 +448,8 @@ const Settings: FC = () => {
             <div />
           </div>
         </div>
-      </div>
-    </section>
+      </motion.div>
+    </motion.section>
   );
 };
 
