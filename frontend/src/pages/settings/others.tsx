@@ -1,9 +1,11 @@
 import './settings.scss';
 import type { FC } from 'react';
 import { useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
 import { Terminal } from 'lucide-react';
 
 import { LoadConfig, SetLoggingEnabled } from '@wa/sentinel/backend/config/file';
+import { settingsContentVariants, settingsSectionVariants } from './settings-motion';
 
 const Others: FC = () => {
   const [loggingEnabled, setLoggingEnabled] = useState(false);
@@ -26,15 +28,22 @@ const Others: FC = () => {
   };
 
   return (
-    <section className='settings-pane page-content'>
-      <div className='card settings-section settings-section-first'>
+    <motion.section
+      className='settings-pane page-content'
+      variants={settingsContentVariants}
+      initial='hidden'
+      animate='visible'
+    >
+      <motion.div className='card settings-section settings-section-first' variants={settingsSectionVariants}>
         <h4 className='settings-section-title'>
           <Terminal /> Logging
         </h4>
         <hr className='divider' />
         <div className='settings-grid'>
           <div className='settings-grid-item'>
-            <span className='badge' data-variant='success'>Console</span>
+            <span className='badge' data-variant='success'>
+              Console
+            </span>
             <span>Enable logging</span>
             <label className='switch' title='Toggle backend logging'>
               <input type='checkbox' role='switch' checked={loggingEnabled} onChange={handleLoggingToggle} />
@@ -42,8 +51,8 @@ const Others: FC = () => {
             <div />
           </div>
         </div>
-      </div>
-    </section>
+      </motion.div>
+    </motion.section>
   );
 };
 

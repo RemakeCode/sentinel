@@ -1,7 +1,7 @@
 import './app.scss';
 import type { FC } from 'react';
 import { useEffect, useRef, useState } from 'react';
-import { AnimatePresence, motion, type Variants } from 'framer-motion';
+import { AnimatePresence, MotionConfig, motion, type Variants } from 'framer-motion';
 import { ScrollRestoration, useLocation, useNavigationType, useOutlet } from 'react-router';
 import { GetAppInfo } from '@wa/sentinel/backend/config/file';
 import { GamesProvider } from '@/shared/context/games-context';
@@ -83,25 +83,27 @@ const App: FC = () => {
   }
 
   return (
-    <GamesProvider>
-      <Header id='global-header'>
-        <div id='header-portal-root' className='header-portal-root' />
-      </Header>
-      <AnimatePresence mode='wait' custom={direction} onExitComplete={onExitComplete}>
-        <motion.div
-          key={location.pathname.startsWith('/settings') ? '/settings' : location.pathname}
-          custom={direction}
-          initial='initial'
-          animate='animate'
-          exit='exit'
-          variants={pageVariants}
-          className='page-transition-wrapper'
-        >
-          {outlet}
-        </motion.div>
-      </AnimatePresence>
-      <ScrollRestoration />
-    </GamesProvider>
+    <MotionConfig reducedMotion='user'>
+      <GamesProvider>
+        <Header id='global-header'>
+          <div id='header-portal-root' className='header-portal-root' />
+        </Header>
+        <AnimatePresence mode='wait' custom={direction} onExitComplete={onExitComplete}>
+          <motion.div
+            key={location.pathname.startsWith('/settings') ? '/settings' : location.pathname}
+            custom={direction}
+            initial='initial'
+            animate='animate'
+            exit='exit'
+            variants={pageVariants}
+            className='page-transition-wrapper'
+          >
+            {outlet}
+          </motion.div>
+        </AnimatePresence>
+        <ScrollRestoration />
+      </GamesProvider>
+    </MotionConfig>
   );
 };
 
