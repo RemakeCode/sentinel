@@ -65,17 +65,7 @@ Alternative path (depends on Goldberg config):
 
 ---
 
-## 4. Known Issue: Steam AppID Override (#549)
-
-**Bug:** Since commit [`e0a4dd8`](https://github.com/Detanup01/gbe_fork/commit/e0a4dd8846ea970d0312ef778fb7082ea0657f81) (March 2026), environment variables (`SteamAppId`, `SteamGameId`) take priority over `steam_settings/steam_appid.txt`. When Steam launches a Proton game, it sets these env vars, which can force Goldberg to use a different AppID than the one you configured.
-
-**Reference:** [Issue #549](https://github.com/Detanup01/gbe_fork/issues/549)
-
-**Workaround:** This only affects games launched directly through Steam's Proton runtime. Use **Heroic Games Launcher**, **Fargus**, or **Lutris** instead — they manage their own Wine/Proton prefixes without setting Steam environment variables, so `steam_settings/steam_appid.txt` works correctly. You can then add the game to Steam from the launcher if needed.
-
----
-
-## 5. Sentinel Configuration
+## 4. Sentinel Configuration
 
 1. Launch Sentinel
 2. Go to **Settings → Prefix Paths** and add the full path to your Wine/Proton prefix (e.g. the `pfx` folder from step 3)

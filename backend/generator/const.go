@@ -38,10 +38,10 @@ var (
 
 	gbeForkDLLAsset = pinnedArchive{
 		cacheDirectoryName: "gbe-fork",
-		version:            "release-2026_07_19",
-		assetName:          "emu-win-release.7z",
-		releaseURL:         "https://github.com/Detanup01/gbe_fork/releases/download/release-2026_07_19/emu-win-release.7z",
-		sha256:             "3ba855ef962205136a54fb32519a46362e0cc5b42fc2bb3667e4d21307d972e5",
+		version:            "release-2026_09_16_2",
+		assetName:          "emu-win-release-vs22.7z",
+		releaseURL:         "https://github.com/Detanup01/gbe_fork/releases/download/release-2026_09_16_2/emu-win-release-vs22.7z",
+		sha256:             "d311deadc2a8a8aed620fe66976646059388123587aa22d408f723c592fc9688",
 	}
 
 	gbeForkDLLMembers = []string{
