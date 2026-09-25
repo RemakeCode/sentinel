@@ -285,7 +285,7 @@ func runGSEGenerator(parent context.Context, executable, appID string) (string, 
 	ctx, cancel := context.WithTimeout(parent, generatorTimeout)
 	defer cancel()
 
-	command := exec.CommandContext(ctx, executable, appID)
+	command := exec.CommandContext(ctx, executable, "-skip_inv", "-skip_con", appID)
 	command.Dir = filepath.Dir(executable)
 
 	var output diagnosticBuffer

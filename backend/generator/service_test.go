@@ -59,7 +59,7 @@ func TestSetupGBEInstallsOnlySuccessfulOpaqueGSEOutput(t *testing.T) {
 	gseDir := filepath.Join(root, "gse")
 	require.NoError(t, os.MkdirAll(gseDir, 0755))
 	executable := filepath.Join(gseDir, "generate_emu_config")
-	script := "#!/bin/sh\nset -eu\ntest -f refresh_tokens.json\ntest \"$#\" -eq 1\nmkdir -p \"_OUTPUT/$1/steam_settings\"\nprintf '[{},{}]' > \"_OUTPUT/$1/steam_settings/achievements.json\"\nprintf '[{}]' > \"_OUTPUT/$1/steam_settings/stats.json\"\nprintf opaque > \"_OUTPUT/$1/steam_settings/custom.bin\"\n"
+	script := "#!/bin/sh\nset -eu\ntest -f refresh_tokens.json\ntest \"$#\" -eq 3\ntest \"$1\" = '-skip_inv'\ntest \"$2\" = '-skip_con'\nmkdir -p \"_OUTPUT/$3/steam_settings\"\nprintf '[{},{}]' > \"_OUTPUT/$3/steam_settings/achievements.json\"\nprintf '[{}]' > \"_OUTPUT/$3/steam_settings/stats.json\"\nprintf opaque > \"_OUTPUT/$3/steam_settings/custom.bin\"\n"
 	require.NoError(t, os.WriteFile(executable, []byte(script), 0755))
 	workspace := filepath.Join(root, "workspace")
 	require.NoError(t, os.Mkdir(workspace, 0700))

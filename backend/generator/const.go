@@ -30,10 +30,10 @@ var (
 
 	gseForkToolsAsset = pinnedArchive{
 		cacheDirectoryName: "gse-fork-tools",
-		version:            "2026_02_16",
+		version:            "2026_09_25",
 		assetName:          "gen_emu_cfg-Linux-Release.tar.bz2",
-		releaseURL:         "https://github.com/alex47exe/gse_fork_tools/releases/download/2026_02_16/gen_emu_cfg-Linux-Release.tar.bz2",
-		sha256:             "6a70b7af7db253d80a1133c4a8e27f259e7d3201906cd1f76346f3f12a732ab1",
+		releaseURL:         "https://github.com/RemakeCode/gse_fork_tools/releases/download/2026_09_25/gen_emu_cfg-Linux-Release.tar.bz2",
+		sha256:             "195d34caf59549e58080d9229f1a67b05a63539507f8fd08514ece09500e6ec2",
 	}
 
 	gbeForkDLLAsset = pinnedArchive{
