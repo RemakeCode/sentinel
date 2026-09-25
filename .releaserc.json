@@ -39,12 +39,6 @@
       }
     ],
     [
-      "@semantic-release/changelog",
-      {
-        "changelogFile": "CHANGELOG.md"
-      }
-    ],
-    [
       "@semantic-release/exec",
       {
         "prepareCmd": "APP_VERSION=${nextRelease.version} task linux:package linux:create:flatpak linux:decky:package"
@@ -71,13 +65,6 @@
             "path": "bin/*.flatpak"
           }
         ]
-      }
-    ],
-    [
-      "@semantic-release/git",
-      {
-        "assets": ["CHANGELOG.md"],
-        "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
       }
     ]
   ]
