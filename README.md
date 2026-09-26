@@ -50,12 +50,12 @@ Download the package for your distribution, or the Flatpak, from [GitHub Release
 
 ### Decky Loader and Steam Gaming Mode
 
-The Sentinel Decky Loader plugin brings achievement tracking into Gamescope-based Steam Gaming Mode and shares configuration and data with the Linux desktop app. It works on Steam Deck and other Linux systems running Decky Loader with Gamescope.
+The Sentinel Decky Loader plugin brings achievement tracking into Gamescope-based Steam Gaming Mode and shares features, configuration and data with the Linux desktop app. It works on Steam Deck and other Linux systems running Decky Loader on a Steam Session in Gamescope.
 
-The Decky plugin provides Sentinel's achievement tracking features in Gaming Mode, including the game library, achievement setup, details, settings, and notifications. Decky-only features include:
+Decky-only features include:
 
 - **Now Playing** gives quick access to all achievements for the game currently being played.
-- **Optional SteamGridDB** artwork for the library (requires the SteamGridDB plugin).
+- **Optional SteamGridDB** artwork for the library (requires the SteamGridDB Decky plugin).
 
 #### Decky screenshots
 
@@ -130,8 +130,8 @@ Sentinel automatically rescans prefix directories every few seconds. New games a
 
 ## Acknowledgments
 - [Achievement Watcher](https://github.com/xan105/Achievement-Watcher) - Inspiration
-- [Goldberg Emulator](https://github.com/Detanup01/gbe_fork) - Compatibility
-- [GSE Tools](https://github.com/alex47exe/gse_fork_tools)
+- [Goldberg Emulator](https://github.com/Detanup01/gbe_fork) - Compatibility/Achievement Setup
+- [GSE Tools](https://github.com/alex47exe/gse_fork_tools) Achievement Setup
 - [SteamHunters](https://steamhunters.com/) - Data source
 - [Steam Community](https://steamcommunity.com) - Data source
 - [SteamPoacher](https://steampoacher.com/) - Data source
