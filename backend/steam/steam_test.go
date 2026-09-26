@@ -77,24 +77,63 @@ func TestSearchAppsUsesSteamEndpointAndLimitsResults(t *testing.T) {
 	assert.Equal(t, "1", results[0].AppID)
 }
 
-func TestResponseParsing_GameDetails(t *testing.T) {
-	rawJSON := `{
-		"12345": {
-			"success": true,
-			"data": {
-				"name": "Test Game",
-				"header_image": "http://example.com/header.jpg"
+func TestFetchGameDetailsFreshMatchesInnerSteamAppID(t *testing.T) {
+	tests := []struct {
+		name      string
+		body      string
+		wantName  string
+		wantError bool
+	}{
+		{
+			name: "outer key points to another app",
+			body: `{
+				"12345": {"success": true, "data": {"steam_appid": 99999, "name": "Wrong Game"}},
+				"67890": {"success": true, "data": {"steam_appid": 12345, "name": "Right Game"}}
+			}`,
+			wantName: "Right Game",
+		},
+		{
+			name:      "no inner app ID matches",
+			body:      `{"12345": {"success": true, "data": {"steam_appid": 99999, "name": "Wrong Game"}}}`,
+			wantError: true,
+		},
+		{
+			name:      "matching entry is unsuccessful",
+			body:      `{"67890": {"success": false, "data": {"steam_appid": 12345, "name": "Right Game"}}}`,
+			wantError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			originalIconDir := backend.ACHCacheIconDir
+			backend.ACHCacheIconDir = t.TempDir()
+			t.Cleanup(func() { backend.ACHCacheIconDir = originalIconDir })
+
+			service := &Service{client: &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+				body := "image-bytes"
+				if req.URL.Host == "store.steampowered.com" {
+					body = tt.body
+				}
+
+				return &http.Response{
+					StatusCode: http.StatusOK,
+					Body:       io.NopCloser(strings.NewReader(body)),
+					Header:     make(http.Header),
+				}, nil
+			})}}
+			service.clientOnce.Do(func() {})
+
+			game, err := service.fetchGameDetailsFresh("12345", "english")
+			if tt.wantError {
+				require.Error(t, err)
+				return
 			}
-		}
-	}`
 
-	var data map[string]gameBasicsResponse
-	err := json.Unmarshal([]byte(rawJSON), &data)
-	assert.NoError(t, err)
-
-	appData, ok := data["12345"]
-	assert.True(t, ok)
-	assert.Equal(t, "Test Game", appData.Data.Name)
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantName, game.Name)
+		})
+	}
 }
 
 func TestMergeAchievements(t *testing.T) {
@@ -554,8 +593,10 @@ func TestRefetchGameData_BypassesExistingCacheAndOverwritesOnSuccess(t *testing.
 			return &http.Response{
 				StatusCode: http.StatusOK,
 				Body: io.NopCloser(strings.NewReader(`{
-					"12345": {
+					"67890": {
+						"success": true,
 						"data": {
+							"steam_appid": 12345,
 							"name": "Fresh Game",
 							"header_image": "https://cdn.example.com/header.jpg"
 						}
@@ -649,7 +690,9 @@ func TestRefetchGameData_GameImageDownloadFailureDoesNotCacheRemoteURLs(t *testi
 				StatusCode: http.StatusOK,
 				Body: io.NopCloser(strings.NewReader(`{
 					"12345": {
+						"success": true,
 						"data": {
+							"steam_appid": 12345,
 							"name": "Fresh Game",
 							"header_image": "https://cdn.example.com/header.jpg"
 						}
@@ -761,7 +804,9 @@ func TestRefetchGameData_ReturnsCachedAchievementProgress(t *testing.T) {
 				StatusCode: http.StatusOK,
 				Body: io.NopCloser(strings.NewReader(`{
 					"12345": {
+						"success": true,
 						"data": {
+							"steam_appid": 12345,
 							"name": "Fresh Game",
 							"header_image": "https://cdn.example.com/header.jpg"
 						}
@@ -917,7 +962,9 @@ func TestRefetchGameData_UsesConfiguredExternalSourceAndLanguage(t *testing.T) {
 				StatusCode: http.StatusOK,
 				Body: io.NopCloser(strings.NewReader(`{
 					"12345": {
+						"success": true,
 						"data": {
+							"steam_appid": 12345,
 							"name": "Juego Nuevo",
 							"header_image": "https://cdn.example.com/header.jpg"
 						}
@@ -1009,7 +1056,9 @@ func TestRefetchGameData_ExternalIconDownloadFailureDoesNotCacheRemoteURL(t *tes
 				StatusCode: http.StatusOK,
 				Body: io.NopCloser(strings.NewReader(`{
 					"12345": {
+						"success": true,
 						"data": {
+							"steam_appid": 12345,
 							"name": "Juego Nuevo",
 							"header_image": "https://cdn.example.com/header.jpg"
 						}

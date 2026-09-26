@@ -54,7 +54,9 @@ type LibrarySyncStatus struct {
 }
 
 type gameBasicsResponse struct {
-	Data struct {
+	Success bool `json:"success"`
+	Data    struct {
+		SteamAppID    int    `json:"steam_appid"`
 		Name          string `json:"name"`
 		HeaderImage   string `json:"header_image"`
 		PortraitImage string
@@ -815,10 +817,26 @@ func (s *Service) fetchGameDetailsFresh(appID string, language string) (*GameBas
 		return nil, err
 	}
 
-	appData, ok := data[appID]
+	requestedAppID, err := strconv.Atoi(appID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid appid %q: %w", appID, err)
+	}
 
-	if !ok {
-		return nil, fmt.Errorf("failed to fetch metadata for appid: %s", appID)
+	var appData *gameBasicsResponse
+	for _, candidate := range data {
+		if candidate.Data.SteamAppID != requestedAppID {
+			continue
+		}
+		if !candidate.Success || strings.TrimSpace(candidate.Data.Name) == "" {
+			return nil, fmt.Errorf("steam appdetails returned invalid metadata for appid: %s", appID)
+		}
+		if appData != nil {
+			return nil, fmt.Errorf("steam appdetails returned multiple entries for appid: %s", appID)
+		}
+		appData = &candidate
+	}
+	if appData == nil {
+		return nil, fmt.Errorf("steam appdetails response did not contain appid: %s", appID)
 	}
 
 	portraitImageURL := s.primaryPortraitImageURL(appID)
