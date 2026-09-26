@@ -228,7 +228,7 @@ func TestLibrarySyncStatus_ProgressAndCompletion(t *testing.T) {
 	svc.startLibrarySync(2)
 	assert.Equal(t, LibrarySyncStatus{State: "running", Current: 0, Total: 2}, svc.GetLibrarySyncStatus())
 
-	status := svc.advanceLibrarySync()
+	status := svc.advanceLibrarySync(false)
 	assert.Equal(t, LibrarySyncStatus{State: "running", Current: 1, Total: 2}, status)
 	assert.Equal(t, LibrarySyncStatus{State: "running", Current: 1, Total: 2}, svc.GetLibrarySyncStatus())
 
@@ -240,7 +240,7 @@ func TestLibrarySyncStatus_Error(t *testing.T) {
 	svc := &Service{}
 
 	svc.startLibrarySync(3)
-	svc.advanceLibrarySync()
+	svc.advanceLibrarySync(false)
 	svc.failLibrarySync()
 
 	assert.Equal(t, LibrarySyncStatus{State: "error", Current: 1, Total: 3}, svc.GetLibrarySyncStatus())

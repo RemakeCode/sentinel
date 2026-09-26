@@ -50,6 +50,7 @@ type LibrarySyncStatus struct {
 	State   string
 	Current uint32
 	Total   uint32
+	Failed  uint32
 }
 
 type gameBasicsResponse struct {
@@ -233,10 +234,11 @@ func (s *Service) startLibrarySync(total uint32) {
 		State:   "running",
 		Current: 0,
 		Total:   total,
+		Failed:  0,
 	}
 }
 
-func (s *Service) advanceLibrarySync() LibrarySyncStatus {
+func (s *Service) advanceLibrarySync(failed bool) LibrarySyncStatus {
 	s.syncStatusMu.Lock()
 	defer s.syncStatusMu.Unlock()
 
@@ -246,6 +248,9 @@ func (s *Service) advanceLibrarySync() LibrarySyncStatus {
 	if s.syncStatus.Current < s.syncStatus.Total {
 		s.syncStatus.Current++
 	}
+	if failed {
+		s.syncStatus.Failed++
+	}
 
 	return s.syncStatus
 }
@@ -254,7 +259,11 @@ func (s *Service) completeLibrarySync() {
 	s.syncStatusMu.Lock()
 	defer s.syncStatusMu.Unlock()
 
-	s.syncStatus.State = "done"
+	if s.syncStatus.Failed > 0 {
+		s.syncStatus.State = "error"
+	} else {
+		s.syncStatus.State = "done"
+	}
 	s.syncStatus.Current = s.syncStatus.Total
 }
 
@@ -284,8 +293,6 @@ func (s *Service) FetchAppDetailsBulk(appIDs []string, language types.Language) 
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 
-	var completed uint32
-
 	s.emitFetchStatus(0, uint32(total))
 
 	sem := make(chan struct{}, 5)
@@ -303,10 +310,10 @@ func (s *Service) FetchAppDetailsBulk(appIDs []string, language types.Language) 
 			if cached, err := s.loadCachedGameData(id, language.API); err == nil {
 				mu.Lock()
 				results = append(results, cached)
-				completed++
 				mu.Unlock()
-				s.advanceLibrarySync()
-				s.emitFetchStatus(completed, uint32(total))
+
+				status := s.advanceLibrarySync(false)
+				s.emitFetchStatus(status.Current, uint32(total))
 				return
 			}
 
@@ -314,26 +321,27 @@ func (s *Service) FetchAppDetailsBulk(appIDs []string, language types.Language) 
 			if err != nil {
 				slog.Error("Failed to fetch game data during library sync", "appID", id, "error", err)
 
-				mu.Lock()
-				completed++
-				mu.Unlock()
-				s.advanceLibrarySync()
-				s.emitFetchStatus(completed, uint32(total))
+				status := s.advanceLibrarySync(true)
+				s.emitFetchStatus(status.Current, uint32(total))
 				return
 			}
 
 			mu.Lock()
 			results = append(results, details)
-			completed++
 			mu.Unlock()
 
-			s.advanceLibrarySync()
-			s.emitFetchStatus(completed, uint32(total))
+			status := s.advanceLibrarySync(false)
+			s.emitFetchStatus(status.Current, uint32(total))
 		}(id)
 	}
 
 	wg.Wait()
 	s.completeLibrarySync()
+
+	status := s.GetLibrarySyncStatus()
+	if status.Failed > 0 {
+		return results, fmt.Errorf("failed to fetch metadata for %d of %d games", status.Failed, status.Total)
+	}
 
 	return results, nil
 }

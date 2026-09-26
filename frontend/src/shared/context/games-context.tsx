@@ -8,7 +8,7 @@ import LibrarySyncAlert from '@/shared/components/library-sync-alert';
 interface GamesContextType {
   games: (GameBasics | null)[];
   loading: boolean;
-  status: number;
+  syncStatus: LibrarySyncStatus;
   refresh: () => Promise<void>;
   refreshGame: (appID: string) => Promise<void>;
   isRefreshingGame: (appID: string) => boolean;
@@ -30,21 +30,11 @@ interface GamesProviderProps {
 
 const SYNC_POLL_INTERVAL_MS = 1000;
 
-const emptySyncStatus = new LibrarySyncStatus({ State: 'idle', Current: 0, Total: 0 });
-
-const getSyncPercentage = (syncStatus: LibrarySyncStatus) => {
-  if (syncStatus.Total === 0) {
-    return syncStatus.State === 'done' ? 100 : 0;
-  }
-
-  const percentage = Math.floor((syncStatus.Current / syncStatus.Total) * 100);
-  return syncStatus.State === 'running' ? Math.max(1, percentage) : percentage;
-};
+const emptySyncStatus = new LibrarySyncStatus({ State: 'idle', Current: 0, Total: 0, Failed: 0 });
 
 export const GamesProvider: FC<GamesProviderProps> = ({ children }) => {
   const [games, setGames] = useState<(GameBasics | null)[]>([]);
   const [loading, setLoading] = useState(true);
-  const [status, setStatus] = useState<number>(0);
   const [syncStatus, setSyncStatus] = useState<LibrarySyncStatus>(emptySyncStatus);
   const [isInitialized, setIsInitialized] = useState(false);
   const [refreshingGameIDs, setRefreshingGameIDs] = useState<string[]>([]);
@@ -88,7 +78,9 @@ export const GamesProvider: FC<GamesProviderProps> = ({ children }) => {
     }
   }, []);
 
-  const refresh = useCallback(async () => { await loadCachedGames(true); }, [loadCachedGames]);
+  const refresh = useCallback(async () => {
+    await loadCachedGames(true);
+  }, [loadCachedGames]);
 
   const refreshGame = async (appID: string) => {
     if (!appID || refreshingGameIDsRef.current.has(appID)) {
@@ -158,7 +150,6 @@ export const GamesProvider: FC<GamesProviderProps> = ({ children }) => {
 
         setGames(data);
         setSyncStatus(currentSyncStatus);
-        setStatus(getSyncPercentage(currentSyncStatus));
         lastSyncCurrentRef.current = currentSyncStatus.Current;
         setIsInitialized(currentSyncStatus.State !== 'running');
 
@@ -192,7 +183,6 @@ export const GamesProvider: FC<GamesProviderProps> = ({ children }) => {
 
         const previousCurrent = lastSyncCurrentRef.current;
         setSyncStatus(currentSyncStatus);
-        setStatus(getSyncPercentage(currentSyncStatus));
 
         if (currentSyncStatus.State === 'running' && currentSyncStatus.Current > previousCurrent) {
           lastSyncCurrentRef.current = currentSyncStatus.Current;
@@ -203,10 +193,8 @@ export const GamesProvider: FC<GamesProviderProps> = ({ children }) => {
         }
 
         if (currentSyncStatus.State === 'done' || currentSyncStatus.State === 'error') {
-          const data = await loadCachedGames(false);
-          if (data.length > 0) {
-            setLoading(false);
-          }
+          await loadCachedGames(false);
+          setLoading(false);
           setIsInitialized(true);
           active = false;
           window.clearInterval(intervalID);
@@ -234,7 +222,7 @@ export const GamesProvider: FC<GamesProviderProps> = ({ children }) => {
   }, []);
 
   return (
-    <GamesContext.Provider value={{ games, loading, status, refresh, refreshGame, isRefreshingGame }}>
+    <GamesContext.Provider value={{ games, loading, syncStatus, refresh, refreshGame, isRefreshingGame }}>
       <LibrarySyncAlert syncStatus={syncStatus} />
       {children}
     </GamesContext.Provider>

@@ -35,7 +35,9 @@ const itemVariants = {
 };
 
 const Dashboard: FC = () => {
-  const { games, loading, status, isRefreshingGame } = useGames();
+  const { games, loading, syncStatus, isRefreshingGame } = useGames();
+  const showLoader = loading || (syncStatus.State === 'running' && games.length === 0);
+
   return (
     <main className='full-layout'>
       <HeaderPortal>
@@ -53,11 +55,14 @@ const Dashboard: FC = () => {
       <section className='page-content'>
         <h2 className='dashboard-section-header'>Library</h2>
 
-        {loading ? (
+        {showLoader ? (
           <div className='dashboard-loader' aria-busy='true' data-spinner='large' />
-        ) : games.length === 0 && status === 0 ? (
+        ) : games.length === 0 ? (
           <div className='dashboard-empty-state'>
-            <EmptyState message='No games found.' icon={<Gamepad2 />} />
+            <EmptyState
+              message={syncStatus.State === 'error' ? 'Game metadata could not be loaded.' : 'No games found.'}
+              icon={<Gamepad2 />}
+            />
           </div>
         ) : (
           <motion.div className='games-container' variants={containerVariants} initial='hidden' animate='visible'>
