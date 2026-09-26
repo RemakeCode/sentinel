@@ -23,7 +23,7 @@ An achievement watcher for supported Steam emulator games, with real-time notifi
 *WB Games - Middle Earth: Shadow of Mordor*
 
 ### Dashboard
-![Dashboard](.github/assets/dashboard.png)
+![Dashboard](.github/assets/dashboard.jpg)
 
 ### Achievement Details
 ![Game Details](.github/assets/game-details.png)
@@ -31,6 +31,11 @@ An achievement watcher for supported Steam emulator games, with real-time notifi
 
 ### Settings
 ![Settings](.github/assets/settings.png)
+
+### Achievement Setup
+![Achievement setup awaiting Steam approval](.github/assets/ach-setup.png)
+
+*Approve achievement setup with the Steam Mobile app.*
 
 ## Installation
 

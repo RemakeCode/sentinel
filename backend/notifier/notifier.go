@@ -384,7 +384,7 @@ func (s *Service) TestNotificationProgress() error {
 
 	payload := &NotificationPayload{
 		Title:       "For those who come after",
-		Message:     "Play 10 games",
+		Message:     progressBar(7, 10, 22),
 		IconPath:    filepath.Join(backend.MediaDir, "sentinel.png"),
 		SoundFile:   s.Config.NotificationSound,
 		GameName:    "Sentinel",
