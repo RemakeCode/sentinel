@@ -28,6 +28,11 @@ tasks:
     cmds:
       - task: "{{OS}}:run"
 
+  test:steam-integration:
+    summary: Checks live Steam API contracts (requires internet access)
+    cmds:
+      - go test -tags=integration ./backend/steam -run '^TestIntegration_' -count=1 -v
+
   dev:
     summary: Runs the application in development mode
     cmds:
