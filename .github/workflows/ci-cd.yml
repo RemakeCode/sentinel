@@ -164,6 +164,7 @@ jobs:
 
   release:
     # This job ONLY runs when you manually click "Run Workflow" in Actions tab
+    needs: test
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     environment: production

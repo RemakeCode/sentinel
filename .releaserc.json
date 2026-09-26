@@ -59,7 +59,7 @@
             "path": "bin/*.pkg.tar.zst"
           },
           {
-            "path": "bin/*decky-plugin.zip"
+            "path": "bin/*decky-plugin-*.zip"
           },
           {
             "path": "bin/*.flatpak"
