@@ -282,14 +282,14 @@ func TestRunGSETerminatesWhenCancelled(t *testing.T) {
 	directory := t.TempDir()
 	startedPath := filepath.Join(directory, "started")
 	t.Setenv("SENTINEL_GSE_TEST_STARTED_PATH", startedPath)
-	executable, err := os.Executable()
-	require.NoError(t, err)
+	executable := filepath.Join(directory, "generator-helper.sh")
+	require.NoError(t, os.WriteFile(executable, []byte("#!/bin/sh\nprintf started > \"$SENTINEL_GSE_TEST_STARTED_PATH\"\nexec sleep 3600\n"), 0700))
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	errCh := make(chan error, 1)
 	go func() {
-		_, err := runGSEGenerator(ctx, executable, "-test.run=^TestGSEHelperProcess$")
+		_, err := runGSEGenerator(ctx, executable, "620")
 		errCh <- err
 	}()
 
@@ -308,16 +308,4 @@ func TestRunGSETerminatesWhenCancelled(t *testing.T) {
 	}
 	require.Less(t, time.Since(started), 2*time.Second)
 	require.Equal(t, 5*time.Minute, generatorTimeout)
-}
-
-func TestGSEHelperProcess(t *testing.T) {
-	startedPath := os.Getenv("SENTINEL_GSE_TEST_STARTED_PATH")
-	if startedPath == "" {
-		return
-	}
-
-	require.NoError(t, os.WriteFile(startedPath, []byte("started"), 0600))
-	for {
-		time.Sleep(time.Hour)
-	}
 }
