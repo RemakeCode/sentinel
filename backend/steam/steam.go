@@ -312,6 +312,8 @@ func (s *Service) FetchAppDetailsBulk(appIDs []string, language types.Language) 
 
 			details, err := s.fetchGameDataFresh(id, language.API)
 			if err != nil {
+				slog.Error("Failed to fetch game data during library sync", "appID", id, "error", err)
+
 				mu.Lock()
 				completed++
 				mu.Unlock()
