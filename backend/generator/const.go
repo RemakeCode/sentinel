@@ -30,18 +30,18 @@ var (
 
 	gseForkToolsAsset = pinnedArchive{
 		cacheDirectoryName: "gse-fork-tools",
-		version:            "2026_02_16",
+		version:            "2026_09_25",
 		assetName:          "gen_emu_cfg-Linux-Release.tar.bz2",
-		releaseURL:         "https://github.com/alex47exe/gse_fork_tools/releases/download/2026_02_16/gen_emu_cfg-Linux-Release.tar.bz2",
-		sha256:             "6a70b7af7db253d80a1133c4a8e27f259e7d3201906cd1f76346f3f12a732ab1",
+		releaseURL:         "https://github.com/RemakeCode/gse_fork_tools/releases/download/2026_09_25/gen_emu_cfg-Linux-Release.tar.bz2",
+		sha256:             "195d34caf59549e58080d9229f1a67b05a63539507f8fd08514ece09500e6ec2",
 	}
 
 	gbeForkDLLAsset = pinnedArchive{
 		cacheDirectoryName: "gbe-fork",
-		version:            "release-2026_07_19",
-		assetName:          "emu-win-release.7z",
-		releaseURL:         "https://github.com/Detanup01/gbe_fork/releases/download/release-2026_07_19/emu-win-release.7z",
-		sha256:             "3ba855ef962205136a54fb32519a46362e0cc5b42fc2bb3667e4d21307d972e5",
+		version:            "release-2026_09_16_2",
+		assetName:          "emu-win-release-vs22.7z",
+		releaseURL:         "https://github.com/Detanup01/gbe_fork/releases/download/release-2026_09_16_2/emu-win-release-vs22.7z",
+		sha256:             "d311deadc2a8a8aed620fe66976646059388123587aa22d408f723c592fc9688",
 	}
 
 	gbeForkDLLMembers = []string{

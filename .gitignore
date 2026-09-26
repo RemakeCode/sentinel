@@ -6,9 +6,7 @@ frontend/dist
 .agents/
 .idea/
 dist/
-.roo/
 .opencode/
-.kilocode/
 openspec/
 .serena/
 

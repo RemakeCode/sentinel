@@ -58,6 +58,10 @@ const libraryStyles = `
     letter-spacing: 0.03em;
     color: var(--gpColor-Blue, #1a9fff);
   }
+
+  .sentinel-library-sync--error .sentinel-library-sync-meta {
+    color: var(--gpColor-Red, #f04747);
+  }
 `;
 
 const fetcher = new Fetcher();
@@ -67,9 +71,10 @@ interface LibrarySyncStatus {
   State: string;
   Current: number;
   Total: number;
+  Failed: number;
 }
 
-const emptySyncStatus: LibrarySyncStatus = { State: 'idle', Current: 0, Total: 0 };
+const emptySyncStatus: LibrarySyncStatus = { State: 'idle', Current: 0, Total: 0, Failed: 0 };
 
 const LibraryPage: FC = () => {
   const [games, setGames] = useState<DeckyGameBasics[]>([]);
@@ -130,7 +135,8 @@ const LibraryPage: FC = () => {
         (syncStatus.State === 'done' || syncStatus.State === 'error') &&
         (previous.State !== syncStatus.State ||
           previous.Current !== syncStatus.Current ||
-          previous.Total !== syncStatus.Total);
+          previous.Total !== syncStatus.Total ||
+          previous.Failed !== syncStatus.Failed);
 
       lastSyncStatusRef.current = syncStatus;
       setSyncStatus(syncStatus);
@@ -199,19 +205,31 @@ const LibraryPage: FC = () => {
   };
 
   const isSyncRunning = syncStatus.State === 'running';
+  const isSyncError = syncStatus.State === 'error';
+  const syncMessage = isSyncError
+    ? syncStatus.Failed > 0
+      ? 'Metadata sync completed with failures'
+      : 'Metadata sync failed'
+    : 'Fetching metadata';
+  const syncCount =
+    isSyncError && syncStatus.Failed > 0
+      ? `${syncStatus.Failed}/${syncStatus.Total} failed`
+      : `${syncStatus.Current}/${syncStatus.Total}`;
   const showInitialSpinner = loading || (isSyncRunning && games.length < 1);
   const showEmptyState = !showInitialSpinner && games.length === 0;
 
   return (
     <div style={styles.wrapper}>
       <style>{libraryStyles}</style>
-      {isSyncRunning && (
-        <div className='sentinel-library-sync' aria-live='polite' aria-busy='true'>
+      {(isSyncRunning || isSyncError) && (
+        <div
+          className={`sentinel-library-sync${isSyncError ? ' sentinel-library-sync--error' : ''}`}
+          aria-live='polite'
+          aria-busy={isSyncRunning}
+        >
           <div className='sentinel-library-sync-meta'>
-            <span>Fetching metadata</span>
-            <span>
-              {syncStatus.Current}/{syncStatus.Total}
-            </span>
+            <span>{syncMessage}</span>
+            <span>{syncCount}</span>
           </div>
         </div>
       )}
@@ -222,7 +240,7 @@ const LibraryPage: FC = () => {
       ) : showEmptyState ? (
         <EmptyState
           variant='library'
-          label='No games found'
+          label={isSyncError ? 'Game metadata could not be loaded' : 'No games found'}
           buttonText='Go to Settings'
           buttonClick={() => Navigation.Navigate('/sentinel/settings')}
         />

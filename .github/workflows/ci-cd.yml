@@ -53,6 +53,9 @@ jobs:
       - name: Run tests
         run: go test ./backend/... ./cmd/decky -v -short -coverprofile=coverage.out
 
+      - name: Check live Steam API contracts
+        run: task test:steam-integration
+
   build-check:
     needs: test
     if: github.event_name != 'workflow_dispatch'

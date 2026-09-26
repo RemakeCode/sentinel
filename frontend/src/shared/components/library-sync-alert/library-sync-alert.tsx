@@ -15,26 +15,35 @@ const alertVariants = {
 
 const LibrarySyncAlert: FC<LibrarySyncAlertProps> = ({ syncStatus }) => {
   const isRunning = syncStatus.State === 'running';
+  const hasFailures = syncStatus.State === 'error';
+  const message = hasFailures
+    ? syncStatus.Failed > 0
+      ? 'Metadata sync completed with failures'
+      : 'Metadata sync failed'
+    : 'Fetching metadata';
+  const count =
+    hasFailures && syncStatus.Failed > 0
+      ? `${syncStatus.Failed}/${syncStatus.Total} failed`
+      : `${syncStatus.Current}/${syncStatus.Total}`;
 
   return (
     <div className='library-sync-alert' aria-live='polite'>
       <AnimatePresence>
-        {isRunning && (
+        {(isRunning || hasFailures) && (
           <motion.div
-            className='alert info'
+            className='alert'
             role='alert'
-            aria-busy='true'
-            data-spinner='small'
+            aria-busy={isRunning}
+            data-spinner={isRunning ? 'small' : undefined}
+            data-variant={hasFailures ? 'warning' : undefined}
             variants={alertVariants}
             initial='initial'
             animate='animate'
             exit='exit'
             transition={{ duration: 0.2, ease: 'easeInOut' }}
           >
-            <span className='library-sync-alert-message'>Fetching metadata</span>
-            <span className='library-sync-alert-count'>
-              {syncStatus.Current}/{syncStatus.Total}
-            </span>
+            <span className='library-sync-alert-message'>{message}</span>
+            <span className='library-sync-alert-count'>{count}</span>
           </motion.div>
         )}
       </AnimatePresence>

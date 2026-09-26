@@ -59,7 +59,7 @@ func TestSetupGBEInstallsOnlySuccessfulOpaqueGSEOutput(t *testing.T) {
 	gseDir := filepath.Join(root, "gse")
 	require.NoError(t, os.MkdirAll(gseDir, 0755))
 	executable := filepath.Join(gseDir, "generate_emu_config")
-	script := "#!/bin/sh\nset -eu\ntest -f refresh_tokens.json\ntest \"$#\" -eq 1\nmkdir -p \"_OUTPUT/$1/steam_settings\"\nprintf '[{},{}]' > \"_OUTPUT/$1/steam_settings/achievements.json\"\nprintf '[{}]' > \"_OUTPUT/$1/steam_settings/stats.json\"\nprintf opaque > \"_OUTPUT/$1/steam_settings/custom.bin\"\n"
+	script := "#!/bin/sh\nset -eu\ntest -f refresh_tokens.json\ntest \"$#\" -eq 3\ntest \"$1\" = '-skip_inv'\ntest \"$2\" = '-skip_con'\nmkdir -p \"_OUTPUT/$3/steam_settings\"\nprintf '[{},{}]' > \"_OUTPUT/$3/steam_settings/achievements.json\"\nprintf '[{}]' > \"_OUTPUT/$3/steam_settings/stats.json\"\nprintf opaque > \"_OUTPUT/$3/steam_settings/custom.bin\"\n"
 	require.NoError(t, os.WriteFile(executable, []byte(script), 0755))
 	workspace := filepath.Join(root, "workspace")
 	require.NoError(t, os.Mkdir(workspace, 0700))
@@ -282,14 +282,14 @@ func TestRunGSETerminatesWhenCancelled(t *testing.T) {
 	directory := t.TempDir()
 	startedPath := filepath.Join(directory, "started")
 	t.Setenv("SENTINEL_GSE_TEST_STARTED_PATH", startedPath)
-	executable, err := os.Executable()
-	require.NoError(t, err)
+	executable := filepath.Join(directory, "generator-helper.sh")
+	require.NoError(t, os.WriteFile(executable, []byte("#!/bin/sh\nprintf started > \"$SENTINEL_GSE_TEST_STARTED_PATH\"\nexec sleep 3600\n"), 0700))
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	errCh := make(chan error, 1)
 	go func() {
-		_, err := runGSEGenerator(ctx, executable, "-test.run=^TestGSEHelperProcess$")
+		_, err := runGSEGenerator(ctx, executable, "620")
 		errCh <- err
 	}()
 
@@ -308,16 +308,4 @@ func TestRunGSETerminatesWhenCancelled(t *testing.T) {
 	}
 	require.Less(t, time.Since(started), 2*time.Second)
 	require.Equal(t, 5*time.Minute, generatorTimeout)
-}
-
-func TestGSEHelperProcess(t *testing.T) {
-	startedPath := os.Getenv("SENTINEL_GSE_TEST_STARTED_PATH")
-	if startedPath == "" {
-		return
-	}
-
-	require.NoError(t, os.WriteFile(startedPath, []byte("started"), 0600))
-	for {
-		time.Sleep(time.Hour)
-	}
 }
