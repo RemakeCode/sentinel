@@ -55,6 +55,23 @@ jobs:
       - name: Run tests
         run: go test ./backend/... ./cmd/decky -v -short -coverprofile=coverage.out
 
+  integration-test:
+    needs: test
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+
+      - name: Install Task
+        uses: go-task/setup-task@v1
+        with:
+          version: 3.x
+
       - name: Check live Steam API contracts
         run: task test:steam-integration
 
@@ -166,6 +183,7 @@ jobs:
 
   beta:
     # This job ONLY runs when you manually click "Run Workflow" in Actions tab
+    needs: test
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     environment: production
