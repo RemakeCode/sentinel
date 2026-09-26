@@ -281,12 +281,6 @@ const SettingsPage: FC = () => {
       title='Settings'
       pages={[
         {
-          title: 'Achievement Setup',
-          identifier: 'achievement-setup',
-          icon: <FaTrophy />,
-          content: <AchievementSetupContent />
-        },
-        {
           title: 'Settings',
           identifier: 'settings',
           icon: <FaCog />,
@@ -387,6 +381,13 @@ const SettingsPage: FC = () => {
               </DialogControlsSection>
             </DialogBody>
           )
+        },
+
+        {
+          title: 'Achievement Setup',
+          identifier: 'achievement-setup',
+          icon: <FaTrophy />,
+          content: <AchievementSetupContent />
         },
 
         {
