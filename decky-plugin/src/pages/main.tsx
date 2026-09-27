@@ -18,7 +18,6 @@ import { EmptyState } from '@/shared/components/empty-state';
 import { BASE_URL, Fetcher } from '@/shared/utils/fetcher';
 import {
   getTrackerStatus,
-  processAppOverviewChange,
   runningGames,
   subscribeToGameChanges,
   subscribeToTrackerStatus,
@@ -326,19 +325,19 @@ const MainPage: FC = () => {
   }, []);
 
   // DEV: seed a fake running game for testing without Steam
-  useEffect(() => {
-    processAppOverviewChange({
-      app_overview: [
-        {
-          appid: 3009130864,
-          display_name: 'Shadow of Mordor',
-          app_type: 1073741824,
-          per_client_data: [{ display_status: 4, is_available_on_current_platform: true }]
-        }
-      ],
-      removed_appid: []
-    });
-  }, []);
+  // useEffect(() => {
+  //   processAppOverviewChange({
+  //     app_overview: [
+  //       {
+  //         appid: 3009130864,
+  //         display_name: 'Shadow of Mordor',
+  //         app_type: 1073741824,
+  //         per_client_data: [{ display_status: 4, is_available_on_current_platform: true }]
+  //       }
+  //     ],
+  //     removed_appid: []
+  //   });
+  // }, []);
 
   if (loading) {
     return (
