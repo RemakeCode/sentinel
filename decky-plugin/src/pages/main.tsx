@@ -353,9 +353,10 @@ const MainPage: FC = () => {
   }
 
   if (screen === 'matched' && matchedGame) {
-    const progress = computeProgress(matchedGame.Achievement.List);
-    const earned = matchedGame.Achievement.List.filter((a) => a.CurrentAch?.earned).length;
-    const achievements = [...matchedGame.Achievement.List].sort(
+    const achievementList = matchedGame.Achievement.List ?? [];
+    const progress = computeProgress(achievementList);
+    const earned = achievementList.filter((a) => a.CurrentAch?.earned).length;
+    const achievements = [...achievementList].sort(
       (a, b) => (b.CurrentAch?.earned_time ?? 0) - (a.CurrentAch?.earned_time ?? 0)
     );
 
@@ -381,7 +382,7 @@ const MainPage: FC = () => {
                 <div className='sentinel-qam-game-title'>{matchedGame.Name}</div>
                 <ProgressBar nProgress={progress} focusable={false} />
                 <div className={joinClassNames(achievementListClasses.ProgressCount, 'sentinel-qam-progress-count')}>
-                  <strong>{progress}% complete</strong> - {earned}/{matchedGame.Achievement.List.length}
+                  <strong>{progress}% complete</strong> - {earned}/{achievementList.length}
                 </div>
               </div>
             </div>

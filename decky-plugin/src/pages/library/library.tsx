@@ -5,7 +5,7 @@ import { LibraryImage } from '@/shared/components/library-image';
 import { EmptyState } from '@/shared/components/empty-state';
 import { BASE_URL, Fetcher } from '@/shared/utils/fetcher';
 import { computeProgress } from '@/shared/utils/utils';
-import type { GameBasics } from '@/shared/types/GameBasics';
+import type { GameBasics } from '@/shared/types/_generated/sentinel/backend/steam/models';
 import { decorateGames, type AppConfig, type DeckyGameBasics } from '@/shared/utils/steamgrid';
 import { styles } from '@/shared/styles';
 

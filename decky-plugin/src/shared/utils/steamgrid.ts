@@ -1,4 +1,4 @@
-import type { GameBasics } from '@/shared/types/GameBasics';
+import type { GameBasics } from '@/shared/types/_generated/sentinel/backend/steam/models';
 import { getAllMappings, setMapping, type GameMapping } from '@/shared/utils/game-mappings';
 import { matchGameByName } from '@/shared/utils/game-matcher';
 import { nonSteamGames, type NonSteamGame } from '@/shared/utils/non-steam-game-tracker';

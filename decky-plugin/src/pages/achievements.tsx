@@ -15,7 +15,7 @@ import {
 
 import { LibraryImage } from '@/shared/components/library-image';
 import { ASSET_URL, BASE_URL, Fetcher } from '@/shared/utils/fetcher';
-import type { GameBasics } from '@/shared/types/GameBasics';
+import type { GameBasics } from '@/shared/types/_generated/sentinel/backend/steam/models';
 import { decorateGames, type DeckyGameBasics } from '@/shared/utils/steamgrid';
 import { computeProgress } from '@/shared/utils/utils';
 import { styles } from '@/shared/styles';
