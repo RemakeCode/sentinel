@@ -1,6 +1,7 @@
 package notifier
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -9,23 +10,11 @@ import (
 	"sentinel/backend"
 	"sentinel/backend/ach"
 	"sentinel/backend/config"
-	"sentinel/backend/steam"
 	steamtypes "sentinel/backend/steam/types"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-type mockGlobalAchievementPercentageProvider struct {
-	percentages []steam.GlobalAchievementPercentage
-	err         error
-	calls       int
-}
-
-func (m *mockGlobalAchievementPercentageProvider) GetGlobalAchievementPercentages(appID string) ([]steam.GlobalAchievementPercentage, error) {
-	m.calls++
-	return m.percentages, m.err
-}
 
 func TestProgressBar_ZeroMax(t *testing.T) {
 	result := progressBar(0, 0, 25)
@@ -170,11 +159,8 @@ func TestSendNotification_EarnedIgnoresProgressUpdateMode(t *testing.T) {
 
 func TestSendNotification_MarksRareEarnedAchievement(t *testing.T) {
 	appID := setupNotifierCache(t)
+	setCachedAchievementRare(t, appID, true)
 	svc := newNotifierTestService(config.AchievementProgressUpdateModeDefault)
-	provider := &mockGlobalAchievementPercentageProvider{
-		percentages: []steam.GlobalAchievementPercentage{{Name: "ACH_PROGRESS", Percent: "9.9", IsRare: true}},
-	}
-	svc.Steam = provider
 
 	err := svc.SendNotification(appID, map[string]ach.Achievement{
 		"ACH_PROGRESS": {Earned: true},
@@ -183,30 +169,24 @@ func TestSendNotification_MarksRareEarnedAchievement(t *testing.T) {
 
 	payload := requireQueuedPayload(t, svc)
 	assert.True(t, payload.IsRare)
-	assert.Equal(t, 1, provider.calls)
 }
 
 func TestSendNotification_RarityFallbacksRemainNormal(t *testing.T) {
 	tests := []struct {
-		name        string
-		percentages []steam.GlobalAchievementPercentage
-		providerErr error
+		name   string
+		isRare *bool
 	}{
-		{name: "threshold", percentages: []steam.GlobalAchievementPercentage{{Name: "ACH_PROGRESS", Percent: "10"}}},
-		{name: "invalid", percentages: []steam.GlobalAchievementPercentage{{Name: "ACH_PROGRESS", Percent: "not-a-number"}}},
-		{name: "missing"},
-		{name: "lookup failure", providerErr: assert.AnError},
+		{name: "saved normal classification", isRare: boolPointer(false)},
+		{name: "missing saved classification"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			appID := setupNotifierCache(t)
-			svc := newNotifierTestService(config.AchievementProgressUpdateModeDefault)
-			provider := &mockGlobalAchievementPercentageProvider{
-				percentages: tt.percentages,
-				err:         tt.providerErr,
+			if tt.isRare != nil {
+				setCachedAchievementRare(t, appID, *tt.isRare)
 			}
-			svc.Steam = provider
+			svc := newNotifierTestService(config.AchievementProgressUpdateModeDefault)
 
 			err := svc.SendNotification(appID, map[string]ach.Achievement{
 				"ACH_PROGRESS": {Earned: true},
@@ -221,11 +201,8 @@ func TestSendNotification_RarityFallbacksRemainNormal(t *testing.T) {
 
 func TestSendNotification_ProgressUpdateIsNotRare(t *testing.T) {
 	appID := setupNotifierCache(t)
+	setCachedAchievementRare(t, appID, true)
 	svc := newNotifierTestService(config.AchievementProgressUpdateModeDefault)
-	provider := &mockGlobalAchievementPercentageProvider{
-		percentages: []steam.GlobalAchievementPercentage{{Name: "ACH_PROGRESS", Percent: "1", IsRare: true}},
-	}
-	svc.Steam = provider
 
 	err := svc.SendNotification(appID, map[string]ach.Achievement{
 		"ACH_PROGRESS": {Progress: 1, MaxProgress: 10},
@@ -234,7 +211,6 @@ func TestSendNotification_ProgressUpdateIsNotRare(t *testing.T) {
 
 	payload := requireQueuedPayload(t, svc)
 	assert.False(t, payload.IsRare)
-	assert.Equal(t, 0, provider.calls)
 }
 
 func TestSendNotification_EmptyAchievementIconOmitsIconPath(t *testing.T) {
@@ -389,6 +365,27 @@ func setupNotifierCache(t *testing.T) string {
 	require.NoError(t, os.WriteFile(filepath.Join(cacheDir, appID+".json"), []byte(gameData), 0644))
 
 	return appID
+}
+
+func setCachedAchievementRare(t *testing.T, appID string, isRare bool) {
+	t.Helper()
+	cachePath := filepath.Join(backend.GameCacheDir, "english", appID+".json")
+	data, err := os.ReadFile(cachePath)
+	require.NoError(t, err)
+
+	var game map[string]any
+	require.NoError(t, json.Unmarshal(data, &game))
+	achievements := game["Achievement"].(map[string]any)
+	list := achievements["List"].([]any)
+	list[0].(map[string]any)["IsRare"] = isRare
+
+	data, err = json.Marshal(game)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(cachePath, data, 0644))
+}
+
+func boolPointer(value bool) *bool {
+	return &value
 }
 
 func newNotifierTestService(mode config.AchievementProgressUpdateMode) *Service {

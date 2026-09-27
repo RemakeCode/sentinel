@@ -13,6 +13,8 @@ export interface AchievementInfo {
   IconGray: string;
   DefaultValue: number;
   Hidden: number;
+  GlobalPercentage?: number;
+  IsRare?: boolean;
   CurrentAch?: Achievement;
 }
 

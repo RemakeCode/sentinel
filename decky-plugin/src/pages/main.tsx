@@ -18,6 +18,7 @@ import { EmptyState } from '@/shared/components/empty-state';
 import { BASE_URL, Fetcher } from '@/shared/utils/fetcher';
 import {
   getTrackerStatus,
+  processAppOverviewChange,
   runningGames,
   subscribeToGameChanges,
   subscribeToTrackerStatus,
@@ -28,7 +29,6 @@ import { matchGameByName } from '@/shared/utils/game-matcher';
 import { showConfirmModal } from '@/shared/components/confirm';
 import { computeProgress } from '@/shared/utils/utils';
 import { decorateGames, type AppConfig, type DeckyGameBasics } from '@/shared/utils/steamgrid';
-import type { GlobalAchievementPercentage } from '@/shared/types/GameBasics';
 import { ImgIcon } from '@/shared/components/img-icon';
 import { rareAchievementGlowStyles } from '@/shared/rare-achievement-glow';
 
@@ -219,7 +219,6 @@ const MainPage: FC = () => {
   const [playingKey, setPlayingKey] = useState<string | null>(null);
   const [revealedHidden, setRevealedHidden] = useState<Record<string, boolean>>({});
   const [trackerStatus, setTrackerStatus] = useState<TrackerStatus>(getTrackerStatus());
-  const [globalPercentages, setGlobalPercentages] = useState<Map<string, GlobalAchievementPercentage>>(new Map());
 
   const gamesRef = useRef(games);
   const trackerStatusRef = useRef(trackerStatus);
@@ -312,40 +311,6 @@ const MainPage: FC = () => {
   }, [games, trackerStatus]);
 
   useEffect(() => {
-    const appID = matchedGame?.AppID;
-    if (!appID) {
-      setGlobalPercentages(new Map());
-      return undefined;
-    }
-
-    let active = true;
-    setGlobalPercentages(new Map());
-
-    const loadGlobalPercentages = async () => {
-      try {
-        const percentages = await fetcher.get<GlobalAchievementPercentage[]>(
-          `${BASE_URL}/games/${appID}/global-achievement-percentages`
-        );
-        if (!active) return;
-
-        const map = new Map<string, GlobalAchievementPercentage>();
-        percentages.forEach((achievement) => map.set(achievement.name, achievement));
-        setGlobalPercentages(map);
-      } catch {
-        if (active) {
-          setGlobalPercentages(new Map());
-        }
-      }
-    };
-
-    void loadGlobalPercentages();
-
-    return () => {
-      active = false;
-    };
-  }, [matchedGame?.AppID]);
-
-  useEffect(() => {
     const unsubscribeGameChanges = subscribeToGameChanges(() => {
       matchRunningGame(gamesRef.current, trackerStatusRef.current);
     });
@@ -361,19 +326,19 @@ const MainPage: FC = () => {
   }, []);
 
   // DEV: seed a fake running game for testing without Steam
-  // useEffect(() => {
-  //   processAppOverviewChange({
-  //     app_overview: [
-  //       {
-  //         appid: 3009130864,
-  //         display_name: 'Shadow of Mordor',
-  //         app_type: 1073741824,
-  //         per_client_data: [{ display_status: 4, is_available_on_current_platform: true }]
-  //       }
-  //     ],
-  //     removed_appid: []
-  //   });
-  // }, []);
+  useEffect(() => {
+    processAppOverviewChange({
+      app_overview: [
+        {
+          appid: 3009130864,
+          display_name: 'Shadow of Mordor',
+          app_type: 1073741824,
+          per_client_data: [{ display_status: 4, is_available_on_current_platform: true }]
+        }
+      ],
+      removed_appid: []
+    });
+  }, []);
 
   if (loading) {
     return (
@@ -406,7 +371,11 @@ const MainPage: FC = () => {
             <div className='sentinel-qam-header'>Now Playing</div>
             <div style={{ display: 'flex', gap: '8px' }}>
               <div className='sentinel-qam-game-image'>
-                <LibraryImage src={matchedGame.PortraitImage} alt={matchedGame.Name} />
+                <LibraryImage
+                  src={matchedGame.PortraitImage}
+                  fallbackSrc={matchedGame.FallbackPortraitImage}
+                  alt={matchedGame.Name}
+                />
               </div>
               <div className='sentinel-qam-game-content'>
                 <div className='sentinel-qam-game-title'>{matchedGame.Name}</div>
@@ -425,7 +394,7 @@ const MainPage: FC = () => {
             const currentProgress = ach.CurrentAch?.progress || 0;
             const maxProgress = ach.CurrentAch?.max_progress || 1;
             const isPlaying = playingKey === key;
-            const isRare = Boolean(earnedAch && globalPercentages.get(ach.Name)?.isRare);
+            const isRare = Boolean(earnedAch && ach.IsRare);
 
             return (
               <Focusable
@@ -446,10 +415,7 @@ const MainPage: FC = () => {
                 className={joinClassNames('sentinel-qam-ach-item')}
               >
                 <div
-                  className={joinClassNames(
-                    'sentinel-qam-ach-image',
-                    isRare ? 'sentinel-rare-achievement-glow' : ''
-                  )}
+                  className={joinClassNames('sentinel-qam-ach-image', isRare ? 'sentinel-rare-achievement-glow' : '')}
                 >
                   <ImgIcon src={ach.Icon} style={{ bottom: 0, height: '48px' }} />
                 </div>

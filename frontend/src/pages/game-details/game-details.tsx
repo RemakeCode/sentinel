@@ -2,11 +2,9 @@ import './game-details.scss';
 import type { FC, ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Link, useLocation, useParams } from 'react-router';
+import { Link, useLocation } from 'react-router';
 import { ArrowDown, ArrowLeft, ArrowUp, Clock, Ghost, Glasses, History, ListCheck, Trophy } from 'lucide-react';
 import { GameBasics } from '@wa/sentinel/backend/steam';
-import type { GlobalAchievementPercentage } from '@wa/sentinel/backend/steam/models';
-import { GetGlobalAchievementPercentages } from '@wa/sentinel/backend/steam/service';
 import { computeProgress } from '@/shared/utils';
 import missingCover from '@/assets/images/missing-cover.png';
 import { HeaderPortal } from '@/shared/components/header/header';
@@ -34,33 +32,8 @@ const containerVariants = {
 };
 
 const GameDetails: FC = () => {
-  const { id } = useParams<{ id: string }>();
   const location = useLocation();
   const game = location.state?.game as GameBasics | undefined;
-
-  const [globalPercentages, setGlobalPercentages] = useState<Map<string, GlobalAchievementPercentage>>(new Map());
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchGlobalPercentages = async () => {
-      if (!id) return;
-
-      try {
-        const achievements = await GetGlobalAchievementPercentages(id);
-        const percentageMap = new Map<string, GlobalAchievementPercentage>();
-        achievements.forEach((ach) => {
-          percentageMap.set(ach.name, ach);
-        });
-        setGlobalPercentages(percentageMap);
-      } catch (error) {
-        console.error('Error fetching global achievement percentages:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchGlobalPercentages();
-  }, [id]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -213,7 +186,7 @@ const GameDetails: FC = () => {
                 ))}
               </div>
             </div>
-            {!isLoading && sortedUnlocked.length > 0 && (
+            {sortedUnlocked.length > 0 && (
               <>
                 <h3 className='game-details-ach-subheader'>Unlocked</h3>
                 <motion.ul
@@ -223,12 +196,12 @@ const GameDetails: FC = () => {
                   animate='visible'
                 >
                   {sortedUnlocked.map((ach, i) => (
-                    <AchievementListItem key={`${ach.Name}#${i}`} ach={ach} globalPercentages={globalPercentages} />
+                    <AchievementListItem key={`${ach.Name}#${i}`} ach={ach} />
                   ))}
                 </motion.ul>
               </>
             )}
-            {!isLoading && sortedLocked.length > 0 && (
+            {sortedLocked.length > 0 && (
               <>
                 <h3 className='game-details-ach-subheader'>Locked</h3>
                 <motion.ul
@@ -238,7 +211,7 @@ const GameDetails: FC = () => {
                   animate='visible'
                 >
                   {sortedLocked.map((ach, i) => (
-                    <AchievementListItem key={`${ach.Name}#${i}`} ach={ach} globalPercentages={globalPercentages} />
+                    <AchievementListItem key={`${ach.Name}#${i}`} ach={ach} />
                   ))}
                 </motion.ul>
               </>

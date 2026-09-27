@@ -132,19 +132,6 @@ func TestIntegration_ThirdPartyAchievements(t *testing.T) {
 	t.Fatal("Steam Community achievement page yielded no achievement icons")
 }
 
-func TestIntegration_GlobalAchievementPercentages(t *testing.T) {
-	percentages, err := newIntegrationService().GetGlobalAchievementPercentages(integrationAppID)
-	if err != nil {
-		t.Fatalf("global achievement percentages request failed: %v", err)
-	}
-	if len(percentages) == 0 {
-		t.Fatal("global achievement percentages API returned no achievements")
-	}
-	if percentages[0].Name == "" || percentages[0].Percent == "" {
-		t.Fatalf("global percentages response is missing consumed fields: %#v", percentages[0])
-	}
-}
-
 func TestIntegration_PortraitFallback(t *testing.T) {
 	imageURL := newIntegrationService().fallbackPortraitURL(integrationAppID)
 	if imageURL == "" {

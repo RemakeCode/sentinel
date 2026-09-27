@@ -1,7 +1,7 @@
 import type { FC } from 'react';
 import { motion } from 'framer-motion';
 import { EyeOff } from 'lucide-react';
-import type { GlobalAchievementPercentage, achievement } from '@wa/sentinel/backend/steam/models';
+import type { achievement } from '@wa/sentinel/backend/steam/models';
 
 const itemVariants = {
   hidden: { opacity: 0, y: 15 },
@@ -17,7 +17,6 @@ const itemVariants = {
 
 export type AchievementListItemProps = {
   ach: achievement;
-  globalPercentages: Map<string, GlobalAchievementPercentage>;
 };
 
 export const formatUnlockTime = (timestamp: number | undefined): string => {
@@ -26,15 +25,15 @@ export const formatUnlockTime = (timestamp: number | undefined): string => {
   return new Date(tsSeconds * 1000).toLocaleString();
 };
 
-export const AchievementListItem: FC<AchievementListItemProps> = ({ ach, globalPercentages }) => {
+export const AchievementListItem: FC<AchievementListItemProps> = ({ ach }) => {
   const currentAch = (ach as any).CurrentAch;
   const earned = currentAch?.earned;
   const hasProgress = (currentAch?.max_progress || 0) > 1;
   const progress = currentAch?.progress || 0;
   const maxProgress = currentAch?.max_progress || 1;
   const displayProgress = earned && progress !== maxProgress ? progress + 1 : progress;
-  const globalPercentage = globalPercentages.get(ach.Name);
-  const isRare = Boolean(earned && globalPercentage?.isRare);
+  const isRare = Boolean(earned && ach.IsRare);
+  const isHiddenLocked = ach.Hidden === 1 && !earned;
 
   return (
     <motion.li className='game-details-ach-item' variants={itemVariants}>
@@ -44,8 +43,8 @@ export const AchievementListItem: FC<AchievementListItemProps> = ({ ach, globalP
       <div className='game-details-ach-info'>
         <span className='game-details-ach-title'>{ach.DisplayName}</span>
         <span className='game-details-ach-desc'>
-          <span className={`${ach.Hidden === 1 ? 'blur' : ''}`}>{ach.Description || ''}</span>
-          {ach.Hidden === 1 && <EyeOff width={18} height={18} />}
+          <span className={isHiddenLocked ? 'blur' : ''}>{ach.Description || ''}</span>
+          {isHiddenLocked && <EyeOff width={18} height={18} />}
         </span>
         {hasProgress && (
           <div className='game-details-ach-progress'>
@@ -60,9 +59,9 @@ export const AchievementListItem: FC<AchievementListItemProps> = ({ ach, globalP
         <code className='game-details-ach-unlocktime'>
           {currentAch?.earned_time ? formatUnlockTime(currentAch.earned_time) : 'Locked'}
         </code>
-        {globalPercentage && (
+        {typeof ach.GlobalPercentage === 'number' && (
           <code className='game-details-ach-global-percent fade-in'>
-            {globalPercentage.percent}% of players have this
+            {ach.GlobalPercentage}% of players have this
           </code>
         )}
       </div>

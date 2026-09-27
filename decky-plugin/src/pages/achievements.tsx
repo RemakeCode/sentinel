@@ -18,7 +18,6 @@ import { ASSET_URL, BASE_URL, Fetcher } from '@/shared/utils/fetcher';
 import type { GameBasics } from '@/shared/types/GameBasics';
 import { decorateGames, type DeckyGameBasics } from '@/shared/utils/steamgrid';
 import { computeProgress } from '@/shared/utils/utils';
-import type { GlobalAchievementPercentage } from '@/shared/types/GameBasics';
 import { styles } from '@/shared/styles';
 import { rareAchievementGlowStyles } from '@/shared/rare-achievement-glow';
 import { FaArrowDown, FaArrowUp, FaClock, FaHistory } from 'react-icons/fa';
@@ -200,8 +199,6 @@ const AchievementsPage: FC = () => {
   const appId = window.location.pathname.split('/games/')[1];
 
   const [game, setGame] = useState<DeckyGameBasics | null>(null);
-  const [globalPercentages, setGlobalPercentages] = useState<Map<string, GlobalAchievementPercentage>>(new Map());
-  const [isLoading, setIsLoading] = useState(true);
   const [sortBy, setSortBy] = useState<SortOption>(() => {
     if (typeof window === 'undefined') {
       return 'name-asc';
@@ -232,25 +229,6 @@ const AchievementsPage: FC = () => {
       }
     };
     loadData();
-  }, [appId]);
-
-  useEffect(() => {
-    const loadPercentages = async () => {
-      if (!appId) return;
-      try {
-        const achievements = await fetcher.get<GlobalAchievementPercentage[]>(
-          `${BASE_URL}/games/${appId}/global-achievement-percentages`
-        );
-        const map = new Map<string, GlobalAchievementPercentage>();
-        achievements.forEach((ach) => map.set(ach.name, ach));
-        setGlobalPercentages(map);
-      } catch {
-        // global percentages unavailable
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    loadPercentages();
   }, [appId]);
 
   const stats = useMemo(() => {
@@ -391,7 +369,7 @@ const AchievementsPage: FC = () => {
                     const hasProgress = (currentAch?.max_progress || 0) > 1;
                     const progress = currentAch?.progress || 0;
                     const maxProgress = currentAch?.max_progress || 1;
-                    const isRare = Boolean(currentAch?.earned && globalPercentages.get(ach.Name)?.isRare);
+                    const isRare = Boolean(currentAch?.earned && ach.IsRare);
 
                     return (
                       <Focusable
@@ -420,14 +398,14 @@ const AchievementsPage: FC = () => {
                           <div className={joinClassNames(achievementListClasses.AchievementDescription)}>
                             {ach.Description || ''}
                           </div>
-                          {!isLoading && globalPercentages.get(ach.Name) && (
+                          {typeof ach.GlobalPercentage === 'number' && (
                             <div
                               className={joinClassNames(
                                 achievementListClasses.AchievementGlobalPercentage,
                                 achievementListClasses.InBody
                               )}
                             >
-                              {globalPercentages.get(ach.Name)?.percent}% of players have this
+                              {ach.GlobalPercentage}% of players have this
                             </div>
                           )}
                         </div>
@@ -505,14 +483,14 @@ const AchievementsPage: FC = () => {
                           >
                             {ach.Description || ''}
                           </div>
-                          {!isLoading && globalPercentages.get(ach.Name) && (
+                          {typeof ach.GlobalPercentage === 'number' && (
                             <div
                               className={joinClassNames(
                                 achievementListClasses.AchievementGlobalPercentage,
                                 achievementListClasses.InBody
                               )}
                             >
-                              {globalPercentages.get(ach.Name)?.percent}% of players have this
+                              {ach.GlobalPercentage}% of players have this
                             </div>
                           )}
                         </div>
