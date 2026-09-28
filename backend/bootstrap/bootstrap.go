@@ -35,7 +35,6 @@ func NewServices() *Services {
 	}
 	notifierService := &notifier.Service{
 		Config: configService,
-		Steam:  steamService,
 	}
 	generatorService := &generator.Service{
 		Config: configService,

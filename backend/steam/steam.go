@@ -25,14 +25,16 @@ import (
 )
 
 type achievement struct {
-	Name         string
-	DisplayName  string
-	Description  string
-	Icon         string
-	IconGray     string
-	DefaultValue int
-	Hidden       int
-	CurrentAch   ach.Achievement // or map[string]ach.Achievement if you strictly wanted a map, but since a single achievement has only one progress object, ach.Achievement is better.
+	Name             string
+	DisplayName      string
+	Description      string
+	Icon             string
+	IconGray         string
+	DefaultValue     int
+	Hidden           int
+	GlobalPercentage *float64 `json:",omitempty"`
+	IsRare           bool
+	CurrentAch       ach.Achievement // or map[string]ach.Achievement if you strictly wanted a map, but since a single achievement has only one progress object, ach.Achievement is better.
 }
 
 type GameBasics struct {
@@ -68,6 +70,13 @@ type communityData struct {
 	Hidden int
 }
 
+type steamHuntersAchievement struct {
+	ApiName         string          `json:"apiName"`
+	Name            string          `json:"name"`
+	Description     string          `json:"description"`
+	SteamPercentage json.RawMessage `json:"steamPercentage"`
+}
+
 // GlobalAchievementPercentage represents a single achievement's global unlock rate
 type GlobalAchievementPercentage struct {
 	Name    string `json:"name"`
@@ -83,13 +92,6 @@ type AppSearchResult struct {
 }
 
 var ErrInvalidSearchQuery = errors.New("game search query is required")
-
-const globalAchievementPercentageCacheTTL = 24 * time.Hour
-
-type globalAchievementPercentageCacheEntry struct {
-	percentages []GlobalAchievementPercentage
-	expiresAt   time.Time
-}
 
 type Config interface {
 	GetSteamDataSource() config.SteamSource
@@ -107,11 +109,6 @@ type Service struct {
 	client           *http.Client
 	assetLimiterOnce sync.Once
 	assetLimiter     chan struct{}
-
-	globalAchievementPercentagesMu    sync.Mutex
-	globalAchievementPercentagesCache map[string]globalAchievementPercentageCacheEntry
-	globalAchievementPercentagesTTL   time.Duration
-	globalAchievementPercentagesNow   func() time.Time
 }
 
 type assetCacheTask struct {
@@ -146,12 +143,13 @@ type schemaResponse struct {
 type gameAchievementsResponse struct {
 	Response struct {
 		Achievements []struct {
-			Apiname     string `json:"internal_name"`
-			DisplayName string `json:"localized_name"`
-			Description string `json:"localized_desc"`
-			Icon        string `json:"icon"`
-			IconGray    string `json:"icon_gray"`
-			Hidden      bool   `json:"hidden"`
+			Apiname     string          `json:"internal_name"`
+			DisplayName string          `json:"localized_name"`
+			Description string          `json:"localized_desc"`
+			Icon        string          `json:"icon"`
+			IconGray    string          `json:"icon_gray"`
+			Hidden      bool            `json:"hidden"`
+			Percentage  json.RawMessage `json:"player_percent_unlocked"`
 		} `json:"achievements"`
 	} `json:"response"`
 }
@@ -164,9 +162,6 @@ func (s *Service) Start(ctx context.Context) error {
 		}
 		s.Config = c
 	}
-	s.globalAchievementPercentagesMu.Lock()
-	s.globalAchievementPercentagesCache = make(map[string]globalAchievementPercentageCacheEntry)
-	s.globalAchievementPercentagesMu.Unlock()
 	slog.Info("Steam service startup complete")
 	return nil
 }
@@ -513,6 +508,8 @@ func (s *Service) fetchAchievementsFromOfficialAPI(appID string, language string
 			IconGray:    iconGrayPath,
 			Hidden:      hiddenVal,
 		}
+		achievement.GlobalPercentage = parseSourcePercentage(a.Percentage)
+		achievement.IsRare = isRarePercentage(achievement.GlobalPercentage)
 		achievements = append(achievements, achievement)
 	}
 
@@ -662,11 +659,7 @@ func (s *Service) fetchAchievementsFromThirdParty(appID string, language string)
 		return nil, fmt.Errorf("steamhunters API returned status: %d", shResp.StatusCode)
 	}
 
-	var shItems []struct {
-		ApiName     string `json:"apiName"`
-		Name        string `json:"name"`
-		Description string `json:"description"`
-	}
+	var shItems []steamHuntersAchievement
 	if err := json.NewDecoder(shResp.Body).Decode(&shItems); err != nil {
 		return nil, fmt.Errorf("failed to parse steamhunters api JSON: %v", err)
 	}
@@ -723,11 +716,7 @@ func (s *Service) fetchAchievementsFromThirdParty(appID string, language string)
 	return achievements, nil
 }
 
-func (s *Service) mergeAchievements(shItems []struct {
-	ApiName     string `json:"apiName"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-}, communityMap map[string]communityData, appID string) []achievement {
+func (s *Service) mergeAchievements(shItems []steamHuntersAchievement, communityMap map[string]communityData, appID string) []achievement {
 	var achievements []achievement
 	for _, item := range shItems {
 		a := achievement{
@@ -735,6 +724,8 @@ func (s *Service) mergeAchievements(shItems []struct {
 			DisplayName: item.Name,
 			Description: item.Description,
 		}
+		a.GlobalPercentage = parseSourcePercentage(item.SteamPercentage)
+		a.IsRare = isRarePercentage(a.GlobalPercentage)
 
 		if data, ok := communityMap[item.Name]; ok {
 			a.Hidden = data.Hidden
@@ -1151,84 +1142,66 @@ func (s *Service) loadCachedGameImage(appID string, imageType string) (string, e
 	return "", errors.New("cached image not found")
 }
 
-// GetGlobalAchievementPercentages fetches global achievement percentages from Steam API.
-// Successful responses are cached by app ID and include the backend rarity decision.
-// This method is exposed to the frontend
+// GetGlobalAchievementPercentages returns source percentages from the current-language game cache.
+// It remains exposed for compatibility with existing Wails and Decky callers.
 func (s *Service) GetGlobalAchievementPercentages(appID string) ([]GlobalAchievementPercentage, error) {
-	now := s.globalAchievementPercentagesNowValue()
-	s.globalAchievementPercentagesMu.Lock()
-	if cached, ok := s.globalAchievementPercentagesCache[appID]; ok && now.Before(cached.expiresAt) {
-		percentages := cloneGlobalAchievementPercentages(cached.percentages)
-		s.globalAchievementPercentagesMu.Unlock()
-		return percentages, nil
+	appID = strings.TrimSpace(appID)
+	if appID == "" || s.Config == nil {
+		return nil, errors.New("cached game data is unavailable")
 	}
-	s.globalAchievementPercentagesMu.Unlock()
+	for _, r := range appID {
+		if r < '0' || r > '9' {
+			return nil, fmt.Errorf("invalid appID: %s", appID)
+		}
+	}
 
-	url := fmt.Sprintf(
-		"https://api.steampowered.com/ISteamUserStats/GetGlobalAchievementPercentagesForApp/v0002/?gameid=%s",
-		appID,
-	)
-
-	resp, err := s.httpClient().Get(url)
+	data, err := os.ReadFile(s.getGameCachePath(appID, s.Config.GetLanguage().API))
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch global achievement percentages: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("steam api returned status: %d", resp.StatusCode)
+		return nil, fmt.Errorf("failed to read cached game data: %w", err)
 	}
 
-	var data struct {
-		AchievementPercentages struct {
-			Achievements []GlobalAchievementPercentage `json:"achievements"`
-		} `json:"achievementpercentages"`
+	var game GameBasics
+	if err := json.Unmarshal(data, &game); err != nil {
+		return nil, fmt.Errorf("failed to decode cached game data: %w", err)
 	}
 
-	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
+	percentages := make([]GlobalAchievementPercentage, 0, len(game.Achievement.List))
+	for _, item := range game.Achievement.List {
+		if item.GlobalPercentage == nil {
+			continue
+		}
+		percentages = append(percentages, GlobalAchievementPercentage{
+			Name:    item.Name,
+			Percent: strconv.FormatFloat(*item.GlobalPercentage, 'f', -1, 64),
+			IsRare:  item.IsRare,
+		})
 	}
-
-	percentages := annotateGlobalAchievementPercentages(data.AchievementPercentages.Achievements)
-	now = s.globalAchievementPercentagesNowValue()
-	s.globalAchievementPercentagesMu.Lock()
-	if s.globalAchievementPercentagesCache == nil {
-		s.globalAchievementPercentagesCache = make(map[string]globalAchievementPercentageCacheEntry)
-	}
-	s.globalAchievementPercentagesCache[appID] = globalAchievementPercentageCacheEntry{
-		percentages: cloneGlobalAchievementPercentages(percentages),
-		expiresAt:   now.Add(s.globalAchievementPercentagesCacheTTL()),
-	}
-	s.globalAchievementPercentagesMu.Unlock()
-
 	return percentages, nil
 }
 
-func (s *Service) globalAchievementPercentagesNowValue() time.Time {
-	if s.globalAchievementPercentagesNow != nil {
-		return s.globalAchievementPercentagesNow()
+func parseSourcePercentage(raw json.RawMessage) *float64 {
+	if len(raw) == 0 || string(raw) == "null" {
+		return nil
 	}
-	return time.Now()
+
+	value := strings.TrimSpace(string(raw))
+	if strings.HasPrefix(value, `"`) {
+		var text string
+		if err := json.Unmarshal(raw, &text); err != nil {
+			return nil
+		}
+		value = strings.TrimSpace(text)
+	}
+
+	percentage, err := strconv.ParseFloat(value, 64)
+	if err != nil || math.IsNaN(percentage) || math.IsInf(percentage, 0) || percentage < 0 || percentage > 100 {
+		return nil
+	}
+	return &percentage
 }
 
-func (s *Service) globalAchievementPercentagesCacheTTL() time.Duration {
-	if s.globalAchievementPercentagesTTL > 0 {
-		return s.globalAchievementPercentagesTTL
-	}
-	return globalAchievementPercentageCacheTTL
-}
-
-func annotateGlobalAchievementPercentages(percentages []GlobalAchievementPercentage) []GlobalAchievementPercentage {
-	annotated := cloneGlobalAchievementPercentages(percentages)
-	for i := range annotated {
-		percentage, err := strconv.ParseFloat(strings.TrimSpace(annotated[i].Percent), 64)
-		annotated[i].IsRare = err == nil && !math.IsNaN(percentage) && !math.IsInf(percentage, 0) && percentage < 10
-	}
-	return annotated
-}
-
-func cloneGlobalAchievementPercentages(percentages []GlobalAchievementPercentage) []GlobalAchievementPercentage {
-	return append([]GlobalAchievementPercentage(nil), percentages...)
+func isRarePercentage(percentage *float64) bool {
+	return percentage != nil && *percentage < 10
 }
 
 func (s *Service) toVirtualPath(absPath string) string {

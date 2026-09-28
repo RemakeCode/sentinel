@@ -13,7 +13,6 @@ import (
 	"sentinel/backend/steam/types"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -140,14 +139,11 @@ func TestMergeAchievements(t *testing.T) {
 	svc := &Service{}
 	appID := "12345"
 
-	shItems := []struct {
-		ApiName     string `json:"apiName"`
-		Name        string `json:"name"`
-		Description string `json:"description"`
-	}{
-		{ApiName: "ACH_1", Name: "Trophy 1", Description: "Desc 1"},
-		{ApiName: "ACH_2", Name: "Trophy 2", Description: "Desc 2"},
-	}
+	var shItems []steamHuntersAchievement
+	require.NoError(t, json.Unmarshal([]byte(`[
+		{"apiName":"ACH_1","name":"Trophy 1","description":"Desc 1","steamPercentage":9.99,"localPercentage":2},
+		{"apiName":"ACH_2","name":"Trophy 2","description":"Desc 2","steamPercentage":10,"localPercentage":1}
+	]`), &shItems))
 
 	communityMap := map[string]communityData{
 		"Trophy 1": {Icon: "http://example.com/icon1.png", Hidden: 0},
@@ -158,10 +154,16 @@ func TestMergeAchievements(t *testing.T) {
 
 	assert.Len(t, achievements, 2)
 	assert.Equal(t, "ACH_1", achievements[0].Name)
+	require.NotNil(t, achievements[0].GlobalPercentage)
+	assert.Equal(t, 9.99, *achievements[0].GlobalPercentage)
+	assert.True(t, achievements[0].IsRare)
 	assert.Equal(t, "", achievements[0].Icon)
 	assert.Equal(t, 0, achievements[0].Hidden)
 
 	assert.Equal(t, "ACH_2", achievements[1].Name)
+	require.NotNil(t, achievements[1].GlobalPercentage)
+	assert.Equal(t, 10.0, *achievements[1].GlobalPercentage)
+	assert.False(t, achievements[1].IsRare)
 	assert.Equal(t, 1, achievements[1].Hidden)
 }
 
@@ -285,77 +287,114 @@ func TestLibrarySyncStatus_Error(t *testing.T) {
 	assert.Equal(t, LibrarySyncStatus{State: "error", Current: 1, Total: 3}, svc.GetLibrarySyncStatus())
 }
 
-func TestGetGlobalAchievementPercentages_CachesAndAnnotatesRarity(t *testing.T) {
-	requests := 0
-	now := time.Date(2026, time.July, 25, 12, 0, 0, 0, time.UTC)
-
-	svc := &Service{
-		client: &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
-			requests++
-			return &http.Response{
-				StatusCode: http.StatusOK,
-				Body: io.NopCloser(strings.NewReader(`{
-					"achievementpercentages": {
-						"achievements": [
-							{"name": "ACH_RARE", "percent": "9.99"},
-							{"name": "ACH_COMMON", "percent": "10"},
-							{"name": "ACH_INVALID", "percent": "not-a-number"}
-						]
-					}
-				}`)),
-				Header: make(http.Header),
-			}, nil
-		})},
-		globalAchievementPercentagesTTL: time.Hour,
-		globalAchievementPercentagesNow: func() time.Time { return now },
+func TestParseSourcePercentage(t *testing.T) {
+	tests := []struct {
+		name       string
+		input      string
+		want       float64
+		wantValid  bool
+		wantIsRare bool
+	}{
+		{name: "valid zero", input: `0`, want: 0, wantValid: true, wantIsRare: true},
+		{name: "quoted value", input: `"9.99"`, want: 9.99, wantValid: true, wantIsRare: true},
+		{name: "threshold", input: `10`, want: 10, wantValid: true},
+		{name: "upper bound", input: `100`, want: 100, wantValid: true},
+		{name: "missing"},
+		{name: "null", input: `null`},
+		{name: "invalid", input: `"invalid"`},
+		{name: "below range", input: `-0.1`},
+		{name: "above range", input: `100.1`},
+		{name: "non-finite", input: `"Inf"`},
 	}
-	svc.clientOnce.Do(func() {})
 
-	first, err := svc.GetGlobalAchievementPercentages("12345")
-	require.NoError(t, err)
-	require.Len(t, first, 3)
-	assert.True(t, first[0].IsRare)
-	assert.False(t, first[1].IsRare)
-	assert.False(t, first[2].IsRare)
-	assert.Equal(t, 1, requests)
-
-	now = now.Add(30 * time.Minute)
-	_, err = svc.GetGlobalAchievementPercentages("12345")
-	require.NoError(t, err)
-	assert.Equal(t, 1, requests)
-
-	now = now.Add(31 * time.Minute)
-	_, err = svc.GetGlobalAchievementPercentages("12345")
-	require.NoError(t, err)
-	assert.Equal(t, 2, requests)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var raw json.RawMessage
+			if tt.input != "" {
+				raw = json.RawMessage(tt.input)
+			}
+			percentage := parseSourcePercentage(raw)
+			if !tt.wantValid {
+				assert.Nil(t, percentage)
+				assert.False(t, isRarePercentage(percentage))
+				return
+			}
+			require.NotNil(t, percentage)
+			assert.Equal(t, tt.want, *percentage)
+			assert.Equal(t, tt.wantIsRare, isRarePercentage(percentage))
+		})
+	}
 }
 
-func TestGetGlobalAchievementPercentages_DoesNotCacheFailures(t *testing.T) {
-	requests := 0
-	svc := &Service{
-		client: &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
-			requests++
-			if requests == 1 {
-				return &http.Response{
-					StatusCode: http.StatusServiceUnavailable,
-					Body:       io.NopCloser(strings.NewReader("unavailable")),
-					Header:     make(http.Header),
-				}, nil
-			}
-			return &http.Response{
-				StatusCode: http.StatusOK,
-				Body:       io.NopCloser(strings.NewReader(`{"achievementpercentages":{"achievements":[]}}`)),
-				Header:     make(http.Header),
-			}, nil
-		})},
-	}
+func TestFetchAchievementsFromOfficialAPI_SavesGlobalPercentages(t *testing.T) {
+	svc := &Service{}
+	svc.client = &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Body: io.NopCloser(strings.NewReader(`{"response":{"achievements":[
+				{"internal_name":"ACH_RARE","localized_name":"Rare","player_percent_unlocked":"9.99"},
+				{"internal_name":"ACH_COMMON","localized_name":"Common","player_percent_unlocked":10},
+				{"internal_name":"ACH_MISSING","localized_name":"Missing"},
+				{"internal_name":"ACH_INVALID","localized_name":"Invalid","player_percent_unlocked":"invalid"}
+			]}}`)),
+			Header: make(http.Header),
+		}, nil
+	})}
 	svc.clientOnce.Do(func() {})
 
-	_, err := svc.GetGlobalAchievementPercentages("12345")
-	assert.Error(t, err)
-	_, err = svc.GetGlobalAchievementPercentages("12345")
+	achievements, err := svc.fetchAchievementsFromOfficialAPI("12345", "english")
 	require.NoError(t, err)
-	assert.Equal(t, 2, requests)
+	require.Len(t, achievements, 4)
+	require.NotNil(t, achievements[0].GlobalPercentage)
+	assert.Equal(t, 9.99, *achievements[0].GlobalPercentage)
+	assert.True(t, achievements[0].IsRare)
+	require.NotNil(t, achievements[1].GlobalPercentage)
+	assert.Equal(t, 10.0, *achievements[1].GlobalPercentage)
+	assert.False(t, achievements[1].IsRare)
+	assert.Nil(t, achievements[2].GlobalPercentage)
+	assert.False(t, achievements[2].IsRare)
+	assert.Nil(t, achievements[3].GlobalPercentage)
+	assert.False(t, achievements[3].IsRare)
+}
+
+func TestGetGlobalAchievementPercentagesReadsSavedCache(t *testing.T) {
+	originalCacheDir := backend.GameCacheDir
+	backend.GameCacheDir = t.TempDir()
+	t.Cleanup(func() { backend.GameCacheDir = originalCacheDir })
+
+	zero := 0.0
+	rare := 9.99
+	normal := 10.0
+	svc := &Service{Config: &config.File{Language: types.Language{API: "english"}}}
+	game := &GameBasics{
+		AppID: "12345",
+		Achievement: struct {
+			Total int
+			List  []achievement
+		}{
+			List: []achievement{
+				{Name: "ZERO", GlobalPercentage: &zero, IsRare: true},
+				{Name: "RARE", GlobalPercentage: &rare, IsRare: true},
+				{Name: "NORMAL", GlobalPercentage: &normal},
+				{Name: "MISSING"},
+			},
+		},
+	}
+	require.NoError(t, svc.cacheGameData(game.AppID, "english", game))
+
+	percentages, err := svc.GetGlobalAchievementPercentages(game.AppID)
+	require.NoError(t, err)
+	require.Len(t, percentages, 3)
+	assert.Equal(t, GlobalAchievementPercentage{Name: "ZERO", Percent: "0", IsRare: true}, percentages[0])
+	assert.Equal(t, GlobalAchievementPercentage{Name: "RARE", Percent: "9.99", IsRare: true}, percentages[1])
+	assert.Equal(t, GlobalAchievementPercentage{Name: "NORMAL", Percent: "10", IsRare: false}, percentages[2])
+
+	legacyPath := svc.getGameCachePath("67890", "english")
+	require.NoError(t, os.MkdirAll(filepath.Dir(legacyPath), 0755))
+	require.NoError(t, os.WriteFile(legacyPath, []byte(`{"AppID":"67890","Achievement":{"List":[{"Name":"LEGACY"}]}}`), 0644))
+	legacy, err := svc.GetGlobalAchievementPercentages("67890")
+	require.NoError(t, err)
+	assert.Empty(t, legacy)
 }
 
 func TestFetchAchievementsFromOfficialAPI_CachesFilenameIconsAsLocalMediaPaths(t *testing.T) {
@@ -392,6 +431,7 @@ func TestFetchAchievementsFromOfficialAPI_CachesFilenameIconsAsLocalMediaPaths(t
 								"localized_desc": "Do the thing",
 								"icon": "icon.png",
 								"icon_gray": "icon_gray.png",
+								"player_percent_unlocked": "9.99",
 								"hidden": false
 							}
 						]
@@ -460,6 +500,7 @@ func TestFetchAchievementsFromOfficialAPI_IconDownloadFailureDoesNotReturnRemote
 								"localized_desc": "Do the thing",
 								"icon": "icon.png",
 								"icon_gray": "icon_gray.png",
+								"player_percent_unlocked": "9.99",
 								"hidden": false
 							}
 						]
@@ -622,6 +663,7 @@ func TestRefetchGameData_BypassesExistingCacheAndOverwritesOnSuccess(t *testing.
 								"localized_desc": "Do the thing",
 								"icon": "icon.png",
 								"icon_gray": "icon_gray.png",
+								"player_percent_unlocked": "9.99",
 								"hidden": false
 							}
 						]
@@ -647,11 +689,17 @@ func TestRefetchGameData_BypassesExistingCacheAndOverwritesOnSuccess(t *testing.
 	assert.Equal(t, "/api/media/icon/12345/portraitImage.jpg", game.PortraitImage)
 	assert.Equal(t, "/api/media/icon/12345/icon.png", game.Achievement.List[0].Icon)
 	assert.Equal(t, "/api/media/icon/12345/icon_gray.png", game.Achievement.List[0].IconGray)
+	require.NotNil(t, game.Achievement.List[0].GlobalPercentage)
+	assert.Equal(t, 9.99, *game.Achievement.List[0].GlobalPercentage)
+	assert.True(t, game.Achievement.List[0].IsRare)
 
 	cached, err := svc.loadCachedGameData(appID, "english")
 	assert.NoError(t, err)
 	assert.Equal(t, "Fresh Game", cached.Name)
 	assert.Equal(t, 1, cached.Achievement.Total)
+	require.NotNil(t, cached.Achievement.List[0].GlobalPercentage)
+	assert.Equal(t, 9.99, *cached.Achievement.List[0].GlobalPercentage)
+	assert.True(t, cached.Achievement.List[0].IsRare)
 }
 
 func TestRefetchGameData_GameImageDownloadFailureDoesNotCacheRemoteURLs(t *testing.T) {
@@ -986,7 +1034,9 @@ func TestRefetchGameData_UsesConfiguredExternalSourceAndLanguage(t *testing.T) {
 					{
 						"apiName": "EXT_ACH",
 						"name": "External Achievement",
-						"description": "External description"
+						"description": "External description",
+						"steamPercentage": 8.5,
+						"localPercentage": 75
 					}
 				]`)),
 				Header: make(http.Header),
@@ -1017,6 +1067,9 @@ func TestRefetchGameData_UsesConfiguredExternalSourceAndLanguage(t *testing.T) {
 	assert.Equal(t, "Juego Nuevo", game.Name)
 	assert.Equal(t, 1, game.Achievement.Total)
 	assert.Equal(t, "EXT_ACH", game.Achievement.List[0].Name)
+	require.NotNil(t, game.Achievement.List[0].GlobalPercentage)
+	assert.Equal(t, 8.5, *game.Achievement.List[0].GlobalPercentage)
+	assert.True(t, game.Achievement.List[0].IsRare)
 	assert.Equal(t, "/api/media/icon/12345/external_icon.jpg", game.Achievement.List[0].Icon)
 	_, err = os.Stat(svc.getGameCachePath(appID, "spanish"))
 	assert.NoError(t, err)

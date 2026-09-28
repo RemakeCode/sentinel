@@ -1,4 +1,4 @@
-import type { GameBasics } from '@/shared/types/GameBasics';
+import type { GameBasics } from '@/shared/types/_generated/sentinel/backend/steam/models';
 
 function normalize(s: string): string {
   return s.toLowerCase().trim();
