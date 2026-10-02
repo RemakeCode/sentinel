@@ -17,6 +17,7 @@ import { SSEController } from '@/shared/utils/sse-controller';
 import { sentinelLogger } from '@/shared/utils/logger';
 import { rareAchievementGlowStyles } from '@/shared/rare-achievement-glow';
 import { dispatchGBESetupUpdate } from '@/shared/utils/gbe-setup-events';
+import { dispatchLibraryUpdate } from '@/shared/utils/library-update-events';
 import type { Update } from '@/shared/types/_generated/sentinel/backend/generator/models';
 
 let sseController: SSEController | null = null;
@@ -114,6 +115,10 @@ async function handleNotificationMessage(ev: MessageEvent<string>) {
     envelope = JSON.parse(ev.data);
   } catch {
     sentinelLogger.warn('Ignoring malformed Sentinel SSE message');
+    return;
+  }
+  if (envelope.messageType === 'dataUpdated') {
+    dispatchLibraryUpdate();
     return;
   }
   if (envelope.messageType === 'gbeSetup') {

@@ -348,7 +348,7 @@ func TestTriggerMetadataFetch_CallsSteam(t *testing.T) {
 		Steam:  steamMock,
 	}
 
-	service.triggerMetadataFetch([]string{"111", "222"})
+	service.triggerMetadataFetch([]string{"111", "222"}, false)
 
 	// Wait for async goroutine to complete via channel
 	<-steamMock.done
@@ -364,7 +364,7 @@ func TestTriggerMetadataFetch_Empty_DoesNotCallSteam(t *testing.T) {
 		Steam:  steamMock,
 	}
 
-	service.triggerMetadataFetch([]string{})
+	service.triggerMetadataFetch([]string{}, false)
 
 	assert.Empty(t, steamMock.calledWithAppIDs)
 }
