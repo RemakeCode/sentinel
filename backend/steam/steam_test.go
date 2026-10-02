@@ -413,8 +413,8 @@ func TestFetchAchievementsFromOfficialAPI_CachesFilenameIconsAsLocalMediaPaths(t
 	svc := &Service{Config: mc}
 	appID := "12345"
 	apiURL := "https://api.steampowered.com/IPlayerService/GetGameAchievements/v1/?appid=12345&language=english"
-	iconURL := "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/12345/icon.png"
-	grayURL := "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/12345/icon_gray.png"
+	iconURL := "https://shared.fastly.steamstatic.com/community_assets/images/apps/12345/icon.png"
+	grayURL := "https://shared.fastly.steamstatic.com/community_assets/images/apps/12345/icon_gray.png"
 
 	originalTransport := http.DefaultTransport
 	http.DefaultTransport = roundTripFunc(func(req *http.Request) (*http.Response, error) {
@@ -482,8 +482,8 @@ func TestFetchAchievementsFromOfficialAPI_IconDownloadFailureDoesNotReturnRemote
 	svc := &Service{Config: mc}
 	appID := "12345"
 	apiURL := "https://api.steampowered.com/IPlayerService/GetGameAchievements/v1/?appid=12345&language=english"
-	iconURL := "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/12345/icon.png"
-	grayURL := "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/12345/icon_gray.png"
+	iconURL := "https://shared.fastly.steamstatic.com/community_assets/images/apps/12345/icon.png"
+	grayURL := "https://shared.fastly.steamstatic.com/community_assets/images/apps/12345/icon_gray.png"
 
 	originalTransport := http.DefaultTransport
 	http.DefaultTransport = roundTripFunc(func(req *http.Request) (*http.Response, error) {
@@ -622,8 +622,8 @@ func TestRefetchGameData_BypassesExistingCacheAndOverwritesOnSuccess(t *testing.
 	headerURL := "https://cdn.example.com/header.jpg"
 	portraitURL := "https://cdn.akamai.steamstatic.com/steam/apps/12345/library_600x900.jpg"
 	apiURL := "https://api.steampowered.com/IPlayerService/GetGameAchievements/v1/?appid=12345&language=english"
-	iconURL := "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/12345/icon.png"
-	grayURL := "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/12345/icon_gray.png"
+	iconURL := "https://shared.fastly.steamstatic.com/community_assets/images/apps/12345/icon.png"
+	grayURL := "https://shared.fastly.steamstatic.com/community_assets/images/apps/12345/icon_gray.png"
 	storeHit := false
 
 	originalTransport := http.DefaultTransport
@@ -727,8 +727,8 @@ func TestRefetchGameData_GameImageDownloadFailureDoesNotCacheRemoteURLs(t *testi
 	portraitURL := "https://cdn.akamai.steamstatic.com/steam/apps/12345/library_600x900.jpg"
 	fallbackAPIURL := "https://steam-asset-proxy.steampoacher.workers.dev/?appid=12345"
 	apiURL := "https://api.steampowered.com/IPlayerService/GetGameAchievements/v1/?appid=12345&language=english"
-	iconURL := "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/12345/icon.png"
-	grayURL := "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/12345/icon_gray.png"
+	iconURL := "https://shared.fastly.steamstatic.com/community_assets/images/apps/12345/icon.png"
+	grayURL := "https://shared.fastly.steamstatic.com/community_assets/images/apps/12345/icon_gray.png"
 
 	originalTransport := http.DefaultTransport
 	http.DefaultTransport = roundTripFunc(func(req *http.Request) (*http.Response, error) {
@@ -841,8 +841,8 @@ func TestRefetchGameData_ReturnsCachedAchievementProgress(t *testing.T) {
 	headerURL := "https://cdn.example.com/header.jpg"
 	portraitURL := "https://cdn.akamai.steamstatic.com/steam/apps/12345/library_600x900.jpg"
 	apiURL := "https://api.steampowered.com/IPlayerService/GetGameAchievements/v1/?appid=12345&language=english"
-	iconURL := "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/12345/icon.png"
-	grayURL := "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/12345/icon_gray.png"
+	iconURL := "https://shared.fastly.steamstatic.com/community_assets/images/apps/12345/icon.png"
+	grayURL := "https://shared.fastly.steamstatic.com/community_assets/images/apps/12345/icon_gray.png"
 
 	originalTransport := http.DefaultTransport
 	http.DefaultTransport = roundTripFunc(func(req *http.Request) (*http.Response, error) {

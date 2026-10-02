@@ -526,7 +526,7 @@ func (s *Service) resolveKeyAchievementIconURL(appID string, icon string) string
 	if strings.HasPrefix(icon, "http://") || strings.HasPrefix(icon, "https://") {
 		return icon
 	}
-	steamCDN := fmt.Sprintf("https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/%s/", appID)
+	steamCDN := fmt.Sprintf("https://shared.fastly.steamstatic.com/community_assets/images/apps/%s/", appID)
 	return steamCDN + strings.TrimLeft(icon, "/")
 }
 
