@@ -8,6 +8,7 @@ import { computeProgress } from '@/shared/utils/utils';
 import type { GameBasics } from '@/shared/types/_generated/sentinel/backend/steam/models';
 import { decorateGames, type AppConfig, type DeckyGameBasics } from '@/shared/utils/steamgrid';
 import { styles } from '@/shared/styles';
+import { subscribeLibraryUpdates } from '@/shared/utils/library-update-events';
 
 //language=css
 const libraryStyles = `
@@ -156,6 +157,12 @@ const LibraryPage: FC = () => {
         clearInterval(intervalId);
       }
     };
+  }, [loadGames]);
+
+  useEffect(() => {
+    return subscribeLibraryUpdates(() => {
+      void loadGames(false);
+    });
   }, [loadGames]);
 
   const handleRefreshGame = async (appId: string) => {

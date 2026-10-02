@@ -35,6 +35,10 @@ type Notifier interface {
 	SendNotification(appId string, achievements map[string]ach.Achievement, isProgress bool, shouldNotify bool) error
 }
 
+type EventPublisher interface {
+	SendEvent(messageType string, payload any)
+}
+
 type Service struct {
 	watcher         *fsnotify.Watcher
 	done            chan struct{}
@@ -44,6 +48,7 @@ type Service struct {
 	Ach             AchService
 	Config          *config.File
 	Notifier        Notifier // Injected dependency for notifications
+	Events          EventPublisher
 	prefixPaths     []string // Top-level prefix paths from config to watch for new games
 	appIDPaths      []string // All appId paths being watched
 	sourceByAppPath map[string]config.EmulatorSource
@@ -162,7 +167,7 @@ func (s *Service) Start() error {
 
 	// Fetch metadata for all discovered appIds
 	if len(scanResult.AppIDs) > 0 {
-		s.triggerMetadataFetch(scanResult.AppIDs)
+		s.triggerMetadataFetch(scanResult.AppIDs, false)
 	}
 	//Watch the exact folder with achievements
 	slog.Info("Starting watcher", "paths", scanResult.AppIDPaths)
@@ -316,7 +321,7 @@ func (s *Service) scanAndWatchPrefix(prefix string) {
 			}
 		}
 
-		s.triggerMetadataFetch([]string{appID})
+		s.triggerMetadataFetch([]string{appID}, true)
 	}
 }
 
@@ -481,7 +486,7 @@ func (s *Service) handleAchievementsWriteEvent(path, appId string) {
 }
 
 // triggerMetadataFetch fetches Steam metadata for the given appIds in a background goroutine
-func (s *Service) triggerMetadataFetch(appIDs []string) {
+func (s *Service) triggerMetadataFetch(appIDs []string, emitDataUpdated bool) {
 	if len(appIDs) == 0 {
 		return
 	}
@@ -490,7 +495,10 @@ func (s *Service) triggerMetadataFetch(appIDs []string) {
 	go func() {
 		slog.Info("Fetching metadata", "appIDs", appIDs)
 
-		_, err := s.Steam.FetchAppDetailsBulk(appIDs, s.Config.Language)
+		games, err := s.Steam.FetchAppDetailsBulk(appIDs, s.Config.Language)
+		if emitDataUpdated && len(games) > 0 {
+			s.emitDataUpdated()
+		}
 
 		if err != nil {
 			slog.Error("Failed to fetch metadata", "error", err)
