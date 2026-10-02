@@ -700,7 +700,7 @@ func (s *Service) fetchAchievementsFromThirdParty(appID string, language string)
 		}
 
 		if name != "" {
-			communityMap[name] = communityData{
+			communityMap[strings.ToLower(name)] = communityData{
 				Icon:   icon,
 				Hidden: hidden,
 			}
@@ -721,13 +721,13 @@ func (s *Service) mergeAchievements(shItems []steamHuntersAchievement, community
 	for _, item := range shItems {
 		a := achievement{
 			Name:        item.ApiName,
-			DisplayName: item.Name,
+			DisplayName: strings.TrimSpace(item.Name),
 			Description: item.Description,
 		}
 		a.GlobalPercentage = parseSourcePercentage(item.SteamPercentage)
 		a.IsRare = isRarePercentage(a.GlobalPercentage)
 
-		if data, ok := communityMap[item.Name]; ok {
+		if data, ok := communityMap[strings.ToLower(a.DisplayName)]; ok {
 			a.Hidden = data.Hidden
 		}
 
@@ -739,7 +739,7 @@ func (s *Service) mergeAchievements(shItems []steamHuntersAchievement, community
 
 func (s *Service) applyCommunityIcons(achievements []achievement, communityMap map[string]communityData) {
 	for i, item := range achievements {
-		if data, ok := communityMap[item.DisplayName]; ok {
+		if data, ok := communityMap[strings.ToLower(item.DisplayName)]; ok {
 			item.Icon = data.Icon
 			achievements[i] = item
 		}
