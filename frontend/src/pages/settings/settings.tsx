@@ -13,6 +13,7 @@ import {
   SetAchievementProgressUpdateMode,
   SetLanguage,
   SetNotificationSound,
+  SetDesktopNotificationRenderer,
   SetSteamDataSource,
   ToggleEmulatorNotification
 } from '@wa/sentinel/backend/config/file';
@@ -20,11 +21,19 @@ import { SetEnabled as SetAutostartEnabled } from '@wa/sentinel/backend/autostar
 import {
   GetNotificationExpireTime,
   PlaySound,
+  SetupCustomNotifications,
   TestNotification,
   TestNotificationProgress
 } from '@wa/sentinel/backend/notifier/service';
 
-import { AchievementProgressUpdateMode, Emulator, File, Prefix, SteamSource } from '@wa/sentinel/backend/config/models';
+import {
+  AchievementProgressUpdateMode,
+  DesktopNotificationRenderer,
+  Emulator,
+  File,
+  Prefix,
+  SteamSource
+} from '@wa/sentinel/backend/config/models';
 
 import EmptyState from '@/shared/components/empty-state';
 import { settingsContentVariants, settingsSectionVariants } from './settings-motion';
@@ -63,6 +72,11 @@ const Settings: FC = () => {
   const [languages, setLanguages] = useState<{ api: string; displayName: string }[]>([]);
   const [availableSounds, setAvailableSounds] = useState<{ name: string; value: string }[]>([]);
   const [selectedSound, setSelectedSound] = useState<string>('');
+  const [notificationRenderer, setNotificationRenderer] = useState<DesktopNotificationRenderer>(
+    DesktopNotificationRenderer.DesktopNotificationRendererNative
+  );
+  const [savingRenderer, setSavingRenderer] = useState(false);
+  const [notificationSetupMessage, setNotificationSetupMessage] = useState('');
   const [selectedAchievementProgressUpdateMode, setSelectedAchievementProgressUpdateMode] =
     useState<AchievementProgressUpdateMode>(AchievementProgressUpdateMode.AchievementProgressUpdateModeDefault);
   const [testNotificationDisabled, setTestNotificationDisabled] = useState(false);
@@ -72,6 +86,23 @@ const Settings: FC = () => {
   useEffect(() => {
     Promise.all([loadConfig(), loadLanguages(), loadAvailableSounds()]);
   }, []);
+
+  useEffect(() => {
+    if (notificationRenderer !== DesktopNotificationRenderer.DesktopNotificationRendererCustom) {
+      setNotificationSetupMessage('');
+      return;
+    }
+
+    let active = true;
+    SetupCustomNotifications()
+      .then(message => {
+        if (active) setNotificationSetupMessage(message);
+      })
+      .catch(error => {
+        if (active) setNotificationSetupMessage(String(error));
+      });
+    return () => { active = false; };
+  }, [notificationRenderer]);
 
   const handleSteamDataSourceChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value as SteamSource;
@@ -92,6 +123,9 @@ const Settings: FC = () => {
       setStmSrc(cfg?.steamDataSource);
       setSelectedLanguage(cfg?.language?.api || 'english');
       setSelectedSound(cfg?.notificationSound || '');
+      setNotificationRenderer(
+        cfg?.desktop?.notificationRenderer || DesktopNotificationRenderer.DesktopNotificationRendererNative
+      );
       setSelectedAchievementProgressUpdateMode(
         cfg?.achievementProgressUpdateMode || AchievementProgressUpdateMode.AchievementProgressUpdateModeDefault
       );
@@ -138,6 +172,20 @@ const Settings: FC = () => {
       window.ot?.toast('Language updated', 'Success', { variant: 'success' });
     } catch (err) {
       window.ot?.toast('Failed to update language', 'Error', { variant: 'danger' });
+    }
+  };
+
+  const handleRendererChange = async (e: ChangeEvent<HTMLSelectElement>) => {
+    const renderer = e.target.value as DesktopNotificationRenderer;
+    setSavingRenderer(true);
+    try {
+      await SetDesktopNotificationRenderer(renderer);
+      setNotificationRenderer(renderer);
+      window.ot?.toast('Notification appearance updated', 'Success', { variant: 'success' });
+    } catch (err) {
+      window.ot?.toast('Failed to save notification appearance', 'Error', { variant: 'danger' });
+    } finally {
+      setSavingRenderer(false);
     }
   };
 
@@ -362,6 +410,26 @@ const Settings: FC = () => {
         </h4>
         <hr className='divider' />
         <div className='settings-table-form'>
+          <fieldset className='hstack'>
+            <legend>Appearance</legend>
+            <label>
+              <select
+                aria-label='Notification appearance'
+                className='settings-select'
+                value={notificationRenderer}
+                onChange={handleRendererChange}
+                disabled={savingRenderer}
+              >
+                <option value={DesktopNotificationRenderer.DesktopNotificationRendererNative}>Native (default)</option>
+                <option value={DesktopNotificationRenderer.DesktopNotificationRendererCustom}>Custom</option>
+              </select>
+            </label>
+          </fieldset>
+          <p>
+            Custom notifications use the Sentinel extension on GNOME and the Qt popup on supported Wayland desktops.
+            Both options use your selected sound. SteamOS Gaming Mode uses Decky notifications.
+          </p>
+          {notificationSetupMessage && <p role='status'>{notificationSetupMessage}</p>}
           <fieldset className='hstack'>
             <legend>Sound Selection</legend>
             <label>

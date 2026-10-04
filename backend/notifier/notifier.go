@@ -107,12 +107,17 @@ func (s *Service) Start(ctx context.Context) error {
 	}
 
 	s.notificationQueue = make(chan *NotificationPayload, queueCap)
-	s.ctx, s.cancel = context.WithCancel(context.Background())
+	s.ctx, s.cancel = context.WithCancel(ctx)
 	s.clients = make(map[string]chan string)
 
 	if s.deliveryMode == DeliveryDesktop {
 		if _, err := s.getDesktopConnection(); err != nil {
 			slog.Warn("Failed to connect to session bus", "error", err)
+		}
+		if guidance, err := s.SetupCustomNotifications(); err != nil {
+			slog.Warn("Custom notification setup failed", "error", err)
+		} else if guidance != "" {
+			slog.Info(guidance)
 		}
 	}
 
@@ -168,6 +173,8 @@ func (s *Service) notificationWorker() {
 			slog.Info("Worker received payload", "title", payload.Title, "game", payload.GameName, "isProgress", payload.IsProgress)
 			if s.deliveryMode == DeliveryDecky {
 				s.sendNotificationSSE(payload)
+			} else if s.Config.GetDesktopNotificationRenderer() == config.DesktopNotificationRendererCustom {
+				s.sendNotificationCustom(payload)
 			} else {
 				s.sendNotificationDesktop(payload)
 			}
@@ -177,6 +184,15 @@ func (s *Service) notificationWorker() {
 }
 
 func (s *Service) sendNotificationDesktop(payload *NotificationPayload) {
+	// Format native progress here so the queue retains the original text for custom cards.
+	native := *payload
+	if native.IsProgress && native.MaxProgress > 0 {
+		native.Title = native.Message
+		native.Message = progressBar(native.Progress, native.MaxProgress, 20)
+	}
+
+	payload = &native
+
 	conn, err := s.getDesktopConnection()
 	if err != nil {
 		if !errors.Is(err, context.Canceled) {
@@ -292,11 +308,6 @@ func (s *Service) SendNotification(appId string, achievements map[string]ach.Ach
 				title = achievement.DisplayName
 				message := achievement.Description
 
-				if isProgress && a.MaxProgress > 0 && s.deliveryMode == DeliveryDesktop {
-					title = achievement.Description
-					message = progressBar(a.Progress, a.MaxProgress, 22)
-				}
-
 				var soundFile string
 				if shouldNotify && s.Config.NotificationSound != "" && !(isProgress && progressUpdateMode == config.AchievementProgressUpdateModeSilent) {
 					soundFile = s.Config.NotificationSound
@@ -362,7 +373,7 @@ func (s *Service) TestNotificationProgress() error {
 
 	payload := &NotificationPayload{
 		Title:       "For those who come after",
-		Message:     progressBar(7, 10, 22),
+		Message:     "For those who come after",
 		IconPath:    filepath.Join(backend.MediaDir, "sentinel.png"),
 		SoundFile:   s.Config.NotificationSound,
 		GameName:    "Sentinel",
@@ -381,24 +392,22 @@ func (s *Service) TestNotificationProgress() error {
 	return nil
 }
 
-func progressBar(progress, max, width int) string {
-	if max == 0 {
+func progressBar(progress, maximum, width int) string {
+	if maximum <= 0 || width <= 0 {
 		return ""
 	}
 
-	filled := int(float64(progress) / float64(max) * float64(width))
-	if filled > width {
-		filled = width
-	}
+	filled := int(float64(progress) / float64(maximum) * float64(width))
+	filled = min(width, max(0, filled))
 	empty := width - filled
 
 	bar := "█"
 	emptyBar := "░"
 
 	barStr := strings.Repeat(bar, filled) + strings.Repeat(emptyBar, empty)
-	percent := float64(progress) / float64(max) * 100.0
+	percent := float64(progress) / float64(maximum) * 100.0
 
-	return fmt.Sprintf("%s %d/%d (%.1f%%)", barStr, progress, max, percent)
+	return fmt.Sprintf("%s %d/%d (%.1f%%)", barStr, progress, maximum, percent)
 }
 
 func (s *Service) getAchDataForNotification(appId string) (*steam.GameBasics, string, error) {

@@ -103,14 +103,14 @@ func TestSendNotification_ProgressUpdateModes(t *testing.T) {
 			mode:        config.AchievementProgressUpdateModeDefault,
 			wantQueued:  true,
 			wantSound:   "steam-deck.wav",
-			wantMessage: "4/10",
+			wantMessage: "Progress Description",
 		},
 		{
 			name:        "silent queues progress without sound",
 			mode:        config.AchievementProgressUpdateModeSilent,
 			wantQueued:  true,
 			wantSound:   "",
-			wantMessage: "4/10",
+			wantMessage: "Progress Description",
 		},
 		{
 			name:       "disabled drops progress",

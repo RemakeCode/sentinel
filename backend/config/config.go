@@ -86,6 +86,7 @@ type ManagedGBESetup struct {
 
 //wails:internal
 type File struct {
+	Desktop                       DesktopConfig                 `json:"desktop"`
 	Language                      types.Language                `json:"language"`
 	Emulators                     []Emulator                    `json:"emulators"`
 	Prefixes                      []Prefix                      `json:"prefixes"`
@@ -100,6 +101,17 @@ type File struct {
 	// ManagedGBESetups is persisted separately so public config responses and
 	// Wails settings bindings never expose installation paths.
 	ManagedGBESetups []ManagedGBESetup `json:"-"`
+}
+
+type DesktopNotificationRenderer string
+
+const (
+	DesktopNotificationRendererNative DesktopNotificationRenderer = "native"
+	DesktopNotificationRendererCustom DesktopNotificationRenderer = "custom"
+)
+
+type DesktopConfig struct {
+	NotificationRenderer DesktopNotificationRenderer `json:"notificationRenderer"`
 }
 
 var defaultEmulatorSources = []EmulatorSource{
@@ -256,6 +268,7 @@ func (c *File) LoadConfig() (*File, error) {
 		return nil, err
 	}
 
+	c.Desktop = DesktopConfig{}
 	if err := json.Unmarshal(data, c); err != nil {
 		return nil, errors.New("unable to unmarshal config")
 	}
@@ -281,6 +294,10 @@ func (c *File) LoadConfig() (*File, error) {
 }
 
 func (c *File) SaveConfig() error {
+	if !c.Desktop.NotificationRenderer.valid() {
+		c.Desktop.NotificationRenderer = DesktopNotificationRendererNative
+	}
+
 	c.applyProgressModeDefaults()
 
 	data, err := json.MarshalIndent(c, "", "  ")
@@ -394,6 +411,10 @@ func (c *File) applyProgressModeDefaults() {
 
 func (c *File) applyDefaults() bool {
 	changed := false
+	if !c.Desktop.NotificationRenderer.valid() {
+		c.Desktop.NotificationRenderer = DesktopNotificationRendererNative
+		changed = true
+	}
 	if c.AchievementProgressUpdateMode == "" {
 		c.AchievementProgressUpdateMode = AchievementProgressUpdateModeDefault
 		changed = true
@@ -811,4 +832,31 @@ func (c *File) GetStartOnLogin() bool {
 func (c *File) SetStartOnLogin(enabled bool) error {
 	c.StartOnLogin = enabled
 	return c.SaveConfig()
+}
+
+// GetDesktopNotificationRenderer returns the current desktop choice for queued delivery.
+//
+//wails:internal
+func (c *File) GetDesktopNotificationRenderer() DesktopNotificationRenderer {
+	if !c.Desktop.NotificationRenderer.valid() {
+		return DesktopNotificationRendererNative
+	}
+	return c.Desktop.NotificationRenderer
+}
+
+func (c *File) SetDesktopNotificationRenderer(renderer DesktopNotificationRenderer) error {
+	if !renderer.valid() {
+		return fmt.Errorf("invalid notification renderer: %s", renderer)
+	}
+	previous := c.Desktop.NotificationRenderer
+	c.Desktop.NotificationRenderer = renderer
+	if err := c.SaveConfig(); err != nil {
+		c.Desktop.NotificationRenderer = previous
+		return err
+	}
+	return nil
+}
+
+func (r DesktopNotificationRenderer) valid() bool {
+	return r == DesktopNotificationRendererNative || r == DesktopNotificationRendererCustom
 }

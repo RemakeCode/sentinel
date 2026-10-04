@@ -69,7 +69,8 @@ var LogFilePath = filepath.Join(LogDir, "sentinel.log")
 var WalkerInterval = 5 * time.Second
 
 // Notification timing
-var NotificationExpireTime = 7 * time.Second
+// var NotificationExpireTime = 7 * time.Second
+var NotificationExpireTime = 7 * time.Hour
 var NotificationDelay = NotificationExpireTime + 1*time.Second
 var ProgressNotificationExpireTime = time.Duration(float64(NotificationExpireTime) * 0.7)
 var ProgressNotificationDelay = time.Duration(float64(NotificationDelay) * 0.7)
