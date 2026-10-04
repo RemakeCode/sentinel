@@ -33,6 +33,10 @@ dev_mode:
       - "*.go"
       - "*.js" # Watch for changes to JS/TS files included using the //wails:include directive.
       - "*.ts" # The frontend directory will be excluded entirely by the setting above.
+      - "*.cpp"
+      - "*.css"
+      - "*.json"
+      - "*CMakeLists.txt"
     git_ignore: true
   executes:
     - cmd: wails3 build DEV=true

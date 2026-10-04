@@ -32,14 +32,18 @@ tasks:
     internal: true
     deps:
       - task: common:go:mod:tidy
+      - task: common:generate:icons
+    cmds:
+      - task: common:build:custom-notification
+        vars:
+          ARCH: '{{.ARCH | default ARCH}}'
+      - task: common:build:gnome-extension
       - task: common:build:frontend
         vars:
           BUILD_FLAGS:
             ref: .BUILD_FLAGS
           DEV:
             ref: .DEV
-      - task: common:generate:icons
-    cmds:
       - go build {{.BUILD_FLAGS}} -o {{.OUTPUT}}
     vars:
       BUILD_FLAGS: '{{if eq .DEV "true"}}{{if .EXTRA_TAGS}}-tags {{.EXTRA_TAGS}} {{end}}-buildvcs=false -gcflags=all="-l"{{else}}-tags production{{if .EXTRA_TAGS}},{{.EXTRA_TAGS}}{{end}} -trimpath -buildvcs=false -ldflags="-w -s -X {{.MODULE}}/backend.Version={{.APP_VERSION}}"{{end}}'

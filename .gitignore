@@ -26,3 +26,10 @@ node_modules
 AGENTS.md
 /decky-plugin/out/
 /decky-plugin/src/shared/types/_generated/
+
+# Qt custom notification CMake builds and clangd cache
+/custom-notification/build/
+/custom-notification/build-*/
+/custom-notification/cmake-build-*/
+/custom-notification/.cache/
+/backend/notifier/out/
