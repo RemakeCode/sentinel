@@ -1,0 +1,32 @@
+name: Set up CI toolchain
+description: Install the shared Go, Node, and Task versions.
+inputs:
+  node:
+    description: Whether to install Node and configure npm caching.
+    default: 'true'
+  cache-dependency-path:
+    description: Lockfiles used for the npm cache key.
+    default: |
+      frontend/package-lock.json
+      decky-plugin/package-lock.json
+      gnome-extension/package-lock.json
+runs:
+  using: composite
+  steps:
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.26'
+
+    - name: Set up Node
+      if: inputs.node == 'true'
+      uses: actions/setup-node@v4
+      with:
+        node-version: '24'
+        cache: npm
+        cache-dependency-path: ${{ inputs.cache-dependency-path }}
+
+    - name: Install Task
+      uses: go-task/setup-task@v1
+      with:
+        version: 3.x

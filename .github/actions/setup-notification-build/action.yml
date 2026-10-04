@@ -1,0 +1,39 @@
+name: Set up notification builds
+description: Install the Qt 6 toolchain and build a compatible LayerShellQt on Ubuntu.
+runs:
+  using: composite
+  steps:
+    # Ubuntu 24.04's LayerShellQt package targets Qt 5, not Qt 6.
+    - name: Install native build dependencies
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake ninja-build libgl1-mesa-dev libegl1-mesa-dev libwayland-dev wayland-protocols libxkbcommon-dev
+
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v4
+      with:
+        # LayerShellQt 6.6 supplies setWantsToBeOnActiveScreen and requires Qt 6.10.
+        version: '6.10.2'
+        cache: true
+
+    - name: Build KDE build modules and LayerShellQt
+      shell: bash
+      run: |
+        set -euo pipefail
+        source_dir="${RUNNER_TEMP}/notification-sources"
+        prefix="${RUNNER_TEMP}/notification-deps"
+        mkdir -p "$source_dir"
+        git clone --depth 1 --branch v6.22.0 https://github.com/KDE/extra-cmake-modules.git "$source_dir/ecm"
+        cmake -S "$source_dir/ecm" -B "$source_dir/ecm-build" -G Ninja \
+          -DCMAKE_INSTALL_PREFIX="$prefix" -DBUILD_TESTING=OFF
+        cmake --build "$source_dir/ecm-build"
+        cmake --install "$source_dir/ecm-build"
+        git clone --depth 1 --branch v6.6.0 https://github.com/KDE/layer-shell-qt.git "$source_dir/layer-shell-qt"
+        cmake -S "$source_dir/layer-shell-qt" -B "$source_dir/layer-shell-build" -G Ninja \
+          -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$prefix" \
+          -DECM_DIR="$prefix/share/ECM/cmake" -DBUILD_TESTING=OFF \
+          -DKDE_INSTALL_QTPLUGINDIR="$prefix/plugins"
+        cmake --build "$source_dir/layer-shell-build" --parallel 2
+        cmake --install "$source_dir/layer-shell-build"
+        echo "CMAKE_PREFIX_PATH=$prefix:${CMAKE_PREFIX_PATH:-}" >> "$GITHUB_ENV"

@@ -1,0 +1,22 @@
+name: Shared integration-test
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  integration-test:
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up toolchain
+        uses: ./.github/actions/setup-toolchain
+        with:
+          node: 'false'
+
+      - name: Check live Steam API contracts
+        run: task test:steam-integration
