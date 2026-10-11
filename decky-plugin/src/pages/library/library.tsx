@@ -81,8 +81,19 @@ const LibraryPage: FC = () => {
   const [games, setGames] = useState<DeckyGameBasics[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncStatus, setSyncStatus] = useState<LibrarySyncStatus>(emptySyncStatus);
+  const [isFailureDismissed, setIsFailureDismissed] = useState(false);
   const [refreshingGameIds, setRefreshingGameIds] = useState<string[]>([]);
   const lastSyncStatusRef = useRef<LibrarySyncStatus>(emptySyncStatus);
+
+  useEffect(() => {
+    if (syncStatus.State !== 'error') {
+      setIsFailureDismissed(false);
+      return undefined;
+    }
+
+    const timeoutId = setTimeout(() => setIsFailureDismissed(true), 10_000);
+    return () => clearTimeout(timeoutId);
+  }, [syncStatus.State]);
 
   const loadGames = useCallback(async (showLoading = false, clearOnError = false) => {
     if (showLoading) {
@@ -228,7 +239,7 @@ const LibraryPage: FC = () => {
   return (
     <div style={styles.wrapper}>
       <style>{libraryStyles}</style>
-      {(isSyncRunning || isSyncError) && (
+      {(isSyncRunning || (isSyncError && !isFailureDismissed)) && (
         <div
           className={`sentinel-library-sync${isSyncError ? ' sentinel-library-sync--error' : ''}`}
           aria-live='polite'
