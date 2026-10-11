@@ -147,12 +147,7 @@ func (s *Service) Start() error {
 
 			result := s.scanSources(sources)
 
-			isCompatdata := filepath.Base(prefix) == "compatdata"
-
 			for i, appID := range result.AppIDs {
-				if isCompatdata && isShortcutAppID(appID) {
-					continue
-				}
 				allAppIDs = append(allAppIDs, appID)
 				allAppIDPaths = append(allAppIDPaths, result.AppIDPaths[i])
 				allSources = append(allSources, result.Sources[i])
@@ -265,15 +260,6 @@ func (s *Service) PathWalker() {
 	}
 }
 
-// isShortcutAppID returns true if the given app ID is in the non-Steam shortcut range
-func isShortcutAppID(appID string) bool {
-	id, err := strconv.ParseUint(appID, 10, 64)
-	if err != nil {
-		return false
-	}
-	return id >= 2147483648
-}
-
 // scanAndWatchPrefix scans the emulator save paths for new game directories and watches them
 func (s *Service) scanAndWatchPrefix(prefix string) {
 	if _, err := os.Stat(prefix); err != nil {
@@ -291,13 +277,7 @@ func (s *Service) scanAndWatchPrefix(prefix string) {
 
 	result := s.scanSources(sourceRoots)
 
-	isCompatdata := filepath.Base(prefix) == "compatdata"
-
 	for i, appID := range result.AppIDs {
-		if isCompatdata && isShortcutAppID(appID) {
-			continue
-		}
-
 		path := result.AppIDPaths[i]
 		if slices.Contains(watchlist, path) {
 			continue
@@ -525,6 +505,10 @@ func (s *Service) scanSources(sources []resolvedSource) scanResult {
 				continue
 			}
 
+			if !validateAppID(entry.Name()) {
+				continue
+			}
+
 			appPath := filepath.Join(source.Path, entry.Name())
 			appID, ok := s.resolveAppID(source.Source, entry.Name())
 			if !ok {
@@ -605,6 +589,21 @@ func (s *Service) computeSourceRoots(prefixPath string) ([]resolvedSource, error
 
 func resolveSourceRoot(driveC string, source config.EmulatorSource) string {
 	return filepath.Join(driveC, source.Path)
+}
+
+func validateAppID(appID string) bool {
+	id, err := strconv.ParseUint(appID, 10, 64)
+	if err != nil {
+		slog.Debug("Skipping invalid app ID", "appID", appID, "error", err)
+		return false
+	}
+
+	if id >= 2147483648 {
+		slog.Debug("Skipping invalid app ID", "appID", appID, "reason", "ID is in the shortcut range")
+		return false
+	}
+
+	return true
 }
 
 func achievementFileExists(appPath string, source config.EmulatorSource) bool {

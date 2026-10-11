@@ -406,27 +406,29 @@ func TestComputeFullPath_NoDriveC(t *testing.T) {
 	assert.Contains(t, err.Error(), "could not find drive_c")
 }
 
-// ─── isShortcutAppID tests ────────────────────────────────────────────────────
+// ─── validateAppID tests ──────────────────────────────────────────────────────
 
-func TestIsShortcutAppID(t *testing.T) {
+func TestValidateAppID(t *testing.T) {
 	tests := []struct {
 		input    string
 		expected bool
 	}{
-		{"0", false},
-		{"1493710", false},
-		{"1665460", false},
-		{"2147483647", false},
-		{"2147483648", true},
-		{"3237746183", true},
-		{"3989101494", true},
+		{"0", true},
+		{"1493710", true},
+		{"1665460", true},
+		{"2147483647", true},
+		{"2147483648", false},
+		{"3117852746", false},
+		{"3237746183", false},
+		{"3989101494", false},
+		{"18446744073709551616", false},
 		{"abc", false},
 		{"", false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
-			assert.Equal(t, tt.expected, isShortcutAppID(tt.input))
+			assert.Equal(t, tt.expected, validateAppID(tt.input))
 		})
 	}
 }
@@ -493,7 +495,7 @@ func TestScanAndWatchPrefix_Compatdata_DoesNotWalkEntireTree(t *testing.T) {
 	assert.Equal(t, 1, achMock.saveCalls)
 }
 
-func TestScanAndWatchPrefix_NonCompatdata_StillScansEmuPaths(t *testing.T) {
+func TestScanAndWatchPrefix_NonCompatdata_FiltersShortcuts(t *testing.T) {
 	tempDir := t.TempDir()
 	prefixDir := filepath.Join(tempDir, "customprefix")
 
@@ -502,7 +504,7 @@ func TestScanAndWatchPrefix_NonCompatdata_StillScansEmuPaths(t *testing.T) {
 	require.NoError(t, os.MkdirAll(gameDir, 0755))
 	writeAchievementJSON(t, gameDir)
 
-	// Shortcut IDs should NOT be filtered for non-compatdata prefixes
+	// Shortcut IDs are filtered for all prefixes.
 	shortcutDir := filepath.Join(prefixDir, "drive_c", "users", "steamuser", emuPath, "3989101494")
 	require.NoError(t, os.MkdirAll(shortcutDir, 0755))
 	writeAchievementJSON(t, shortcutDir)
@@ -520,8 +522,8 @@ func TestScanAndWatchPrefix_NonCompatdata_StillScansEmuPaths(t *testing.T) {
 	service.scanAndWatchPrefix(prefixDir)
 
 	assert.Contains(t, service.watcher.WatchList(), gameDir)
-	assert.Contains(t, service.watcher.WatchList(), shortcutDir)
-	assert.Equal(t, 2, achMock.saveCalls)
+	assert.NotContains(t, service.watcher.WatchList(), shortcutDir)
+	assert.Equal(t, 1, achMock.saveCalls)
 }
 
 func TestScanAndWatchPrefix_PrefixNoLongerExists(t *testing.T) {
@@ -590,7 +592,7 @@ func TestStart_CompatdataPrefix_FiltersShortcuts(t *testing.T) {
 	service.Stop()
 }
 
-func TestStart_NonCompatdataPrefix_DoesNotFilterShortcuts(t *testing.T) {
+func TestStart_NonCompatdataPrefix_FiltersShortcuts(t *testing.T) {
 	tempDir := t.TempDir()
 	prefixDir := filepath.Join(tempDir, "customprefix")
 
@@ -617,8 +619,11 @@ func TestStart_NonCompatdataPrefix_DoesNotFilterShortcuts(t *testing.T) {
 	<-steamMock.done
 
 	assert.Contains(t, steamMock.calledWithAppIDs, "1493710")
-	assert.Contains(t, steamMock.calledWithAppIDs, "3989101494")
-	assert.Len(t, steamMock.calledWithAppIDs, 2)
+	assert.NotContains(t, steamMock.calledWithAppIDs, "3989101494")
+	assert.Len(t, steamMock.calledWithAppIDs, 1)
+	assert.Contains(t, service.watcher.WatchList(), storeDir)
+	assert.NotContains(t, service.watcher.WatchList(), shortcutDir)
+	assert.Equal(t, 1, achMock.saveCalls)
 
 	service.Stop()
 }
