@@ -66,6 +66,9 @@ overrides:
 
 archlinux:
   packager: "Remake Code"
+  scripts:
+    preupgrade: "./build/linux/nfpm/scripts/preinstall.sh"
+    postupgrade: "./build/linux/nfpm/scripts/postinstall.sh"
 
 rpm:
   packager: "Remake Code"
