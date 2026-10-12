@@ -147,7 +147,7 @@ func (s *Service) prepareGNOMEExtension() (string, error) {
 	}
 
 	if len(info) == 0 {
-		return "Log out and back in, then restart Sentinel to finish setup.", nil
+		return "Log out and back in to finish setup.", nil
 	}
 
 	if info["state"].Value() != float64(1) {

@@ -410,9 +410,9 @@ const Settings: FC = () => {
         </h4>
         <hr className='divider' />
         <div className='settings-table-form'>
-          <fieldset className='hstack'>
+          <fieldset>
             <legend>Appearance</legend>
-            <label>
+            <label data-field>
               <select
                 aria-label='Notification appearance'
                 className='settings-select'
@@ -423,9 +423,13 @@ const Settings: FC = () => {
                 <option value={DesktopNotificationRenderer.DesktopNotificationRendererNative}>Native (default)</option>
                 <option value={DesktopNotificationRenderer.DesktopNotificationRendererCustom}>Custom</option>
               </select>
+              {notificationSetupMessage && (
+                <small id='password-hint' data-hint className='settings-notification-setup-message'>
+                  {notificationSetupMessage}
+                </small>
+              )}
             </label>
           </fieldset>
-          {notificationSetupMessage && <p role='status'>{notificationSetupMessage}</p>}
           <fieldset className='hstack'>
             <legend>Sound Selection</legend>
             <label>
