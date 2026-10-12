@@ -13,6 +13,8 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/godbus/dbus/v5"
+
 	"sentinel/backend"
 	"sentinel/backend/config"
 )
@@ -34,6 +36,7 @@ var gnomeExtensionFiles embed.FS
 
 const gnomeExtensionUUID = "io.github.remakecode.sentinel"
 const gnomeNotificationInterface = "io.github.remakecode.Sentinel.Notifications"
+const gnomeExtensionInterface = "org.gnome.Shell.Extensions"
 
 // SetupCustomNotifications installs the GNOME extension or extracts the Qt helper
 // for the current desktop, logs the outcome, and returns any activation guidance.
@@ -42,13 +45,11 @@ func (s *Service) SetupCustomNotifications() (string, error) {
 		var guidance string
 		var err error
 		if isGNOMEDesktop() {
-			if err = prepareGNOMEExtension(); err != nil {
-				err = fmt.Errorf("could not install the Sentinel GNOME extension: %w", err)
-			} else {
-				guidance = "The Sentinel GNOME extension is installed. Enable sentinel custom notification in the Extensions app, or run: gnome-extensions enable " + gnomeExtensionUUID + ". If it is not listed, log out and back in first. After extension updates, log out and back in to load the new code. Ordinary enable/disable needs no logout. Once enabled, use Test Notification below."
-			}
+			guidance, err = s.prepareGNOMEExtension()
 		} else if _, err = prepareQtNotificationExecutable(); err != nil {
 			err = fmt.Errorf("could not prepare the Sentinel Qt notification helper: %w", err)
+		} else {
+			slog.Info("Qt custom notification helper prepared")
 		}
 
 		if err != nil {
@@ -58,8 +59,6 @@ func (s *Service) SetupCustomNotifications() (string, error) {
 
 		if guidance != "" {
 			slog.Info(guidance)
-		} else {
-			slog.Info("Qt custom notification helper prepared")
 		}
 
 		return guidance, nil
@@ -131,6 +130,55 @@ func (s *Service) sendNotificationCustomQt(payload *NotificationPayload) {
 	}()
 }
 
+func (s *Service) prepareGNOMEExtension() (string, error) {
+	if err := installGNOMEExtension(); err != nil {
+		return "", fmt.Errorf("could not install the Sentinel GNOME extension: %w", err)
+	}
+
+	conn, err := s.getDesktopConnection()
+	if err != nil {
+		return "", fmt.Errorf("could not connect to GNOME Shell: %w", err)
+	}
+
+	object := conn.Object("org.gnome.Shell", "/org/gnome/Shell")
+	var info map[string]dbus.Variant
+	if err := object.CallWithContext(s.ctx, gnomeExtensionInterface+".GetExtensionInfo", 0, gnomeExtensionUUID).Store(&info); err != nil {
+		return "", fmt.Errorf("could not query the Sentinel GNOME extension: %w", err)
+	}
+
+	if len(info) == 0 {
+		return "Log out and back in, then restart Sentinel to finish setup.", nil
+	}
+
+	if info["state"].Value() != float64(1) {
+		var enabled bool
+		if err := object.CallWithContext(s.ctx, gnomeExtensionInterface+".EnableExtension", 0, gnomeExtensionUUID).Store(&enabled); err != nil {
+			return "", fmt.Errorf("could not enable the Sentinel GNOME extension: %w", err)
+		}
+
+		if !enabled {
+			return "", errors.New("GNOME could not enable the Sentinel extension")
+		}
+
+		if err := object.CallWithContext(s.ctx, gnomeExtensionInterface+".GetExtensionInfo", 0, gnomeExtensionUUID).Store(&info); err != nil {
+			return "", fmt.Errorf("could not verify the Sentinel GNOME extension: %w", err)
+		}
+	}
+
+	switch info["state"].Value() {
+	case float64(1): // ACTIVE
+		return "", nil
+	case float64(8): // ACTIVATING
+		return "GNOME notifications are activating.", nil
+	default:
+		if detail, ok := info["error"].Value().(string); ok && detail != "" {
+			return "", fmt.Errorf("the Sentinel GNOME extension is not active: %s", detail)
+		}
+
+		return "", fmt.Errorf("the Sentinel GNOME extension is not active (state %v); check GNOME Extensions for errors or disabled user extensions", info["state"].Value())
+	}
+}
+
 func isGNOMEDesktop() bool {
 	if runtime.GOOS != "linux" {
 		return false
@@ -143,7 +191,7 @@ func isGNOMEDesktop() bool {
 	return strings.Contains(desktop, "gnome") || strings.Contains(desktop, "mutter")
 }
 
-func prepareGNOMEExtension() error {
+func installGNOMEExtension() error {
 	// Flatpak's XDG_DATA_HOME is app-private; host installation needs packaging support.
 	if os.Getenv("FLATPAK_ID") != "" {
 		return errors.New("installing into the host GNOME extension directory from Flatpak is not supported yet")
