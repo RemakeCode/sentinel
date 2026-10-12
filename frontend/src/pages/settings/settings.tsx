@@ -425,10 +425,6 @@ const Settings: FC = () => {
               </select>
             </label>
           </fieldset>
-          <p>
-            Custom notifications use the Sentinel extension on GNOME and the Qt popup on supported Wayland desktops.
-            Both options use your selected sound. SteamOS Gaming Mode uses Decky notifications.
-          </p>
           {notificationSetupMessage && <p role='status'>{notificationSetupMessage}</p>}
           <fieldset className='hstack'>
             <legend>Sound Selection</legend>
