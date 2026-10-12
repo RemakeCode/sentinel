@@ -143,8 +143,8 @@ export default class SentinelNotifications extends Extension {
         const icon = new St.Widget({
             style: `background-image: url(${JSON.stringify(artwork.get_uri())});`,
             x_align: Clutter.ActorAlign.CENTER,
-            y_align: data.isProgress ? Clutter.ActorAlign.END : Clutter.ActorAlign.CENTER,
-            style_class: 'sentinel-icon',
+            y_align: Clutter.ActorAlign.CENTER,
+            style_class: data.isProgress ? 'sentinel-icon sentinel-icon-progress' : 'sentinel-icon',
         });
         if (data.isRare && !data.isProgress) {
             icon.add_style_class_name('sentinel-rare');
@@ -174,20 +174,21 @@ export default class SentinelNotifications extends Extension {
 
         const content = new St.BoxLayout({
             orientation: Clutter.Orientation.VERTICAL,
-            style_class: 'sentinel-content',
+            style_class: data.isProgress ? 'sentinel-content sentinel-content-progress' : 'sentinel-content',
             x_expand: true,
-            y_align: data.isProgress ? Clutter.ActorAlign.END : Clutter.ActorAlign.CENTER,
+            y_align: Clutter.ActorAlign.CENTER,
         });
         const contentColumn = new St.Bin({
             style_class: 'sentinel-content-column',
             child: content,
             x_expand: true,
-            y_align: data.isProgress ? Clutter.ActorAlign.END : Clutter.ActorAlign.CENTER,
+            y_align: Clutter.ActorAlign.CENTER,
         });
         row.add_child(contentColumn);
 
         const title = new St.Label({text: data.title, style_class: 'sentinel-title'});
-        clampText(title);
+        title.clutter_text.single_line_mode = true;
+        title.clutter_text.ellipsize = Pango.EllipsizeMode.END;
         content.add_child(title);
 
         const description = new St.Label({
@@ -201,6 +202,8 @@ export default class SentinelNotifications extends Extension {
             const progressDetails = new St.BoxLayout({
                 orientation: Clutter.Orientation.VERTICAL,
                 style_class: 'sentinel-progress-details',
+                y_expand: true,
+                y_align: Clutter.ActorAlign.END,
             });
             content.add_child(progressDetails);
             const progressCount = new St.Label({

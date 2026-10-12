@@ -38,6 +38,12 @@
     height: 108px;
 }
 
+.sentinel-icon-progress {
+    /* 100px overall, including the border and padding. */
+    width: 96px;
+    height: 96px;
+}
+
 .sentinel-content-column {
     min-height: 84px;
 }
@@ -49,6 +55,11 @@
 
 .sentinel-content {
     spacing: 6px;
+}
+
+.sentinel-content-progress {
+    height: 100px;
+    spacing: 4px;
 }
 
 .sentinel-title {
@@ -72,8 +83,6 @@
 
 .sentinel-progress-track {
     height: 8px;
-    /* Align with the artwork inside the icon's border and padding. */
-    margin-bottom: 2px;
     border-radius: 3px;
     background-color: #363d49;
 }
