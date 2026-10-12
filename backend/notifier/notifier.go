@@ -114,11 +114,7 @@ func (s *Service) Start(ctx context.Context) error {
 		if _, err := s.getDesktopConnection(); err != nil {
 			slog.Warn("Failed to connect to session bus", "error", err)
 		}
-		if guidance, err := s.SetupCustomNotifications(); err != nil {
-			slog.Warn("Custom notification setup failed", "error", err)
-		} else if guidance != "" {
-			slog.Info(guidance)
-		}
+		_, _ = s.SetupCustomNotifications()
 	}
 
 	go s.notificationWorker()

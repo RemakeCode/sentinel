@@ -35,17 +35,37 @@ var gnomeExtensionFiles embed.FS
 const gnomeExtensionUUID = "io.github.remakecode.sentinel"
 const gnomeNotificationInterface = "io.github.remakecode.Sentinel.Notifications"
 
-// SetupCustomNotifications installs the bundled GNOME extension and returns user guidance.
+// SetupCustomNotifications installs the GNOME extension or extracts the Qt helper
+// for the current desktop, logs the outcome, and returns any activation guidance.
 func (s *Service) SetupCustomNotifications() (string, error) {
-	if s.deliveryMode != DeliveryDesktop || s.Config.GetDesktopNotificationRenderer() != config.DesktopNotificationRendererCustom || !isGNOMEDesktop() {
-		return "", nil
+	if s.Config.GetDesktopNotificationRenderer() == config.DesktopNotificationRendererCustom {
+		var guidance string
+		var err error
+		if isGNOMEDesktop() {
+			if err = prepareGNOMEExtension(); err != nil {
+				err = fmt.Errorf("could not install the Sentinel GNOME extension: %w", err)
+			} else {
+				guidance = "The Sentinel GNOME extension is installed. Enable sentinel custom notification in the Extensions app, or run: gnome-extensions enable " + gnomeExtensionUUID + ". If it is not listed, log out and back in first. After extension updates, log out and back in to load the new code. Ordinary enable/disable needs no logout. Once enabled, use Test Notification below."
+			}
+		} else if _, err = prepareQtNotificationExecutable(); err != nil {
+			err = fmt.Errorf("could not prepare the Sentinel Qt notification helper: %w", err)
+		}
+
+		if err != nil {
+			slog.Warn("Custom notification setup failed", "error", err)
+			return "", err
+		}
+
+		if guidance != "" {
+			slog.Info(guidance)
+		} else {
+			slog.Info("Qt custom notification helper prepared")
+		}
+
+		return guidance, nil
 	}
 
-	if err := installGNOMEExtension(); err != nil {
-		return "", fmt.Errorf("could not install the Sentinel GNOME extension: %w", err)
-	}
-
-	return "The Sentinel GNOME extension is installed. Enable sentinel custom notification in the Extensions app, or run: gnome-extensions enable " + gnomeExtensionUUID + ". If it is not listed, log out and back in first. After extension updates, log out and back in to load the new code. Ordinary enable/disable needs no logout. Once enabled, use Test Notification below.", nil
+	return "", nil
 }
 
 func (s *Service) sendNotificationCustom(payload *NotificationPayload) {
@@ -82,7 +102,7 @@ func (s *Service) sendNotificationCustomGNOME(payload *NotificationPayload) {
 }
 
 func (s *Service) sendNotificationCustomQt(payload *NotificationPayload) {
-	executable, err := customNotificationExecutable()
+	executable, err := qtNotificationExecutablePath()
 	if err != nil {
 		slog.Warn("Custom notification unavailable", "error", err)
 		return
@@ -123,22 +143,13 @@ func isGNOMEDesktop() bool {
 	return strings.Contains(desktop, "gnome") || strings.Contains(desktop, "mutter")
 }
 
-func installGNOMEExtension() error {
+func prepareGNOMEExtension() error {
 	// Flatpak's XDG_DATA_HOME is app-private; host installation needs packaging support.
 	if os.Getenv("FLATPAK_ID") != "" {
 		return errors.New("installing into the host GNOME extension directory from Flatpak is not supported yet")
 	}
 
-	directory := os.Getenv("XDG_DATA_HOME")
-	if directory == "" {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return err
-		}
-		directory = filepath.Join(home, ".local", "share")
-	}
-
-	directory = filepath.Join(directory, "gnome-shell", "extensions", gnomeExtensionUUID)
+	directory := filepath.Join(backend.GetUserDataDir(), "gnome-shell", "extensions", gnomeExtensionUUID)
 	entries, err := gnomeExtensionFiles.ReadDir("out/" + gnomeExtensionUUID)
 	if err != nil {
 		return err
@@ -167,11 +178,13 @@ func installGNOMEExtension() error {
 	return nil
 }
 
-func customNotificationExecutable() (string, error) {
-	if path := os.Getenv("SENTINEL_CUSTOM_NOTIFICATION_EXECUTABLE"); path != "" {
-		if !filepath.IsAbs(path) {
-			return "", errors.New("SENTINEL_CUSTOM_NOTIFICATION_EXECUTABLE must be an absolute path")
-		}
+func prepareQtNotificationExecutable() (string, error) {
+	path, err := qtNotificationExecutablePath()
+	if err != nil {
+		return "", err
+	}
+
+	if os.Getenv("SENTINEL_CUSTOM_NOTIFICATION_EXECUTABLE") != "" {
 		return path, nil
 	}
 
@@ -180,12 +193,11 @@ func customNotificationExecutable() (string, error) {
 		return "", err
 	}
 
-	directory := filepath.Join(backend.DataDir, "bin")
+	directory := filepath.Dir(path)
 	if err := os.MkdirAll(directory, 0700); err != nil {
 		return "", err
 	}
 
-	path := filepath.Join(directory, "sentinel-custom-notification")
 	if existing, err := os.ReadFile(path); err == nil && bytes.Equal(existing, data) {
 		return path, os.Chmod(path, 0700)
 	}
@@ -214,6 +226,17 @@ func customNotificationExecutable() (string, error) {
 	}
 
 	return path, nil
+}
+
+func qtNotificationExecutablePath() (string, error) {
+	if path := os.Getenv("SENTINEL_CUSTOM_NOTIFICATION_EXECUTABLE"); path != "" {
+		if !filepath.IsAbs(path) {
+			return "", errors.New("SENTINEL_CUSTOM_NOTIFICATION_EXECUTABLE must be an absolute path")
+		}
+		return path, nil
+	}
+
+	return filepath.Join(backend.DataDir, "bin", "sentinel-custom-notification"), nil
 }
 
 func encodeCustomNotificationData(payload *NotificationPayload) ([]byte, error) {

@@ -28,7 +28,8 @@ var RuneEmuDir = filepath.Join("users", "Public", "Documents", "Steam", "RUNE")
 var UserCacheDir, _ = os.UserCacheDir()
 var UserConfigDir, _ = os.UserConfigDir()
 
-func getUserDataDir() string {
+// GetUserDataDir returns the XDG data root or its home-directory fallback.
+func GetUserDataDir() string {
 	if dir := os.Getenv("XDG_DATA_HOME"); dir != "" {
 		return dir
 	}
@@ -55,7 +56,7 @@ var CacheDir = filepath.Join(UserCacheDir, AppName)
 var GeneratorDir = filepath.Join(CacheDir, "generator")
 
 // Data directory (XDG_DATA_HOME)
-var DataDir = filepath.Join(getUserDataDir(), AppName)
+var DataDir = filepath.Join(GetUserDataDir(), AppName)
 var MediaDir = filepath.Join(DataDir, "media")
 var ACHCacheDataDir = filepath.Join(DataDir, "data")
 var ACHCacheIconDir = filepath.Join(DataDir, "icon")
@@ -70,6 +71,7 @@ var WalkerInterval = 5 * time.Second
 
 // Notification timing
 var NotificationExpireTime = 7 * time.Second
+
 var NotificationDelay = NotificationExpireTime + 1*time.Second
 var ProgressNotificationExpireTime = time.Duration(float64(NotificationExpireTime) * 0.7)
 var ProgressNotificationDelay = time.Duration(float64(NotificationDelay) * 0.7)
