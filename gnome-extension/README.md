@@ -4,17 +4,13 @@ The extension source is TypeScript. Desktop builds compile it to JavaScript and 
 
 Target Shell versions are 48–50, on x86-64. The extension and animated rare glow still need GNOME host acceptance. Flatpak host installation and runtime packaging remain deferred; sandbox installation currently reports an error instead of writing to an app-private extension directory.
 
-## Enable after installation
+## Setup in Sentinel
 
-After Sentinel first installs the extension, **log out and log back in**. GNOME Shell will not discover the newly copied extension during the current session.
+Select **Custom** in Sentinel Settings. Sentinel installs the bundled extension, checks whether GNOME has discovered it, and enables it automatically when available. No manual copying or enable command is required.
 
-Then open GNOME's **Extensions** app and enable **sentinel custom notification**, or run:
+If GNOME has not discovered the extension yet, Settings asks you to log out and back in, then restart Sentinel. With Custom saved, Sentinel checks again and enables the extension on startup. Settings shows no setup message once it is active; activation failures are reported.
 
-```sh
-gnome-extensions enable io.github.remakecode.sentinel
-```
-
-Once discovered, ordinary enabling/disabling does not need logout. Enabling registers the endpoint; use Sentinel Settings' **Test Notification** or progress test to display a card.
+Use **Test Notification** or the progress test in Settings to display a card.
 
 ## Layout and delivery
 
@@ -31,7 +27,7 @@ A new request replaces the current card. The extension uses the supplied `durati
 
 ## Manual development
 
-From the project root on a GNOME host:
+These steps are only for testing the extension outside Sentinel. From the project root on a GNOME host:
 
 ```sh
 wails3 task common:build:gnome-extension
@@ -41,6 +37,12 @@ cp backend/notifier/out/io.github.remakecode.sentinel/* \
 ```
 
 For a custom `XDG_DATA_HOME`, use its `gnome-shell/extensions/io.github.remakecode.sentinel/` directory instead. After copying the files, log out and back in, then enable the extension. Manual changes to installed files will be replaced by the app's bundled version on its next setup; edit the project sources and rebuild Sentinel to update the bundle.
+
+For this standalone test, enable it through GNOME's **Extensions** app or run:
+
+```sh
+gnome-extensions enable io.github.remakecode.sentinel
+```
 
 Earned notification:
 
