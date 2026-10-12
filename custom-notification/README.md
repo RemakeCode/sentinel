@@ -4,7 +4,7 @@ Qt achievement popups for Sentinel's desktop **Custom** notification option on l
 
 ## Build and development
 
-Requires CMake and Qt 6 Widgets, plus Qt Wayland and LayerShellQt on Linux. Arch Linux packages: `cmake`, `qt6-base`, `qt6-wayland`, `layer-shell-qt`.
+Requires CMake and Qt 6 Widgets, plus Qt Wayland client support and LayerShellQt on Linux. Arch Linux packages: `cmake`, `qt6-base`, `layer-shell-qt`. Current Arch Qt 6.12 includes Wayland client support in `qt6-base`.
 
 ```sh
 task common:build:custom-notification

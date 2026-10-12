@@ -60,7 +60,6 @@ overrides:
       - gtk4
       - webkitgtk-6.0
       - qt6-base
-      - qt6-wayland
       - layer-shell-qt
 
 
