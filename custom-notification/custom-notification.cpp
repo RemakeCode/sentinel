@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <cstdio>
 #include <QDebug>
+#include <QEvent>
 #include <QFile>
 #include <QFrame>
 #include <QGraphicsBlurEffect>
@@ -21,6 +22,7 @@
 #include <QPixmap>
 #include <QProgressBar>
 #include <QScreen>
+#include <QTextLayout>
 #include <QTimer>
 #include <QVariantAnimation>
 #include <QVBoxLayout>
@@ -35,12 +37,64 @@
 #include <LayerShellQt/Window>
 #endif
 
+// Reserve a bounded number of lines and elide the last one at the actual width.
+class ClampedLabel : public QLabel {
+public:
+  ClampedLabel(const QString &text, int maxLines, QWidget *parent)
+      : QLabel(text, parent), maxLines_(maxLines) {
+    setTextFormat(Qt::PlainText);
+    setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+  }
+
+  QSize sizeHint() const override {
+    return QSize(0, fontMetrics().lineSpacing() * maxLines_);
+  }
+
+  QSize minimumSizeHint() const override { return sizeHint(); }
+
+protected:
+  void paintEvent(QPaintEvent *) override {
+    QPainter painter(this);
+    painter.setPen(palette().color(QPalette::WindowText));
+    const auto metrics = painter.fontMetrics();
+    QString content = text();
+    content.replace('\n', ' ');
+    content.replace('\r', ' ');
+    QTextLayout layout(content, font());
+    QTextOption options;
+    options.setWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);
+    layout.setTextOption(options);
+    layout.beginLayout();
+    for (int i = 0; i < maxLines_; ++i) {
+      QTextLine line = layout.createLine();
+      if (!line.isValid())
+        break;
+      line.setLineWidth(width());
+      const int y = i * metrics.lineSpacing();
+      if (i == maxLines_ - 1) {
+        painter.drawText(QPoint(0, y + metrics.ascent()),
+                         metrics.elidedText(content.mid(line.textStart()),
+                                            Qt::ElideRight, width()));
+      } else {
+        line.draw(&painter, QPointF(0, y));
+      }
+    }
+    layout.endLayout();
+  }
+
+private:
+  int maxLines_;
+};
+
 // QSS has no CSS filter/keyframe support. Paint and blur a separate layer so
 // the artwork and its thin border stay sharp while the gold highlight moves.
 class RareAchievementGlow : public QWidget {
 public:
-  explicit RareAchievementGlow(QWidget *parent) : QWidget(parent) {
+  RareAchievementGlow(QWidget *target, QWidget *parent)
+      : QWidget(parent), target_(target) {
     setAttribute(Qt::WA_TransparentForMouseEvents);
+    target_->installEventFilter(this);
+    syncGeometry();
     auto *blur = new QGraphicsBlurEffect(this);
     blur->setBlurRadius(6);
     setGraphicsEffect(blur);
@@ -59,6 +113,13 @@ public:
   }
 
 protected:
+  bool eventFilter(QObject *object, QEvent *event) override {
+    if (object == target_ &&
+        (event->type() == QEvent::Move || event->type() == QEvent::Resize))
+      syncGeometry();
+    return QWidget::eventFilter(object, event);
+  }
+
   void paintEvent(QPaintEvent *) override {
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing);
@@ -79,6 +140,12 @@ protected:
   }
 
 private:
+  void syncGeometry() {
+    const QRect frame(target_->mapTo(parentWidget(), QPoint()), target_->size());
+    setGeometry(frame.adjusted(-4, -4, 4, 4));
+  }
+
+  QWidget *target_;
   qreal angle_ = 0;
 };
 
@@ -232,30 +299,25 @@ int main(int argc, char *argv[]) {
   row->setSpacing(12);
   cardLayout->addLayout(row);
 
-  // Rare icons reserve room for the glow; regular icons need no extra inset.
+  // All notification types share the same frame and horizontal position.
   auto *iconContainer = new QWidget(card);
   auto *iconLayers = new QGridLayout(iconContainer);
   iconLayers->setContentsMargins(0, 0, 0, 0);
   iconLayers->setSpacing(0);
   iconLayers->setSizeConstraint(QLayout::SetFixedSize);
-  if (data.isRare) {
-    iconLayers->setContentsMargins(8, 8, 8, 8);
-    auto *animatedGlow = new RareAchievementGlow(iconContainer);
-    animatedGlow->setFixedSize(92, 92);
-    iconLayers->addWidget(animatedGlow, 0, 0, Qt::AlignCenter);
-  }
   QPixmap artwork(data.iconPath);
   if (artwork.isNull())
     artwork.load(":/sentinel/default-icon.png");
   auto *icon = new QLabel(iconContainer);
   icon->setObjectName("icon");
   icon->setProperty("rare", data.isRare);
-  icon->setFixedSize(84, 84);
+  const int iconSize = 100;
+  icon->setFixedSize(iconSize, iconSize);
   icon->setAlignment(Qt::AlignCenter);
 
   if (!artwork.isNull()) {
     const QPixmap scaled =
-        artwork.scaled(80, 80, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+        artwork.scaled(iconSize - 4, iconSize - 4, Qt::KeepAspectRatio, Qt::SmoothTransformation);
     QPixmap rounded(scaled.size());
     rounded.fill(Qt::transparent);
     QPainter painter(&rounded);
@@ -279,28 +341,36 @@ int main(int argc, char *argv[]) {
   }
   iconLayers->addWidget(icon, 0, 0, Qt::AlignCenter);
   row->addWidget(iconContainer, 0, Qt::AlignVCenter);
+  if (data.isRare) {
+    // A sibling paint layer can overflow the frame without adding layout margins.
+    auto *animatedGlow = new RareAchievementGlow(iconContainer, card);
+    animatedGlow->stackUnder(iconContainer);
+  }
 
   // Match the visible icon, excluding the extra space reserved for its glow.
   auto *content = new QWidget(card);
-  content->setMinimumHeight(icon->height());
+  if (data.isProgress)
+    content->setFixedHeight(iconSize);
+  else
+    content->setMinimumHeight(iconSize);
   auto *text = new QVBoxLayout(content);
-  text->setContentsMargins(0, 0, 0, 0);
-  text->setSpacing(6);
-  text->setAlignment(Qt::AlignVCenter);
+  // Align progress content with the artwork inside the icon's 2px frame inset.
+  const int contentInset = data.isProgress ? 2 : 0;
+  text->setContentsMargins(0, contentInset, 0, contentInset);
+  text->setSpacing(data.isProgress ? 4 : 6);
+  if (!data.isProgress)
+    text->setAlignment(Qt::AlignVCenter);
 
   row->addWidget(content, 1, Qt::AlignVCenter);
-  auto *title = new QLabel(data.title, content);
+  auto *title = new ClampedLabel(data.title, 1, content);
   title->setObjectName("title");
-  title->setTextFormat(Qt::PlainText);
-  title->setWordWrap(true);
   text->addWidget(title);
 
-  auto *description = new QLabel(data.description, content);
+  auto *description = new ClampedLabel(data.description, 2, content);
   description->setObjectName("description");
-  description->setTextFormat(Qt::PlainText);
-  description->setWordWrap(true);
   text->addWidget(description);
   if (data.isProgress) {
+    text->addStretch();
     auto *progressDetails = new QVBoxLayout;
     progressDetails->setContentsMargins(0, 0, 0, 0);
     progressDetails->setSpacing(2);
@@ -319,7 +389,7 @@ int main(int argc, char *argv[]) {
         : 0.0;
     progress->setValue(qRound(ratio * 1000));
     progress->setTextVisible(false);
-    progress->setFixedHeight(8);
+    progress->setFixedHeight(9);
     progressDetails->addWidget(progress);
   }
 
