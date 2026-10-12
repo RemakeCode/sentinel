@@ -22,8 +22,9 @@
 }
 
 .sentinel-icon {
-    width: 80px;
-    height: 80px;
+    /* 100px overall for every notification, including border and padding. */
+    width: 96px;
+    height: 96px;
     padding: 1px;
     background-color: #282c35;
     background-size: contain;
@@ -34,23 +35,21 @@
 }
 
 .sentinel-icon-layers {
-    width: 108px;
-    height: 108px;
+    width: 100px;
+    height: 100px;
 }
 
-.sentinel-icon-progress {
-    /* 100px overall, including the border and padding. */
-    width: 96px;
-    height: 96px;
+.sentinel-rare-glow {
+    width: 124px;
+    height: 124px;
 }
 
 .sentinel-content-column {
-    min-height: 84px;
+    min-height: 100px;
 }
 
 .sentinel-rare {
-    border-color: #e6d166;
-    box-shadow: 0 0 12px rgba(230, 209, 102, 0.6);
+    border-color: rgba(230, 209, 102, 0.7);
 }
 
 .sentinel-content {
@@ -82,7 +81,8 @@
 }
 
 .sentinel-progress-track {
-    height: 8px;
+    height: 9px;
+    margin-bottom: 2px;
     border-radius: 3px;
     background-color: #363d49;
 }

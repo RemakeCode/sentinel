@@ -52,8 +52,9 @@ function paintRareGlow(area: St.DrawingArea, phase: number) {
     const cr = area.get_context();
     const [width, height] = area.get_surface_size();
     const scale = St.ThemeContext.get_for_stage(global.stage).scale_factor;
-    const inset = 10 * scale;
-    const radius = 11 * scale;
+    // The 100px frame is centered in a 124px drawing surface.
+    const inset = 12 * scale;
+    const radius = 10 * scale;
     const angle = phase * Math.PI * 2 - Math.PI / 2;
     const dx = Math.cos(angle) * width / 2;
     const dy = Math.sin(angle) * height / 2;
@@ -65,7 +66,7 @@ function paintRareGlow(area: St.DrawingArea, phase: number) {
     cr.closePath();
 
     // Overlapping translucent strokes soften the ring without blurring the artwork.
-    for (const [lineWidth, opacity] of [[12, 0.05], [8, 0.1], [5, 0.2], [2, 0.7]]) {
+    for (const [lineWidth, opacity] of [[8, 0.02], [5, 0.05], [3, 0.12], [1.5, 0.5]]) {
         const gradient = new Cairo.LinearGradient(
             width / 2 - dx, height / 2 - dy, width / 2 + dx, height / 2 + dy);
         gradient.addColorStopRGBA(0, 1, 0.68, 0, 0);
@@ -144,7 +145,7 @@ export default class SentinelNotifications extends Extension {
             style: `background-image: url(${JSON.stringify(artwork.get_uri())});`,
             x_align: Clutter.ActorAlign.CENTER,
             y_align: Clutter.ActorAlign.CENTER,
-            style_class: data.isProgress ? 'sentinel-icon sentinel-icon-progress' : 'sentinel-icon',
+            style_class: 'sentinel-icon',
         });
         if (data.isRare && !data.isProgress) {
             icon.add_style_class_name('sentinel-rare');
@@ -153,7 +154,12 @@ export default class SentinelNotifications extends Extension {
                 layout_manager: new Clutter.BinLayout(),
                 y_align: Clutter.ActorAlign.CENTER,
             });
-            const glow = new St.DrawingArea({x_expand: true, y_expand: true});
+            // Paint beyond the frame without reserving extra space in the row.
+            const glow = new St.DrawingArea({
+                style_class: 'sentinel-rare-glow',
+                x_align: Clutter.ActorAlign.CENTER,
+                y_align: Clutter.ActorAlign.CENTER,
+            });
             let phase = 0;
             glow.connect('repaint', area => paintRareGlow(area, phase));
             layers.add_child(glow);
