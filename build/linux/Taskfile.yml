@@ -127,7 +127,7 @@ tasks:
       - mkdir -p {{.BIN_DIR}}
       - mv "bin/{{.APP_NAME}}-linux-{{.DOCKER_ARCH}}" "{{.OUTPUT}}"
     vars:
-      DOCKER_ARCH: '{{.ARCH | default "amd64"}}'
+      DOCKER_ARCH: '{{.ARCH | default ARCH}}'
       DEFAULT_OUTPUT: '{{.BIN_DIR}}/{{.APP_NAME}}'
       OUTPUT: '{{ .OUTPUT | default .DEFAULT_OUTPUT }}'
       # Generate Docker volume mounts: Go module cache + go.mod replace directives
@@ -211,8 +211,9 @@ tasks:
     dir: build
     cmds:
       - wails3 generate .desktop -name "{{.NAME}}" -exec "{{.EXEC}}" -icon "{{.ICON}}" -outputfile "{{.OUTPUTFILE}}" -categories "{{.CATEGORIES}}" -comment "{{.COMMENT}}" -keywords "{{.KEYWORDS}}"
-      - sed -i '/^StartupWMClass=/d' "{{.OUTPUTFILE}}"
-      - sed -i '$aStartupWMClass={{.STARTUP_WM_CLASS}}' "{{.OUTPUTFILE}}"
+      - sed '/^StartupWMClass=/d' "{{.OUTPUTFILE}}" > "{{.OUTPUTFILE}}.tmp"
+      - mv "{{.OUTPUTFILE}}.tmp" "{{.OUTPUTFILE}}"
+      - printf 'StartupWMClass=%s\n' "{{.STARTUP_WM_CLASS}}" >> "{{.OUTPUTFILE}}"
     vars:
       NAME: 'Sentinel'
       EXEC: '{{.APP_NAME}}'
