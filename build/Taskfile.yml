@@ -34,21 +34,14 @@ tasks:
   build:custom-notification:
     summary: Builds the Qt notification executable for embedding
     platforms: [darwin, linux]
-    sources:
-      - custom-notification/CMakeLists.txt
-      - custom-notification/*.cpp
-      - custom-notification/*.qss
-      - custom-notification/*.qrc
-      - backend/notifier/media/sentinel.png
-    generates:
-      - backend/notifier/out/sentinel-custom-notification-{{OS}}-{{.ARCH | default ARCH}}
     cmds:
-      - cmake -S custom-notification -B "{{.BUILD_DIR}}" {{if eq OS "darwin"}}-DCMAKE_OSX_ARCHITECTURES={{if eq (.ARCH | default ARCH) "amd64"}}x86_64{{else}}arm64{{end}}{{end}}
+      # Always configure so switching DEV cannot reuse the wrong cached option.
+      - cmake -S custom-notification -B "{{.BUILD_DIR}}" -DSENTINEL_QSS_HOT_RELOAD={{if eq .DEV "true"}}ON{{else}}OFF{{end}} {{if eq OS "darwin"}}-DCMAKE_OSX_ARCHITECTURES={{if eq (.ARCH | default ARCH) "amd64"}}x86_64{{else}}arm64{{end}}{{end}}
       - cmake --build "{{.BUILD_DIR}}"
       - mkdir -p backend/notifier/out
       - cp "{{.BUILD_DIR}}/bin/sentinel-custom-notification" "backend/notifier/out/sentinel-custom-notification-{{OS}}-{{.ARCH | default ARCH}}"
     vars:
-      BUILD_DIR: 'custom-notification/build-{{OS}}-{{.ARCH | default ARCH}}'
+      BUILD_DIR: 'custom-notification/build-{{OS}}-{{.ARCH | default ARCH}}-{{if eq .DEV "true"}}dev{{else}}production{{end}}'
 
   go:mod:tidy:
     summary: Runs `go mod tidy`

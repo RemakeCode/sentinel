@@ -10,8 +10,6 @@
 #include <cstdio>
 #include <QDebug>
 #include <QFile>
-#include <QFileInfo>
-#include <QFileSystemWatcher>
 #include <QFrame>
 #include <QGraphicsBlurEffect>
 #include <QGraphicsDropShadowEffect>
@@ -27,6 +25,11 @@
 #include <QVariantAnimation>
 #include <QVBoxLayout>
 #include <QWidget>
+
+#ifdef SENTINEL_QSS_HOT_RELOAD
+#include <QFileInfo>
+#include <QFileSystemWatcher>
+#endif
 
 #ifdef Q_OS_LINUX
 #include <LayerShellQt/Window>
@@ -112,8 +115,10 @@ int main(int argc, char *argv[]) {
   qputenv("QT_QPA_PLATFORM", "wayland");
   qputenv("QT_WAYLAND_SHELL_INTEGRATION", "layer-shell");
 #endif
+
   QApplication app(argc, argv);
   app.setApplicationName("sentinel-custom-notification");
+
   CustomNotificationData data;
   readCustomNotification(data);
 
@@ -123,6 +128,7 @@ int main(int argc, char *argv[]) {
 #ifdef Q_OS_LINUX
   windowFlags |= Qt::WindowDoesNotAcceptFocus | Qt::WindowTransparentForInput;
 #endif
+
   notification.setWindowFlags(windowFlags);
   notification.setAttribute(Qt::WA_TranslucentBackground);
   notification.setAttribute(Qt::WA_ShowWithoutActivating);
@@ -130,8 +136,10 @@ int main(int argc, char *argv[]) {
   // Keep the notification visible when another application is active.
   notification.setAttribute(Qt::WA_MacAlwaysShowToolWindow);
 #endif
+
   notification.setFixedWidth(450);
 
+#ifdef SENTINEL_QSS_HOT_RELOAD
   const QString sourceStylesheetPath =
       QStringLiteral(SENTINEL_CUSTOM_NOTIFICATION_STYLESHEET);
   const bool liveStylesheet = QFile::exists(sourceStylesheetPath);
@@ -142,24 +150,33 @@ int main(int argc, char *argv[]) {
   QTimer stylesheetReloadTimer;
   stylesheetReloadTimer.setSingleShot(true);
   stylesheetReloadTimer.setInterval(100);
+#else
+  const QString stylesheetPath = QStringLiteral(":/sentinel/custom-notification.qss");
+#endif
+
   auto reloadStylesheet = [&]() {
+#ifdef SENTINEL_QSS_HOT_RELOAD
     // Editors may replace the file on save, removing the original file watch.
     if (liveStylesheet && QFile::exists(stylesheetPath) &&
         !stylesheetWatcher.files().contains(stylesheetPath)) {
       if (!stylesheetWatcher.addPath(stylesheetPath))
         qWarning() << "Cannot watch stylesheet:" << stylesheetPath;
     }
+#endif
+
     QFile stylesheet(stylesheetPath);
     if (!stylesheet.open(QIODevice::ReadOnly)) {
       qWarning() << "Cannot read stylesheet:" << stylesheetPath
                  << stylesheet.errorString();
       return false;
     }
+
     const QString styles = QString::fromUtf8(stylesheet.readAll());
     if (stylesheet.error() != QFileDevice::NoError) {
       qWarning() << "Cannot read stylesheet:" << stylesheet.errorString();
       return false;
     }
+
     if (notification.styleSheet() != styles) {
       notification.setStyleSheet(styles);
       qInfo() << "Stylesheet loaded:" << stylesheetPath;
@@ -168,13 +185,18 @@ int main(int argc, char *argv[]) {
         notification.resize(notification.width(), notification.layout()->totalHeightForWidth(notification.width()));
       }
     }
+
     return true;
   };
+
+#ifdef SENTINEL_QSS_HOT_RELOAD
   QObject::connect(&stylesheetReloadTimer, &QTimer::timeout, &notification,
                    reloadStylesheet);
+
   // Watch the directory too so atomic saves and file recreation reload styles.
   if (liveStylesheet && !stylesheetWatcher.addPath(QFileInfo(stylesheetPath).absolutePath()))
     qWarning() << "Cannot watch stylesheet directory:" << stylesheetPath;
+
   auto scheduleReload = [&](const QString &) {
     stylesheetReloadTimer.start();
   };
@@ -182,6 +204,8 @@ int main(int argc, char *argv[]) {
                    &notification, scheduleReload);
   QObject::connect(&stylesheetWatcher, &QFileSystemWatcher::directoryChanged,
                    &notification, scheduleReload);
+#endif
+
   if (!reloadStylesheet())
     return 3;
 
@@ -196,6 +220,7 @@ int main(int argc, char *argv[]) {
   auto *cardLayout = new QVBoxLayout(card);
   cardLayout->setContentsMargins(16, 16, 16, 16);
   cardLayout->setSpacing(8);
+
   auto *gameName = new QLabel(data.gameName, card);
   gameName->setObjectName("gameName");
   gameName->setTextFormat(Qt::PlainText);

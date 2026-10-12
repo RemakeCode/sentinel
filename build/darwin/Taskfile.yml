@@ -37,6 +37,7 @@ tasks:
       - task: common:build:custom-notification
         vars:
           ARCH: '{{.ARCH | default ARCH}}'
+          DEV: '{{.DEV}}'
       - task: common:build:gnome-extension
       - task: common:build:frontend
         vars:
