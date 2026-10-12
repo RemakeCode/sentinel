@@ -111,6 +111,7 @@ export default class SentinelNotifications extends Extension {
         const gameName = new St.Label({
             text: data.gameName,
             style_class: 'sentinel-game-name',
+            x_expand: true,
         });
         card.add_child(gameName);
 

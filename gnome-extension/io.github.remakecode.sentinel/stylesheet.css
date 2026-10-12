@@ -12,7 +12,8 @@
 .sentinel-game-name {
     color: #a6adb8;
     font-size: 14px;
-    border-bottom: 1px solid #454b57;
+    border-color: #454b57;
+    border-bottom-width: 1px;
     padding-bottom: 4px;
 }
 
