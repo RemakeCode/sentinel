@@ -192,12 +192,11 @@ func isGNOMEDesktop() bool {
 }
 
 func installGNOMEExtension() error {
-	// Flatpak's XDG_DATA_HOME is app-private; host installation needs packaging support.
-	if os.Getenv("FLATPAK_ID") != "" {
-		return errors.New("installing into the host GNOME extension directory from Flatpak is not supported yet")
+	directory, err := gnomeExtensionDirectory()
+	if err != nil {
+		return err
 	}
 
-	directory := filepath.Join(backend.GetUserDataDir(), "gnome-shell", "extensions", gnomeExtensionUUID)
 	entries, err := gnomeExtensionFiles.ReadDir("out/" + gnomeExtensionUUID)
 	if err != nil {
 		return err
@@ -224,6 +223,36 @@ func installGNOMEExtension() error {
 	}
 
 	return nil
+}
+
+func gnomeExtensionDirectory() (string, error) {
+	directory := filepath.Join(backend.GetUserDataDir(), "gnome-shell", "extensions", gnomeExtensionUUID)
+	if os.Getenv("FLATPAK_ID") == "" {
+		return directory, nil
+	}
+
+	// The scoped xdg-data permission binds this directory from the host into
+	// Flatpak's app-private data path. Require the mount before writing so a
+	// revoked permission cannot turn installation into app-private file copies.
+	mountpoint, err := filepath.EvalSymlinks(directory)
+	if err != nil {
+		return "", fmt.Errorf("Flatpak host GNOME extension directory is unavailable: %w", err)
+	}
+
+	mounts, err := os.ReadFile("/proc/self/mountinfo")
+	if err != nil {
+		return "", fmt.Errorf("could not verify Flatpak host GNOME extension access: %w", err)
+	}
+
+	escaped := strings.NewReplacer("\\", "\\134", " ", "\\040", "\t", "\\011", "\n", "\\012").Replace(mountpoint)
+	for _, line := range strings.Split(string(mounts), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) >= 5 && fields[4] == escaped {
+			return directory, nil
+		}
+	}
+
+	return "", errors.New("Flatpak needs access to the host Sentinel GNOME extension directory")
 }
 
 func prepareQtNotificationExecutable() (string, error) {
