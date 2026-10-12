@@ -25,6 +25,9 @@ dev_mode:
       - node_modules
       - frontend
       - bin
+      # Build outputs must never trigger another development build.
+      - "*custom-notification/build*/*"
+      - "*backend/notifier/out/*"
     file:
       - .DS_Store
       - .gitignore
@@ -37,7 +40,7 @@ dev_mode:
       - "*.css"
       - "*.json"
       - "*CMakeLists.txt"
-    git_ignore: true
+    git: true
   executes:
     - cmd: wails3 build DEV=true
       type: blocking
