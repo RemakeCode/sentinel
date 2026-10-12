@@ -45,13 +45,12 @@ depends:
 
 # Distribution-specific overrides for different package formats
 overrides:
-  # Fedora/EPEL repositories with the Qt 6 LayerShellQt stack.
+  # Fedora 44+ supplies Wayland client support in Qt 6.10's base GUI package.
   rpm:
     depends:
       - gtk4
       - webkitgtk6.0
-      - qt6-qtbase-gui
-      - qt6-qtwayland
+      - qt6-qtbase-gui >= 6.10
       - layer-shell-qt >= 6.0
 
   # Arch Linux packages

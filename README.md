@@ -46,7 +46,7 @@ Native desktop packages declare the following runtime dependencies. Qt and Layer
 | Package | Runtime dependencies |
 | --- | --- |
 | DEB (Debian/Ubuntu) | `libgtk-4-1`, `libwebkitgtk-6.0-4`, `libqt6widgets6`, `qt6-wayland`, `liblayershellqtinterface6`, `layer-shell-qt` (6.0 or newer) |
-| RPM (Fedora) | `gtk4`, `webkitgtk6.0`, `qt6-qtbase-gui`, `qt6-qtwayland`, `layer-shell-qt` (6.0 or newer) |
+| RPM (Fedora 44+) | `gtk4`, `webkitgtk6.0`, `qt6-qtbase-gui` (6.10 or newer), `layer-shell-qt` (6.0 or newer) |
 | Arch | `gtk4`, `webkitgtk-6.0`, `qt6-base`, `layer-shell-qt` |
 
 The Decky ZIP has no Qt or LayerShellQt runtime dependencies.
