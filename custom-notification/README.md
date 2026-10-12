@@ -1,21 +1,21 @@
 # Qt Widgets custom notification
 
-Companion renderer for the Wails desktop app. Native notifications remain the default; Decky keeps SSE/Steam toasts. Linux Qt rendering targets layer-shell Wayland compositors. GNOME Wayland uses the bundled extension described in `../gnome-extension/README.md`; Linux runtime dependency packaging remains deferred.
+Qt achievement popups for Sentinel's desktop **Custom** notification option on layer-shell Wayland desktops. GNOME Wayland uses the [GNOME extension](../gnome-extension/README.md). Native notifications are the default; Decky uses Steam toasts.
 
 ## Build and development
 
-Install CMake and Qt 6 Widgets; Linux also needs Qt Wayland and LayerShellQt. On Arch Linux the development packages are `cmake`, `qt6-base`, `qt6-wayland`, and `layer-shell-qt`.
+Requires CMake and Qt 6 Widgets, plus Qt Wayland and LayerShellQt on Linux. Arch Linux packages: `cmake`, `qt6-base`, `qt6-wayland`, `layer-shell-qt`.
 
 ```sh
 task common:build:custom-notification
 task dev
 ```
 
-The Darwin and Linux native build tasks compile the helper and GNOME extension, then build the frontend (including bindings), then compile Go. The shared binding task has no helper dependency. CMake builds incrementally. `task dev` watches C++, QSS, resource files, and CMakeLists changes and embeds the updated executable when Go rebuilds. Set CMake's standard `CMAKE_PREFIX_PATH` environment variable if it cannot locate Qt, for example `CMAKE_PREFIX_PATH=/opt/homebrew/opt/qt task dev`.
+Native desktop builds compile both notification renderers before generating bindings and compiling Go. If CMake cannot find Qt, set `CMAKE_PREFIX_PATH`, for example `CMAKE_PREFIX_PATH=/opt/homebrew/opt/qt task dev`.
 
-Generated CMake files live in `custom-notification/build-<os>-<arch>/`; the executable is copied to `backend/notifier/out/sentinel-custom-notification-<os>-<arch>` for `//go:embed`. Both directories are ignored by Git. The tasks use the existing `ARCH` value; C++ OS conditionals select platform behavior, while CMake selects the compiled CPU architecture. Build the helper and run `task common:build:gnome-extension` before invoking `go build`, `go test`, or `wails3 generate bindings` directly on desktop packages: binding generation loads Go packages and therefore needs both generated embed outputs. Decky builds exclude the helper embed.
+CMake output goes in `custom-notification/build-<os>-<arch>-dev/` or `build-<os>-<arch>-production/`. The executable is copied to `backend/notifier/out/` for embedding in Go; generated files are ignored by Git. Before running desktop Go commands or binding generation directly, build both bundles with `task common:build:custom-notification` and `task common:build:gnome-extension`. Decky excludes both bundles.
 
-Cross-compilation still needs a Qt helper compiled for the target OS/architecture. The new task covers native builds; Docker/Flatpak Qt toolchains and runtime bundles remain deferred. A helper for another platform cannot substitute for the matching target binary.
+Cross-builds require a helper compiled for the target OS and architecture. Linux runtime packaging and Docker/Flatpak toolchains remain unfinished.
 
 Standalone CMake builds remain available:
 
@@ -26,17 +26,17 @@ cmake --build custom-notification/build
 
 CMake exports `compile_commands.json`; `.clangd` points at `build`. The macOS build uses an ordinary topmost window and does not validate Linux fullscreen stacking, focus, screen placement, or input transparency.
 
-The helper reloads source `custom-notification.qss` when available, including atomic editor saves. Otherwise it uses its embedded stylesheet. C++ and embedded resource changes require rebuilding. All content and duration come from JSON; there are no preview flags or built-in sample notifications.
+Development builds (`task dev` or `task common:build:custom-notification DEV=true`) reload source `custom-notification.qss` when available, including atomic editor saves. Standalone CMake builds can enable this with `-DSENTINEL_QSS_HOT_RELOAD=ON`. Production builds load embedded QSS once and exclude the source path and reload machinery. C++ and embedded resource changes require rebuilding. All content and duration come from JSON; there are no preview flags or built-in sample notifications.
 
 ## Embedded helper at runtime
 
-Select **Settings → Notifications → Appearance → Custom**. On the next custom notification, Sentinel extracts its embedded helper into:
+On Qt desktops, selecting **Settings → Notifications → Appearance → Custom**, or starting Sentinel with Custom saved, prepares the embedded helper at:
 
 ```text
 <backend.DataDir>/bin/sentinel-custom-notification
 ```
 
-This is persistent app data, not the cache directory. The helper has `0700` permissions. Sentinel reuses an identical copy, atomically replaces a changed copy after an app update, and recreates it if removed. It selects the embedded executable matching the running OS and architecture.
+Preparation reuses identical bytes, atomically replaces changed bytes, and restores a missing helper with `0700` permissions. Notifications launch this copy without checking its contents. If it is deleted while Sentinel is running, restart the app to restore it.
 
 To use an external development build, set an absolute override:
 
