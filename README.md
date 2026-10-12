@@ -39,9 +39,17 @@ An achievement watcher for supported Steam emulator games, with real-time notifi
 
 ## Installation
 
-### System Requirements (native packages)
-- **GTK 4** (`libgtk-4-1`)
-- **WebKitGTK 6** (`libwebkitgtk-6.0-4`)
+### System Requirements (Linux packages)
+
+Native desktop packages declare the following runtime dependencies. Qt and LayerShellQt are used by Custom popups on supported Wayland desktops; GNOME uses its Shell extension, and Decky uses Steam toasts.
+
+| Package | Runtime dependencies |
+| --- | --- |
+| DEB (Debian/Ubuntu) | `libgtk-4-1`, `libwebkitgtk-6.0-4`, `libqt6widgets6`, `qt6-wayland`, `liblayershellqtinterface6`, `layer-shell-qt` (6.0 or newer) |
+| RPM (Fedora) | `gtk4`, `webkitgtk6.0`, `qt6-qtbase-gui`, `qt6-qtwayland`, `layer-shell-qt` (6.0 or newer) |
+| Arch | `gtk4`, `webkitgtk-6.0`, `qt6-base`, `qt6-wayland`, `layer-shell-qt` |
+
+The Decky ZIP has no Qt or LayerShellQt runtime dependencies.
 
 
 ### Linux Packages
