@@ -22,8 +22,13 @@
 }
 
 .sentinel-icon {
+    width: 80px;
+    height: 80px;
     padding: 1px;
     background-color: #282c35;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
     border: 1px solid #454b57;
     border-radius: 10px;
 }
@@ -67,6 +72,8 @@
 
 .sentinel-progress-track {
     height: 8px;
+    /* Align with the artwork inside the icon's border and padding. */
+    margin-bottom: 2px;
     border-radius: 3px;
     background-color: #363d49;
 }

@@ -1,4 +1,5 @@
 import Clutter from 'gi://Clutter';
+import GdkPixbuf from 'gi://GdkPixbuf';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import Pango from 'gi://Pango';
@@ -29,6 +30,22 @@ const INTERFACE = `
     </method>
   </interface>
 </node>`;
+
+function clampText(label: St.Label) {
+    label.clutter_text.line_wrap = true;
+    label.clutter_text.line_wrap_mode = Pango.WrapMode.WORD_CHAR;
+    label.clutter_text.ellipsize = Pango.EllipsizeMode.END;
+    label.connect('style-changed', () => {
+        const layout = Pango.Layout.new(label.get_pango_context());
+        layout.set_font_description(label.get_theme_node().get_font());
+        layout.set_text('Ag\nAg', -1);
+        const [, height] = layout.get_pixel_size();
+        const scale = St.ThemeContext.get_for_stage(global.stage).scale_factor;
+        const style = `max-height: ${height / scale}px;`;
+        if (label.style !== style)
+            label.set_style(style);
+    });
+}
 
 // Draw a stationary rounded ring. Only the highlight moves, so corners never protrude.
 function paintRareGlow(area: St.DrawingArea, phase: number) {
@@ -68,6 +85,7 @@ export default class SentinelNotifications extends Extension {
     private _glowTimeline: Clutter.Timeline | null = null;
     private _dbus: Gio.DBusExportedObject | null = null;
     private _monitorsChanged = 0;
+    private _unredirectDisabled = false;
 
     enable() {
         this._card = null;
@@ -118,15 +136,14 @@ export default class SentinelNotifications extends Extension {
         const row = new St.BoxLayout({style_class: 'sentinel-row'});
         card.add_child(row);
 
-        const defaultIcon = new Gio.FileIcon({file: this.dir.get_child('sentinel.png')});
-        const icon = new St.Icon({
-            gicon: data.iconPath
-                ? new Gio.FileIcon({file: Gio.File.new_for_path(data.iconPath)})
-                : defaultIcon,
-            fallback_gicon: defaultIcon,
-            icon_size: 80,
+        const artwork = data.iconPath && GdkPixbuf.Pixbuf.get_file_info(data.iconPath)[0]
+            ? Gio.File.new_for_path(data.iconPath)
+            : this.dir.get_child('sentinel.png');
+        // Theme background images are clipped to the rounded border; St.Icon textures are not.
+        const icon = new St.Widget({
+            style: `background-image: url(${JSON.stringify(artwork.get_uri())});`,
             x_align: Clutter.ActorAlign.CENTER,
-            y_align: Clutter.ActorAlign.CENTER,
+            y_align: data.isProgress ? Clutter.ActorAlign.END : Clutter.ActorAlign.CENTER,
             style_class: 'sentinel-icon',
         });
         if (data.isRare && !data.isProgress) {
@@ -159,27 +176,25 @@ export default class SentinelNotifications extends Extension {
             orientation: Clutter.Orientation.VERTICAL,
             style_class: 'sentinel-content',
             x_expand: true,
-            y_align: Clutter.ActorAlign.CENTER,
+            y_align: data.isProgress ? Clutter.ActorAlign.END : Clutter.ActorAlign.CENTER,
         });
         const contentColumn = new St.Bin({
             style_class: 'sentinel-content-column',
             child: content,
             x_expand: true,
-            y_align: Clutter.ActorAlign.CENTER,
+            y_align: data.isProgress ? Clutter.ActorAlign.END : Clutter.ActorAlign.CENTER,
         });
         row.add_child(contentColumn);
 
         const title = new St.Label({text: data.title, style_class: 'sentinel-title'});
-        title.clutter_text.line_wrap = true;
-        title.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
+        clampText(title);
         content.add_child(title);
 
         const description = new St.Label({
             text: data.description,
             style_class: 'sentinel-description',
         });
-        description.clutter_text.line_wrap = true;
-        description.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
+        clampText(description);
         content.add_child(description);
 
         if (data.isProgress) {
@@ -228,6 +243,11 @@ export default class SentinelNotifications extends Extension {
         );
         card.connect('notify::width', position);
         card.connect('notify::height', position);
+
+        // Keep Shell UI composited above fullscreen windows while the card is visible.
+        global.compositor.disable_unredirect();
+        this._unredirectDisabled = true;
+
         // GNOME 50 removed the input-region option; actors remain nonreactive.
         Main.layoutManager.addTopChrome(card,
             Number.parseInt(PACKAGE_VERSION, 10) < 50 ? {affectsInputRegion: false} : {});
@@ -254,6 +274,11 @@ export default class SentinelNotifications extends Extension {
             Main.layoutManager.removeChrome(this._card);
             this._card.destroy();
             this._card = null;
+        }
+
+        if (this._unredirectDisabled) {
+            global.compositor.enable_unredirect();
+            this._unredirectDisabled = false;
         }
     }
 }
