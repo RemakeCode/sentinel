@@ -22,7 +22,8 @@ vars:
   FLATPAK_METAINFO: '{{.ROOT_DIR}}/build/flatpak/{{.APP_ID}}.metainfo.xml'
   FLATPAK_BUILD_DIR: '{{.ROOT_DIR}}/.flatpak/build'
   FLATPAK_REPO_DIR: '{{.ROOT_DIR}}/.flatpak/repo'
-  FLATPAK_BUNDLE: '{{.ROOT_DIR}}/{{.BIN_DIR}}/{{.RELEASE_ARTIFACT_NAME}}-x86_64.flatpak'
+  FLATPAK_ARCH: { sh: 'uname -m' }
+  FLATPAK_BUNDLE: '{{.ROOT_DIR}}/{{.BIN_DIR}}/{{.RELEASE_ARTIFACT_NAME}}-{{.FLATPAK_ARCH}}.flatpak'
   FLATPAK_RUNTIME_REPO: 'https://flathub.org/repo/flathub.flatpakrepo'
 
 tasks:

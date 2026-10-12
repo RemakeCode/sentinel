@@ -51,6 +51,9 @@ Native desktop packages declare the following runtime dependencies. Qt and Layer
 
 The Decky ZIP has no Qt or LayerShellQt runtime dependencies.
 
+Flatpak bundles the Qt popup libraries and plugins and grants scoped access for
+automatic GNOME extension setup. See the [Flatpak build guide](build/flatpak/README.md).
+
 
 ### Linux Packages
 

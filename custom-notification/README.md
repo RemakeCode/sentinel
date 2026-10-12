@@ -17,7 +17,7 @@ Native desktop builds compile both notification renderers before generating bind
 
 CMake output goes in `custom-notification/build-<os>-<arch>-dev/` or `build-<os>-<arch>-production/`. The executable is copied to `backend/notifier/out/` for embedding in Go; generated files are ignored by Git. Before running desktop Go commands or binding generation directly, build both bundles with `task common:build:custom-notification` and `task common:build:gnome-extension`. Decky excludes both bundles.
 
-Cross-builds require a helper compiled for the target OS and architecture. DEB, RPM, and Arch package metadata declares the Qt runtime dependencies; clean-host runtime validation and Docker/Flatpak toolchains remain unfinished.
+Cross-builds require a helper compiled for the target OS and architecture. DEB, RPM, and Arch package metadata declares the Qt runtime dependencies. The [Flatpak build](../build/flatpak/README.md) compiles the helper against bundled sandbox libraries. Clean-host runtime validation and Docker cross-build toolchains remain unfinished.
 
 Standalone CMake builds remain available:
 
