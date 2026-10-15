@@ -41,13 +41,15 @@ An achievement watcher for supported Steam emulator games, with real-time notifi
 
 ### System Requirements (Linux packages)
 
-Native desktop packages declare the following runtime dependencies. Qt and LayerShellQt are used by Custom popups on supported Wayland desktops; GNOME uses its Shell extension, and Decky uses Steam toasts.
+Native desktop packages declare the following runtime dependencies. Wails uses GTK 4 and WebKitGTK on every desktop. Qt is used only by the Custom notification helper, which renders on layer-shell Wayland compositors (KDE Plasma, niri, Hyprland, sway). GNOME uses its Shell extension instead, and Decky uses Steam toasts.
 
-| Package | Runtime dependencies |
-| --- | --- |
-| DEB (Debian/Ubuntu) | `libgtk-4-1`, `libwebkitgtk-6.0-4`, `libqt6widgets6`, `qt6-wayland`, `liblayershellqtinterface6`, `layer-shell-qt` (6.0 or newer) |
-| RPM (Fedora 44+) | `gtk4`, `webkitgtk6.0`, `qt6-qtbase-gui` (6.10 or newer), `layer-shell-qt` (6.0 or newer) |
-| Arch | `gtk4`, `webkitgtk-6.0`, `qt6-base`, `layer-shell-qt` |
+| Package | Dependencies | Custom notifications |
+| --- | --- | --- |
+| DEB (Debian/Ubuntu) | `libgtk-4-1`, `libwebkitgtk-6.0-4`, `libqt6widgets6`, `qt6-wayland` | Recommends `liblayershellqtinterface6`, `layer-shell-qt` (6.0 or newer) |
+| RPM (Fedora 44+) | `gtk4`, `webkitgtk6.0`, `qt6-qtbase-gui` (6.10 or newer) | Recommends `layer-shell-qt` (6.0 or newer) |
+| Arch | `gtk4`, `webkitgtk-6.0`, `qt6-base`, `layer-shell-qt` | included |
+
+The DEB and RPM list the LayerShellQt packages as weak dependencies, so a distribution without Qt 6 LayerShellQt still installs and keeps native notifications; Custom then reports an unavailable renderer. Ubuntu 24.04 LTS has no Qt 6 LayerShellQt and is native-only. The helper requires LayerShellQt 6.0 or newer, which Debian 13 (6.3) and Ubuntu 25.04 or newer satisfy. On GNOME, Custom needs Shell 48-50 through the extension, so Ubuntu 24.04 (Shell 46) is native-only there too.
 
 The Decky ZIP has no Qt or LayerShellQt runtime dependencies.
 

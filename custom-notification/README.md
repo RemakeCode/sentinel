@@ -1,10 +1,10 @@
 # Qt Widgets custom notification
 
-Qt achievement popups for Sentinel's desktop **Custom** notification option on layer-shell Wayland desktops. GNOME Wayland uses the [GNOME extension](../gnome-extension/README.md). Native notifications are the default; Decky uses Steam toasts.
+Qt achievement popups for Sentinel's desktop **Custom** notification option on layer-shell Wayland desktops (KDE Plasma, niri, Hyprland, sway). GNOME Wayland uses the [GNOME extension](../gnome-extension/README.md). Native notifications are the default; Decky uses Steam toasts.
 
 ## Build and development
 
-Requires CMake and Qt 6 Widgets, plus Qt Wayland client support and LayerShellQt on Linux. Arch Linux packages: `cmake`, `qt6-base`, `layer-shell-qt`. Current Arch Qt 6.12 includes Wayland client support in `qt6-base`.
+Requires CMake and Qt 6 Widgets, plus Qt Wayland client support and LayerShellQt on Linux. The helper builds against LayerShellQt 6.0 or newer and uses `setScreenConfiguration(ScreenFromCompositor)` to anchor to the compositor-selected active output. Arch Linux packages: `cmake`, `qt6-base`, `layer-shell-qt`. Current Arch Qt 6.12 includes Wayland client support in `qt6-base`.
 
 Fedora 44+ provides Wayland client support in `qt6-qtbase-gui` (Qt 6.10 or newer), so the RPM does not require `qt6-qtwayland`. Debian 13 still requires `qt6-wayland`.
 
@@ -49,6 +49,10 @@ export SENTINEL_CUSTOM_NOTIFICATION_EXECUTABLE=/absolute/path/to/sentinel-custom
 The QSS and fallback artwork are embedded inside the Qt executable. Qt Widgets/Wayland libraries and the LayerShellQt integration plugin must still be available at runtime; embedding does not bundle these shared dependencies.
 
 Go passes JSON on stdin, plays the selected sound after successful process start, and waits in the background to log exit errors. Qt closes itself after the supplied duration. There is no readiness handshake or startup timeout. A later Qt failure may occur after sound playback and does not trigger native fallback. The existing queue delay applies to every renderer.
+
+## Compositor behavior
+
+The popup anchors to the lower right of the compositor-selected active output on the Overlay layer. niri and Hyprland resolve the active output to the currently focused monitor when the surface is created, so the popup follows focus on multi-monitor systems; when no output is active the compositor closes the surface and no popup appears. The layer surface uses the namespace `sentinel-custom-notification`, so users can target it with a niri `layer-rule` or a Hyprland `layerrule`.
 
 ## Manual notifications
 
