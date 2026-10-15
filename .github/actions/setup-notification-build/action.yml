@@ -13,7 +13,7 @@ runs:
     - name: Install Qt
       uses: jurplel/install-qt-action@v4
       with:
-        # LayerShellQt 6.6 supplies setWantsToBeOnActiveScreen and requires Qt 6.10.
+        # CI builds LayerShellQt 6.6, which requires Qt 6.10; the helper only needs LayerShellQt 6.0 APIs.
         version: '6.10.2'
         cache: true
 
