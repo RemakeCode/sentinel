@@ -414,8 +414,11 @@ int main(int argc, char *argv[]) {
   layer->setExclusiveZone(0);
   layer->setKeyboardInteractivity(
       LayerShellQt::Window::KeyboardInteractivityNone);
-  layer->setActivateOnShow(false);
-  layer->setWantsToBeOnActiveScreen(true);
+  // ScreenFromCompositor anchors to the compositor-selected active output and is
+  // equivalent to setWantsToBeOnActiveScreen(true), which only exists from
+  // layer-shell-qt 6.6. ScreenFromCompositor works from 6.0, so builds against
+  // Debian 13 and other older Qt 6 LayerShellQt stacks stay valid.
+  layer->setScreenConfiguration(LayerShellQt::Window::ScreenFromCompositor);
 #else
   // Position the notification in the lower-right corner on macOS.
   if (auto *screen = QGuiApplication::primaryScreen())
