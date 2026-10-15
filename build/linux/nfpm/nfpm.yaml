@@ -34,23 +34,27 @@ contents:
     file_info:
       mode: 0644
 
-# Debian/Ubuntu repositories with the Qt 6 LayerShellQt stack (e.g. Debian 13).
 depends:
   - libgtk-4-1
   - libwebkitgtk-6.0-4
   - libqt6widgets6
   - qt6-wayland
-  - liblayershellqtinterface6
-  - layer-shell-qt (>= 6.0)
 
 # Distribution-specific overrides for different package formats
 overrides:
+  # Custom-only; weak so installs without Qt 6 LayerShellQt stay native.
+  deb:
+    recommends:
+      - liblayershellqtinterface6 (>= 6.0)
+      - layer-shell-qt (>= 6.0)
+
   # Fedora 44+ supplies Wayland client support in Qt 6.10's base GUI package.
   rpm:
     depends:
       - gtk4
       - webkitgtk6.0
       - qt6-qtbase-gui >= 6.10
+    recommends:
       - layer-shell-qt >= 6.0
 
   # Arch Linux packages
