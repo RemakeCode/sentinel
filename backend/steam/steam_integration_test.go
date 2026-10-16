@@ -16,8 +16,8 @@ import (
 )
 
 const (
-	integrationAppID         = "620"     // Portal 2
-	integrationOfficialAppID = "1245620" // Elden Ring
+	integrationAppID         = "620"    // Portal 2
+	integrationOfficialAppID = "241930" // Shadow of Mordor
 )
 
 // These tests call the live services. Run them with `task test:steam-integration`.
@@ -114,22 +114,24 @@ func TestIntegration_OfficialAchievements(t *testing.T) {
 func TestIntegration_ThirdPartyAchievements(t *testing.T) {
 	useIntegrationCacheDirs(t)
 
-	achievements, err := newIntegrationService().fetchAchievementsFromThirdParty(integrationAppID, "english")
-	if err != nil {
-		t.Fatalf("SteamHunters or Steam Community achievement request failed: %v", err)
+	for _, appID := range []string{integrationAppID, integrationOfficialAppID} {
+		t.Run(appID, func(t *testing.T) {
+			achievements, err := newIntegrationService().fetchAchievementsFromThirdParty(appID, "english")
+			if err != nil {
+				t.Fatalf("SteamHunters or Steam Community achievement request failed: %v", err)
+			}
+
+			if len(achievements) == 0 {
+				t.Fatal("SteamHunters and Steam Community returned no usable achievements")
+			}
+
+			for _, achievement := range achievements {
+				if achievement.Name == "" || achievement.DisplayName == "" || achievement.Icon == "" || achievement.IconGray == "" {
+					t.Fatalf("third-party achievement is missing required metadata: %#v", achievement)
+				}
+			}
+		})
 	}
-	if len(achievements) == 0 {
-		t.Fatal("SteamHunters and Steam Community returned no usable achievements")
-	}
-	if achievements[0].Name == "" || achievements[0].DisplayName == "" {
-		t.Fatalf("third-party achievement response is missing fields consumed by the app: %#v", achievements[0])
-	}
-	for _, achievement := range achievements {
-		if achievement.Icon != "" {
-			return
-		}
-	}
-	t.Fatal("Steam Community achievement page yielded no achievement icons")
 }
 
 func TestIntegration_PortraitFallback(t *testing.T) {
