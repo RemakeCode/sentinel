@@ -24,8 +24,8 @@ func TestMergeAchievements(t *testing.T) {
 	]`), &shItems))
 
 	communityMap := map[string]communityData{
-		"intense precision":   {Icon: "http://example.com/icon1.png", Hidden: 0},
-		"paranatural agility": {Icon: "http://example.com/icon2.png", Hidden: 1},
+		"ACH_1": {Icon: "http://example.com/icon1.png", Hidden: 0},
+		"ACH_2": {Icon: "http://example.com/icon2.png", Hidden: 1},
 	}
 
 	achievements := svc.mergeAchievements(shItems, communityMap, appID)
