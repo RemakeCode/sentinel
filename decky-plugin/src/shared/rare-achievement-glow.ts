@@ -37,9 +37,9 @@ export const rareAchievementGlowStyles = `
       from var(--rare-achievement-angle),
       transparent 0deg,
       rgba(255, 214, 77, 0.2) 55deg,
-      rgba(255, 174, 0, 0.95) 115deg,
+      rgba(255, 184, 78, 0.95) 115deg,
       rgba(255, 244, 178, 0.95) 160deg,
-      rgba(255, 174, 0, 0.25) 220deg,
+      rgba(255, 184, 78, 0.25) 220deg,
       transparent 300deg
     );
     filter: blur(3px);
@@ -51,7 +51,7 @@ export const rareAchievementGlowStyles = `
     inset: -2px;
     z-index: 1;
     border: 1px solid rgba(255, 214, 77, 0.9);
-    box-shadow: 0 0 10px rgba(255, 174, 0, 0.7);
+    box-shadow: 0 0 10px rgba(255, 184, 78, 0.7);
   }
 
   .sentinel-rare-achievement-glow > img {
