@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "tsc --noEmit && rollup -c -w",
     "build": "tsc && rollup -c",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "format:check": "prettier --check"
   },
   "repository": {
     "type": "git",
