@@ -12,8 +12,13 @@
     "type": "git",
     "url": "git+https://github.com/RemakeCode/sentinel.git"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "linux achievements",
+    "trophy",
+    "notifications",
+    "proton achievements"
+  ],
+  "author": "afk-RightNow",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/RemakeCode/sentinel/issues"
@@ -26,8 +31,8 @@
     "@semantic-release/exec": "^7.1.0",
     "@semantic-release/github": "^12.0.9",
     "@semantic-release/release-notes-generator": "^14.1.1",
-    "conventional-changelog-conventionalcommits": "^7.0.2",
+    "conventional-changelog-conventionalcommits": "^9.3.1",
     "husky": "^9.1.7",
-    "semantic-release": "^24.2.9"
+    "semantic-release": "^25.0.9"
   }
 }
