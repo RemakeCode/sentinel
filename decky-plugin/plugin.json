@@ -1,11 +1,11 @@
 {
   "name": "Sentinel",
   "author": "afk-RightNow",
-  "flags": ["debug"],
+  "flags": [],
   "api_version": 1,
   "publish": {
     "tags": ["achievements", "notifications", "trophy"],
     "description": "An achievement watcher for Steam emulator games on Linux.",
-    "image": ""
+    "image": "https://raw.githubusercontent.com/RemakeCode/sentinel/main/decky-plugin/assets/logo-decky.png"
   }
 }
