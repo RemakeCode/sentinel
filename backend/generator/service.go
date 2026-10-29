@@ -197,6 +197,8 @@ func (s *Service) SetupGBE(request SetupRequest) (result SetupResult, err error)
 		return result, s.reportFailure(request.AppID, err)
 	}
 
+	s.backupOrRestoreCodexAndRuneAchievementDirectories(target.AppID, false)
+
 	installDirectory := target.InstallDirectory
 	if err := s.Config.SetManagedGBESetup(target.AppID, request.GameName, installDirectory); err != nil {
 		// Installation succeeded. Keep the exact backups and report that only the
@@ -269,6 +271,8 @@ func (s *Service) UndoGBESetup(appID string) error {
 	if err != nil {
 		return s.reportUndoFailure(setup.AppID, err)
 	}
+	s.backupOrRestoreCodexAndRuneAchievementDirectories(setup.AppID, true)
+
 	if err := s.Config.RemoveManagedGBESetup(setup.AppID); err != nil {
 		return s.reportUndoFailure(setup.AppID, err)
 	}
@@ -342,5 +346,60 @@ func (s *Service) cleanupOperationTransientData(workspaceDirectory, outputDirect
 
 	if err := os.Remove(tokenPath); err != nil && !os.IsNotExist(err) {
 		slog.Warn("remove temporary GSE authentication handoff", "error", err)
+	}
+}
+
+func (s *Service) codexAndRuneAchievementDirectories(appID string) []string {
+	prefixes, err := s.Config.GetPrefixPaths()
+	if err != nil {
+		slog.Warn("resolve CODEX or RUNE achievement prefixes", "error", err)
+		return nil
+	}
+	sources, err := s.Config.GetEmulatorSources()
+	if err != nil {
+		slog.Warn("resolve CODEX or RUNE achievement sources", "error", err)
+		return nil
+	}
+
+	var paths []string
+	for _, prefix := range prefixes {
+		for _, source := range sources {
+			if source.ID == "codex" || source.ID == "rune" {
+				paths = append(paths, filepath.Join(prefix, "drive_c", source.Path, appID))
+			}
+		}
+	}
+	return paths
+}
+
+func (s *Service) backupOrRestoreCodexAndRuneAchievementDirectories(appID string, restore bool) {
+	for _, path := range s.codexAndRuneAchievementDirectories(appID) {
+		source, destination := path, path+sentinelBackupSuffix
+		if restore {
+			source, destination = destination, source
+		}
+		info, err := os.Lstat(source)
+		if errors.Is(err, os.ErrNotExist) {
+			continue
+		}
+		if err != nil {
+			slog.Warn("inspect CODEX or RUNE achievement directory", "path", source, "error", err)
+			continue
+		}
+		if !info.IsDir() {
+			continue
+		}
+		if _, err := os.Lstat(destination); err == nil {
+			if restore {
+				slog.Warn("CODEX or RUNE achievement restore destination occupied", "path", destination)
+			}
+			continue
+		} else if !errors.Is(err, os.ErrNotExist) {
+			slog.Warn("inspect CODEX or RUNE achievement destination", "path", destination, "error", err)
+			continue
+		}
+		if err := os.Rename(source, destination); err != nil {
+			slog.Warn("move CODEX or RUNE achievement directory", "path", source, "error", err)
+		}
 	}
 }
