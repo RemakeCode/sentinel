@@ -1,5 +1,5 @@
 import './library-sync-alert.scss';
-import type { FC } from 'react';
+import { type FC, useEffect, useState } from 'react';
 import type { LibrarySyncStatus } from '@wa/sentinel/backend/steam';
 import { AnimatePresence, motion } from 'framer-motion';
 
@@ -14,6 +14,18 @@ const alertVariants = {
 };
 
 const LibrarySyncAlert: FC<LibrarySyncAlertProps> = ({ syncStatus }) => {
+  const [isFailureDismissed, setIsFailureDismissed] = useState(false);
+
+  useEffect(() => {
+    if (syncStatus.State !== 'error') {
+      setIsFailureDismissed(false);
+      return undefined;
+    }
+
+    const timeoutId = setTimeout(() => setIsFailureDismissed(true), 10_000);
+    return () => clearTimeout(timeoutId);
+  }, [syncStatus.State]);
+
   const isRunning = syncStatus.State === 'running';
   const hasFailures = syncStatus.State === 'error';
   const message = hasFailures
@@ -29,7 +41,7 @@ const LibrarySyncAlert: FC<LibrarySyncAlertProps> = ({ syncStatus }) => {
   return (
     <div className='library-sync-alert' aria-live='polite'>
       <AnimatePresence>
-        {(isRunning || hasFailures) && (
+        {(isRunning || (hasFailures && !isFailureDismissed)) && (
           <motion.div
             className='alert'
             role='alert'

@@ -100,7 +100,7 @@ modules:
       - cmake --build custom-notification/build-flatpak
       - install -m755 custom-notification/build-flatpak/bin/sentinel-custom-notification backend/notifier/out/sentinel-custom-notification-linux-$(go env GOARCH)
       - mkdir -p .bin
-      - GOBIN="$PWD/.bin" go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.23
+      - GOBIN="$PWD/.bin" go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0
       - .bin/wails3 generate bindings -f '-tags production' -clean=true -ts
       - npm --prefix frontend run build --silent
       - go build -tags production -trimpath -buildvcs=false -ldflags='-w -s -X sentinel/backend.Version=0.0.0-flatpak' -o sentinel

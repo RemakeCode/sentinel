@@ -342,6 +342,7 @@ tasks:
       - cp -R dist/. out/{{.PLUGIN_NAME}}/dist/
       - cp ../bin/{{.APP_NAME}}-decky out/{{.PLUGIN_NAME}}/bin/{{.APP_NAME}}-decky
       - cp plugin.json package.json main.py out/{{.PLUGIN_NAME}}/
+      - node scripts/prepare-decky-manifest.cjs
       - chmod +x out/{{.PLUGIN_NAME}}/bin/{{.APP_NAME}}-decky
     vars:
       PLUGIN_NAME: sentinel
@@ -384,6 +385,8 @@ tasks:
 
   decky:dev:
     summary: Watches Decky frontend and backend changes, redeploying successful builds locally
+    env:
+      SENTINEL_DECKY_DEBUG: "1"
     platforms: [linux]
     preconditions:
       - sh: command -v task

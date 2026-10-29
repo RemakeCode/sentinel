@@ -309,3 +309,26 @@ func TestRunGSETerminatesWhenCancelled(t *testing.T) {
 	require.Less(t, time.Since(started), 2*time.Second)
 	require.Equal(t, 5*time.Minute, generatorTimeout)
 }
+
+func TestCodexAndRuneAchievementBackupAndRestore(t *testing.T) {
+	root := t.TempDir()
+	service := &Service{Config: &config.File{Prefixes: []config.Prefix{{Path: root}}, Emulators: []config.Emulator{{ID: "codex"}, {ID: "rune"}, {ID: "gse"}}}}
+	paths := service.codexAndRuneAchievementDirectories("123")
+	require.Len(t, paths, 2)
+	for _, path := range paths {
+		require.NoError(t, os.MkdirAll(path, 0755))
+		require.NoError(t, os.WriteFile(filepath.Join(path, "save"), []byte("progress"), 0644))
+		require.NoError(t, os.MkdirAll(filepath.Join(filepath.Dir(path), "456"), 0755))
+	}
+	service.backupOrRestoreCodexAndRuneAchievementDirectories("123", false)
+	for _, path := range paths {
+		require.NoDirExists(t, path)
+		require.FileExists(t, filepath.Join(path+sentinelBackupSuffix, "save"))
+		require.DirExists(t, filepath.Join(filepath.Dir(path), "456"))
+	}
+	require.NoError(t, os.Mkdir(paths[0], 0755))
+	service.backupOrRestoreCodexAndRuneAchievementDirectories("123", false)
+	service.backupOrRestoreCodexAndRuneAchievementDirectories("123", true)
+	require.DirExists(t, paths[0]+sentinelBackupSuffix)
+	require.FileExists(t, filepath.Join(paths[1], "save"))
+}

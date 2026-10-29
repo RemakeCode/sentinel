@@ -45,6 +45,7 @@ func NewServices() *Services {
 		Ach:      achService,
 		Config:   configService,
 		Notifier: notifierService,
+		Events:   notifierService,
 	}
 
 	return &Services{

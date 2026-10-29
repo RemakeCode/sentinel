@@ -18,5 +18,10 @@ jobs:
         with:
           node: 'false'
 
+      - name: Install native test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config libgtk-4-dev libwebkitgtk-6.0-dev
+
       - name: Check live Steam API contracts
         run: task test:steam-integration

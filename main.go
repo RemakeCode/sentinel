@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
+	"runtime"
 
 	"sentinel/backend"
 	"sentinel/backend/autostart"
@@ -42,6 +44,17 @@ func main() {
 	var window *application.WebviewWindow
 
 	appLogger, logLevel := bootstrap.ConfigureLogger()
+
+	// WebKitGTK 2.54 switched from TextureMapper to the Skia compositor.
+	// In 2.54.1, Skia causes a one-frame scale snapback after hover-out animations.
+	// Default to TextureMapper until the upstream regression is fixed, while
+	// allowing an explicit environment setting to override this workaround.
+	if runtime.GOOS == "linux" && os.Getenv("WEBKIT_USE_SKIA_FOR_COMPOSITION") == "" {
+		if err := os.Setenv("WEBKIT_USE_SKIA_FOR_COMPOSITION", "0"); err != nil {
+			appLogger.Warn("Failed to disable Skia composition", "error", err)
+		}
+	}
+
 	services := bootstrap.NewServices()
 
 	options := application.Options{

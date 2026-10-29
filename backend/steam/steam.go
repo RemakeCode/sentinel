@@ -66,8 +66,9 @@ type gameBasicsResponse struct {
 }
 
 type communityData struct {
-	Icon   string
-	Hidden int
+	Icon     string
+	IconGray string
+	Hidden   int
 }
 
 type steamHuntersAchievement struct {
@@ -152,6 +153,33 @@ type gameAchievementsResponse struct {
 			Percentage  json.RawMessage `json:"player_percent_unlocked"`
 		} `json:"achievements"`
 	} `json:"response"`
+}
+
+type communityPageData struct {
+	RenderContext struct {
+		QueryData string `json:"queryData"`
+	} `json:"renderContext"`
+}
+
+type communityQueryData struct {
+	Queries []struct {
+		QueryKey []any `json:"queryKey"`
+		State    struct {
+			Data json.RawMessage `json:"data"`
+		} `json:"state"`
+	} `json:"queries"`
+}
+
+type communityAchievementSchema struct {
+	AppID  int `json:"appid"`
+	Groups []struct {
+		Achievements []struct {
+			APIName  string `json:"api_name"`
+			Hidden   *bool  `json:"hidden"`
+			Icon     string `json:"icon_achieved"`
+			IconGray string `json:"icon_unachieved"`
+		} `json:"achievements"`
+	} `json:"groups"`
 }
 
 func (s *Service) Start(ctx context.Context) error {
@@ -526,7 +554,7 @@ func (s *Service) resolveKeyAchievementIconURL(appID string, icon string) string
 	if strings.HasPrefix(icon, "http://") || strings.HasPrefix(icon, "https://") {
 		return icon
 	}
-	steamCDN := fmt.Sprintf("https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/%s/", appID)
+	steamCDN := fmt.Sprintf("https://shared.fastly.steamstatic.com/community_assets/images/apps/%s/", appID)
 	return steamCDN + strings.TrimLeft(icon, "/")
 }
 
@@ -682,30 +710,17 @@ func (s *Service) fetchAchievementsFromThirdParty(appID string, language string)
 		return nil, fmt.Errorf("steam community returned status: %d", cResp.StatusCode)
 	}
 
-	doc, err := goquery.NewDocumentFromReader(cResp.Body)
+	communityMap, err := parseCommunityAchievements(cResp.Body, appID)
 	if err != nil {
 		return nil, err
 	}
 
-	communityMap := make(map[string]communityData)
-
-	doc.Find(".achieveRow").Each(func(i int, s *goquery.Selection) {
-		name := strings.TrimSpace(s.Find(".achieveTxt h3").First().Text())
-		icon := s.Find(".achieveImgHolder img").First().AttrOr("src", "")
-		description := strings.TrimSpace(s.Find(".achieveTxt h5").First().Text())
-
-		hidden := 0
-		if description == "" {
-			hidden = 1
+	// Reject incomplete enrichment before replacing the game's cached metadata.
+	for _, item := range shItems {
+		if _, ok := communityMap[item.ApiName]; !ok {
+			return nil, fmt.Errorf("steam community schema is missing achievement %q for app %s", item.ApiName, appID)
 		}
-
-		if name != "" {
-			communityMap[name] = communityData{
-				Icon:   icon,
-				Hidden: hidden,
-			}
-		}
-	})
+	}
 
 	// 3. Merge data
 	achievements := s.mergeAchievements(shItems, communityMap, appID)
@@ -721,13 +736,13 @@ func (s *Service) mergeAchievements(shItems []steamHuntersAchievement, community
 	for _, item := range shItems {
 		a := achievement{
 			Name:        item.ApiName,
-			DisplayName: item.Name,
+			DisplayName: strings.TrimSpace(item.Name),
 			Description: item.Description,
 		}
 		a.GlobalPercentage = parseSourcePercentage(item.SteamPercentage)
 		a.IsRare = isRarePercentage(a.GlobalPercentage)
 
-		if data, ok := communityMap[item.Name]; ok {
+		if data, ok := communityMap[a.Name]; ok {
 			a.Hidden = data.Hidden
 		}
 
@@ -739,8 +754,9 @@ func (s *Service) mergeAchievements(shItems []steamHuntersAchievement, community
 
 func (s *Service) applyCommunityIcons(achievements []achievement, communityMap map[string]communityData) {
 	for i, item := range achievements {
-		if data, ok := communityMap[item.DisplayName]; ok {
+		if data, ok := communityMap[item.Name]; ok {
 			item.Icon = data.Icon
+			item.IconGray = data.IconGray
 			achievements[i] = item
 		}
 	}
@@ -1231,4 +1247,71 @@ func (s *Service) loadCachedAchievementIcon(appID string, iconURL string) (strin
 	}
 
 	return "", errors.New("icon not found")
+}
+
+// Steam's embedded schema is undocumented. Validate the fields we consume so a
+// page format change fails the refresh instead of caching empty icons or flags.
+func parseCommunityAchievements(body io.Reader, appID string) (map[string]communityData, error) {
+	doc, err := goquery.NewDocumentFromReader(body)
+	if err != nil {
+		return nil, fmt.Errorf("parse steam community HTML: %w", err)
+	}
+
+	embedded := doc.Find("script#valve-ssr-data")
+	if embedded.Length() != 1 {
+		return nil, fmt.Errorf("steam community page data not found for app %s", appID)
+	}
+
+	var page communityPageData
+	if err := json.Unmarshal([]byte(embedded.Text()), &page); err != nil {
+		return nil, fmt.Errorf("parse steam community page data: %w", err)
+	}
+
+	var cache communityQueryData
+	if err := json.Unmarshal([]byte(page.RenderContext.QueryData), &cache); err != nil {
+		return nil, fmt.Errorf("parse steam community query data: %w", err)
+	}
+
+	for _, query := range cache.Queries {
+		if len(query.QueryKey) != 3 || query.QueryKey[0] != "achievements" || query.QueryKey[2] != "schema_v2" {
+			continue
+		}
+
+		var schema communityAchievementSchema
+		if err := json.Unmarshal(query.State.Data, &schema); err != nil {
+			return nil, fmt.Errorf("parse steam community achievement schema: %w", err)
+		}
+
+		if strconv.Itoa(schema.AppID) != appID {
+			continue
+		}
+
+		if schema.Groups == nil {
+			return nil, fmt.Errorf("steam community achievement groups not found for app %s", appID)
+		}
+
+		items := make(map[string]communityData)
+		for _, group := range schema.Groups {
+			if group.Achievements == nil {
+				return nil, fmt.Errorf("steam community group achievements not found for app %s", appID)
+			}
+
+			for _, item := range group.Achievements {
+				if item.APIName == "" || item.Icon == "" || item.IconGray == "" || item.Hidden == nil {
+					return nil, fmt.Errorf("steam community achievement %q has incomplete metadata for app %s", item.APIName, appID)
+				}
+
+				hidden := 0
+				if *item.Hidden {
+					hidden = 1
+				}
+
+				items[item.APIName] = communityData{Icon: item.Icon, IconGray: item.IconGray, Hidden: hidden}
+			}
+		}
+
+		return items, nil
+	}
+
+	return nil, fmt.Errorf("steam community achievement schema not found for app %s", appID)
 }
