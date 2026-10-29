@@ -1273,7 +1273,7 @@ func parseCommunityAchievements(body io.Reader, appID string) (map[string]commun
 	}
 
 	for _, query := range cache.Queries {
-		if len(query.QueryKey) != 3 || query.QueryKey[0] != "achievements" || query.QueryKey[2] != "schema" {
+		if len(query.QueryKey) != 3 || query.QueryKey[0] != "achievements" || query.QueryKey[2] != "schema_v2" {
 			continue
 		}
 
