@@ -26,3 +26,4 @@ node_modules
 AGENTS.md
 /decky-plugin/out/
 /decky-plugin/src/shared/types/_generated/
+/backend/notifier/out/
