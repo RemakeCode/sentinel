@@ -30,7 +30,7 @@ modules:
     build-commands:
       - npm ci --prefix frontend --include=dev
       - mkdir -p .bin
-      - GOBIN="$PWD/.bin" go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.23
+      - GOBIN="$PWD/.bin" go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0
       - .bin/wails3 generate bindings -f '-tags production' -clean=true -ts
       - npm --prefix frontend run build --silent
       - go build -tags production -trimpath -buildvcs=false -ldflags='-w -s -X sentinel/backend.Version=0.0.0-flatpak' -o sentinel
