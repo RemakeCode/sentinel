@@ -547,7 +547,7 @@ func (s *Service) fetchAchievementsFromOfficialAPI(appID string, language string
 	return achievements, nil
 }
 
-func (s *Service) resolveKeyAchievementIconURL(appID string, icon string) string {
+func (s *Service) resolveAchievementIconURL(appID string, icon string) string {
 	if icon == "" {
 		return ""
 	}
@@ -559,7 +559,7 @@ func (s *Service) resolveKeyAchievementIconURL(appID string, icon string) string
 }
 
 func (s *Service) localizeKeySourceAchievementIcon(appID string, icon string, _ string) string {
-	iconURL := s.resolveKeyAchievementIconURL(appID, icon)
+	iconURL := s.resolveAchievementIconURL(appID, icon)
 	if iconURL == "" {
 		return ""
 	}
@@ -724,7 +724,7 @@ func (s *Service) fetchAchievementsFromThirdParty(appID string, language string)
 
 	// 3. Merge data
 	achievements := s.mergeAchievements(shItems, communityMap, appID)
-	s.applyCommunityIcons(achievements, communityMap)
+	s.applyCommunityIcons(appID, achievements, communityMap)
 	s.runAssetCacheTasks(s.achievementIconTasks(appID, achievements))
 	s.localizeAchievementIcons(appID, achievements)
 
@@ -752,11 +752,11 @@ func (s *Service) mergeAchievements(shItems []steamHuntersAchievement, community
 	return achievements
 }
 
-func (s *Service) applyCommunityIcons(achievements []achievement, communityMap map[string]communityData) {
+func (s *Service) applyCommunityIcons(appID string, achievements []achievement, communityMap map[string]communityData) {
 	for i, item := range achievements {
 		if data, ok := communityMap[item.Name]; ok {
-			item.Icon = data.Icon
-			item.IconGray = data.IconGray
+			item.Icon = s.resolveAchievementIconURL(appID, data.Icon)
+			item.IconGray = s.resolveAchievementIconURL(appID, data.IconGray)
 			achievements[i] = item
 		}
 	}

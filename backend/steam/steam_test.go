@@ -24,12 +24,12 @@ func TestMergeAchievements(t *testing.T) {
 	]`), &shItems))
 
 	communityMap := map[string]communityData{
-		"ACH_1": {Icon: "http://example.com/icon1.png", Hidden: 0},
+		"ACH_1": {Icon: "icon1.jpg", IconGray: "icon1-gray.jpg", Hidden: 0},
 		"ACH_2": {Icon: "http://example.com/icon2.png", Hidden: 1},
 	}
 
 	achievements := svc.mergeAchievements(shItems, communityMap, appID)
-	svc.applyCommunityIcons(achievements, communityMap)
+	svc.applyCommunityIcons(appID, achievements, communityMap)
 
 	assert.Len(t, achievements, 2)
 	assert.Equal(t, "ACH_1", achievements[0].Name)
@@ -37,7 +37,8 @@ func TestMergeAchievements(t *testing.T) {
 	require.NotNil(t, achievements[0].GlobalPercentage)
 	assert.Equal(t, 9.99, *achievements[0].GlobalPercentage)
 	assert.True(t, achievements[0].IsRare)
-	assert.Equal(t, "http://example.com/icon1.png", achievements[0].Icon)
+	assert.Equal(t, "https://shared.fastly.steamstatic.com/community_assets/images/apps/12345/icon1.jpg", achievements[0].Icon)
+	assert.Equal(t, "https://shared.fastly.steamstatic.com/community_assets/images/apps/12345/icon1-gray.jpg", achievements[0].IconGray)
 	assert.Equal(t, 0, achievements[0].Hidden)
 
 	assert.Equal(t, "ACH_2", achievements[1].Name)
