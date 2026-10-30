@@ -14,21 +14,91 @@ finish-args:
   - --share=network
   - --socket=pulseaudio
   - --filesystem=home
+  - --filesystem=xdg-data/gnome-shell/extensions/io.github.remakecode.sentinel:create
   - --talk-name=org.freedesktop.Notifications
   - --talk-name=org.kde.StatusNotifierWatcher
+  - --talk-name=org.gnome.Shell
 
 build-options:
   append-path: /usr/lib/sdk/golang/bin:/usr/lib/sdk/node24/bin
   env:
     GOCACHE: /run/build/sentinel/.cache/go-build
+    CMAKE_PREFIX_PATH: /app
   build-args:
     - --share=network
 
 modules:
+  # Keep the GTK/WebKit GNOME runtime and bundle only the Qt base modules needed
+  # by the Widgets helper. Qt 6.10 includes the Wayland client in qtbase.
+  - name: qtbase
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DINSTALL_LIBDIR=lib
+      - -DINSTALL_PLUGINSDIR=lib/qt6/plugins
+      - -DQT_BUILD_TESTS=OFF
+      - -DQT_BUILD_EXAMPLES=OFF
+      - -DINPUT_opengl=es2
+      - -DFEATURE_wayland=ON
+      - -DFEATURE_xcb=OFF
+      - -DFEATURE_network=OFF
+      - -DFEATURE_sql=OFF
+      - -DFEATURE_testlib=OFF
+      - -DFEATURE_printsupport=OFF
+    cleanup:
+      - /bin
+      - /include
+      - /lib/cmake
+      - /lib/pkgconfig
+      - /lib/metatypes
+      - /lib/qt6/mkspecs
+      - /libexec
+      - /mkspecs
+      - /share
+      - '*.a'
+    sources:
+      - type: archive
+        url: https://download.qt.io/archive/qt/6.10/6.10.2/submodules/qtbase-everywhere-src-6.10.2.tar.xz
+        sha256: aeb78d29291a2b5fd53cb55950f8f5065b4978c25fb1d77f627d695ab9adf21e
+
+  - name: extra-cmake-modules
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DBUILD_TESTING=OFF
+    cleanup:
+      - /share/ECM
+    sources:
+      - type: archive
+        url: https://download.kde.org/stable/frameworks/6.22/extra-cmake-modules-6.22.0.tar.xz
+        sha256: cb83a69571b277c20b3a6567ef0b6f39bf29c43a619282bf4bb076feb4c609a6
+
+  - name: layer-shell-qt
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DBUILD_TESTING=OFF
+      - -DKDE_INSTALL_LIBDIR=lib
+      - -DKDE_INSTALL_QTPLUGINDIR=/app/lib/qt6/plugins
+    cleanup:
+      - /include
+      - /lib/cmake
+      - /lib/pkgconfig
+    sources:
+      - type: archive
+        url: https://download.kde.org/stable/plasma/6.6.0/layer-shell-qt-6.6.0.tar.xz
+        sha256: 4551526a746a19f8e47b1419e645ee595bae722ba6b8eedc88c06b917fedeaca
+      # The helper needs the interface and shell plugin, not QML bindings/demo.
+      - type: patch
+        path: layer-shell-qt-widgets-only.patch
+
   - name: sentinel
     buildsystem: simple
     build-commands:
       - npm ci --prefix frontend --include=dev
+      - npm ci --prefix gnome-extension --include=dev
+      - npm --prefix gnome-extension run build
+      - cmake -S custom-notification -B custom-notification/build-flatpak -G Ninja -DCMAKE_BUILD_TYPE=Release -DSENTINEL_QSS_HOT_RELOAD=OFF
+      - cmake --build custom-notification/build-flatpak
+      - install -m755 custom-notification/build-flatpak/bin/sentinel-custom-notification backend/notifier/out/sentinel-custom-notification-linux-$(go env GOARCH)
       - mkdir -p .bin
       - GOBIN="$PWD/.bin" go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0
       - .bin/wails3 generate bindings -f '-tags production' -clean=true -ts
@@ -43,10 +113,14 @@ modules:
         path: ../..
         skip:
           - .git
+          - .bin
           - .flatpak-builder
           - bin
           - decky-plugin/node_modules
           - .flatpak
           - flatpak_app
           - frontend/node_modules
+          - gnome-extension/node_modules
+          - backend/notifier/out
+          - custom-notification/build-*
           - repo

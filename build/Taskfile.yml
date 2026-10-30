@@ -1,6 +1,48 @@
 version: '3'
 
 tasks:
+  install:gnome-extension:deps:
+    summary: Install GNOME extension build dependencies
+    dir: gnome-extension
+    sources:
+      - package.json
+      - package-lock.json
+    generates:
+      - node_modules/.package-lock.json
+    cmds:
+      - npm ci
+
+  build:gnome-extension:
+    summary: Compile the GNOME extension and prepare its embedded assets
+    run: once
+    dir: gnome-extension
+    deps:
+      - task: install:gnome-extension:deps
+    sources:
+      - package.json
+      - package-lock.json
+      - tsconfig.json
+      - io.github.remakecode.sentinel/*
+    generates:
+      - ../backend/notifier/out/io.github.remakecode.sentinel/extension.js
+      - ../backend/notifier/out/io.github.remakecode.sentinel/metadata.json
+      - ../backend/notifier/out/io.github.remakecode.sentinel/stylesheet.css
+      - ../backend/notifier/out/io.github.remakecode.sentinel/sentinel.png
+    cmds:
+      - npm run build
+
+  build:custom-notification:
+    summary: Builds the Qt notification executable for embedding
+    platforms: [darwin, linux]
+    cmds:
+      # Always configure so switching DEV cannot reuse the wrong cached option.
+      - cmake -S custom-notification -B "{{.BUILD_DIR}}" -DSENTINEL_QSS_HOT_RELOAD={{if eq .DEV "true"}}ON{{else}}OFF{{end}} {{if eq OS "darwin"}}-DCMAKE_OSX_ARCHITECTURES={{if eq (.ARCH | default ARCH) "amd64"}}x86_64{{else}}arm64{{end}}{{end}}
+      - cmake --build "{{.BUILD_DIR}}"
+      - mkdir -p backend/notifier/out
+      - cp "{{.BUILD_DIR}}/bin/sentinel-custom-notification" "backend/notifier/out/sentinel-custom-notification-{{OS}}-{{.ARCH | default ARCH}}"
+    vars:
+      BUILD_DIR: 'custom-notification/build-{{OS}}-{{.ARCH | default ARCH}}-{{if eq .DEV "true"}}dev{{else}}production{{end}}'
+
   go:mod:tidy:
     summary: Runs `go mod tidy`
     internal: true
@@ -206,10 +248,9 @@ tasks:
       Builds the Docker image needed for cross-compiling to any platform.
       Run this once to enable cross-platform builds from any OS.
     cmds:
-      - docker build -t wails-cross -f build/docker/Dockerfile.cross build/docker/ --platform {{.PLATFORM | default "linux/amd64"}}
+      - docker build -t wails-cross -f build/docker/Dockerfile.cross build/docker/ --platform {{.PLATFORM | default (printf "linux/%s" ARCH)}}
     preconditions:
       - sh: docker info > /dev/null 2>&1
         msg: "Docker is required. Please install Docker first."
     vars:
       PLATFORM: "{{.PLATFORM}}"
-

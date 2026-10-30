@@ -265,7 +265,7 @@ const LibraryPage: FC = () => {
       ) : (
         <>
           <DialogHeader className={'sentinel-library-header'}>Games</DialogHeader>
-          <Focusable className='sentinel-library-grid'>
+          <Focusable className='sentinel-library-grid' autoFocus>
             {games.map((game) => {
               const progress = computeProgress(game.Achievement.List);
               const isRefreshing = refreshingGameIds.includes(game.AppID);

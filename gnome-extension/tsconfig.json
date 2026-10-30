@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ES2022",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmitOnError": true,
+    "lib": ["ES2022"],
+    "types": ["@girs/gjs", "@girs/gnome-shell/ambient", "@girs/gnome-shell/extensions/global"],
+    "rootDir": "io.github.remakecode.sentinel",
+    "outDir": "../backend/notifier/out/io.github.remakecode.sentinel"
+  },
+  "include": ["io.github.remakecode.sentinel/**/*.ts"]
+}

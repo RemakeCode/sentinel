@@ -4,8 +4,7 @@ import { FaBook, FaGear } from 'react-icons/fa6';
 import { NOTIFICATION_SSE_URL } from '@/shared/utils/fetcher';
 import type { Notification } from '@/shared/types/Notification';
 import { getNotificationTab } from '@/shared/utils/utils';
-import { ImgIcon } from '@/shared/components/img-icon';
-import { ToastBody, ToastTitle } from '@/shared/components/toast';
+import { steamToastClasses, ToastBody, ToastTitle } from '@/shared/components/toast';
 import { initTracker, type TrackerCleanup } from '@/shared/utils/non-steam-game-tracker';
 import MainPage from '@/pages/main';
 import SettingsPage from '@/pages/settings/settings';
@@ -19,12 +18,12 @@ import { rareAchievementGlowStyles } from '@/shared/rare-achievement-glow';
 import { dispatchGBESetupUpdate } from '@/shared/utils/gbe-setup-events';
 import { dispatchLibraryUpdate } from '@/shared/utils/library-update-events';
 import type { Update } from '@/shared/types/_generated/sentinel/backend/generator/models';
+import { restoreToastView, toastViewSize } from '@/shared/utils/toast-view';
 
 let sseController: SSEController | null = null;
 
 const toasterClassName = `sentinel-toaster`;
 const toasterContentClassName = `sentinel-toaster-content`;
-const rareToastLogoClassName = 'sentinel-rare-achievement-glow sentinel-rare-achievement-glow--toast';
 
 //language=css
 const toasterStyles = `
@@ -39,50 +38,130 @@ const toasterStyles = `
   }
 
   .${toasterClassName} {
-    height: 55%;
-    padding: 2px;
-    border: 1px solid #3d4450;
+    /* Steam supplies the card background, shadow, and shape. */
+    width: ${toastViewSize.width}px;
+    height: ${toastViewSize.height}px;
+    box-sizing: border-box;
+    padding: 3px 6px 4px;
 
     .${toasterContentClassName} {
-      margin: 5px;
+      margin: 0;
       width: 100%;
       height: 100%;
+      min-width: 0;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-rows: auto minmax(0, 1fr);
+      gap: 6px;
+      padding: 4px;
+      box-sizing: border-box;
+
+
+      /* Release the native slots while retaining Steam's card and text styling. */
+      > .${steamToastClasses?.Header},
+      > .${steamToastClasses?.Body} {
+        height: auto;
+        min-height: 0;
+        min-width: 0;
+        white-space: normal;
+        overflow: visible;
+        display: block;
+        -webkit-line-clamp: unset;
+      }
+
+      > .${steamToastClasses?.Header} > .${steamToastClasses?.Title} {
+        display: block;
+        width: 100%;
+        margin-right: 0;
+      }
+    }
+
+    .sentinel-toast-game-name {
+      text-overflow: ellipsis;
+      overflow: hidden;
+      white-space: nowrap;
+      line-height: 12px;
+      border-bottom: 1px solid #3d4450;
+      padding-block-end: 2px;
+    }
+
+    .sentinel-toast-layout {
       display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+      height: 100%;
+    }
+
+    .sentinel-toast-icon {
+      flex: 0 0 auto;
+      height: 100%;
+      aspect-ratio: 1;
+    }
+
+    .sentinel-toast-icon .sentinel-img-icon {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .sentinel-toast-details {
+      display: flex;
+      flex: 1 1 auto;
       flex-direction: column;
-      justify-content: center;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    .sentinel-toast-details--progress {
+      height: 100%;
+      gap: 2px;
     }
 
     .sentinel-toast-title {
-      font-size: 13px;
-      font-weight: bold;
       text-overflow: ellipsis;
       overflow: hidden;
       white-space: nowrap;
+      font-size: 14px;
+      line-height: 18px;
     }
 
     .sentinel-toast-body {
-      font-size: 12px;
-      opacity: 0.7;
-      text-overflow: ellipsis;
+      display: -webkit-box;
+      height: auto;
+      max-height: 32px;
       overflow: hidden;
-      white-space: nowrap;
+      white-space: normal;
+      overflow-wrap: anywhere;
+      text-overflow: ellipsis;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      font-size: 12px;
+      line-height: 14px;
     }
 
     .sentinel-toaster-progress-container {
       display: flex;
+      flex-direction: column;
       gap: 2px;
-      align-items: center;
+      margin-top: auto;
+      font-weight: bold;
+      margin-block-end: 1px;
     }
 
     .sentinel-toaster-progress-meta {
-      font-weight: bold;
-      font-size: small;
       color: var(--gpColor-Blue, #1a9fff);
+      align-self: flex-end;
+      font-size: 10px;
+      line-height: 10px;
     }
 
     & progress {
       width: 100%;
       height: 8px;
+      flex-shrink: 0;
+      appearance: none;
+      border: 0;
       background: #3d4450;
       border-radius: 10px;
 
@@ -96,10 +175,6 @@ const toasterStyles = `
         border-radius: 10px;
         transition: width 200ms cubic-bezier(0.4, 0, 0.2, 1);
       }
-    }
-
-    img[data-name="ach"] {
-      margin-left: 1px;
     }
   }
 
@@ -135,11 +210,6 @@ async function handleNotificationMessage(ev: MessageEvent<string>) {
         toaster.toast({
           title: <ToastTitle message={message} />,
           body: <ToastBody message={message} />,
-          logo: (
-            <div className={message.IsRare ? rareToastLogoClassName : undefined}>
-              <ImgIcon src={message.IconPath} />
-            </div>
-          ),
           playSound: false,
           eType: 3,
           expiration: 0,
@@ -195,6 +265,7 @@ export default definePlugin(() => {
     async onDismount() {
       sseController?.dispose();
       sseController = null;
+      await restoreToastView();
       const notificationTab = await getNotificationTab();
       sentinelLogger.log('unmounting sentinel');
       if (cssId) {

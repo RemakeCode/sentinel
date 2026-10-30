@@ -25,6 +25,9 @@ dev_mode:
       - node_modules
       - frontend
       - bin
+      # Build outputs must never trigger another development build.
+      - "*custom-notification/build*/*"
+      - "*backend/notifier/out/*"
     file:
       - .DS_Store
       - .gitignore
@@ -33,7 +36,11 @@ dev_mode:
       - "*.go"
       - "*.js" # Watch for changes to JS/TS files included using the //wails:include directive.
       - "*.ts" # The frontend directory will be excluded entirely by the setting above.
-    git_ignore: true
+      - "*.cpp"
+      - "*.css"
+      - "*.json"
+      - "*CMakeLists.txt"
+    git: true
   executes:
     - cmd: wails3 build DEV=true
       type: blocking

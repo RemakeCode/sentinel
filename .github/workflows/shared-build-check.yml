@@ -1,0 +1,54 @@
+name: Shared build-check
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  build-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up toolchain
+        uses: ./.github/actions/setup-toolchain
+
+      - name: Set up Linux builds
+        uses: ./.github/actions/setup-linux-build
+        with:
+          packaging: 'true'
+
+      - name: Build Check
+        run: task linux:build
+
+      - name: Build Flatpak
+        run: task linux:create:flatpak
+
+      - name: Install decky-plugin dependencies
+        run: task linux:decky:install:deps
+
+      - name: Build decky plugin
+        run: task linux:decky:package
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-build
+          path: bin/sentinel
+          retention-days: 30
+
+      - name: Upload Flatpak build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sentinel-flatpak
+          path: bin/*.flatpak
+          retention-days: 30
+
+      - name: Upload decky build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: decky-plugin
+          path: bin/*decky-plugin-*.zip
+          retention-days: 30

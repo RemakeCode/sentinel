@@ -1,0 +1,13 @@
+{
+  "name": "sentinel-gnome-extension",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc && cp io.github.remakecode.sentinel/metadata.json io.github.remakecode.sentinel/stylesheet.css io.github.remakecode.sentinel/sentinel.png ../backend/notifier/out/io.github.remakecode.sentinel/"
+  },
+  "devDependencies": {
+    "@girs/gjs": "^5.5.0",
+    "@girs/gnome-shell": "^50.0.4",
+    "typescript": "^7.0.2"
+  }
+}

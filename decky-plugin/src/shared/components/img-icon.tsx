@@ -1,14 +1,30 @@
 import { ASSET_URL } from '@/shared/utils/fetcher';
-import { CSSProperties, FC, ImgHTMLAttributes } from 'react';
+import type { FC, ImgHTMLAttributes } from 'react';
 
-const imgStyle: CSSProperties = {
-  height: '40px',
-  border: '1px solid #3d4450',
-  borderRadius: '4px',
-  position: 'relative',
-  bottom: '-1px'
-};
+//language=css
+const styles = `
+  .sentinel-img-icon {
+    border: 1px solid #3d4450;
+    border-radius: 4px;
+    position: relative;
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+    object-fit: contain;
+  }
+`;
 
-export const ImgIcon: FC<ImgHTMLAttributes<HTMLImageElement>> = ({ src, style, ...props }) => {
-  return <img style={{ ...imgStyle, ...style }} src={`${ASSET_URL}${src}`} alt='' data-name='ach' {...props} />;
+export const ImgIcon: FC<ImgHTMLAttributes<HTMLImageElement>> = ({ src, className, ...props }) => {
+  return (
+    <>
+      <style>{styles}</style>
+      <img
+        className={`sentinel-img-icon${className ? ` ${className}` : ''}`}
+        src={`${ASSET_URL}${src}`}
+        alt=''
+        data-name='ach'
+        {...props}
+      />
+    </>
+  );
 };

@@ -22,7 +22,8 @@ vars:
   FLATPAK_METAINFO: '{{.ROOT_DIR}}/build/flatpak/{{.APP_ID}}.metainfo.xml'
   FLATPAK_BUILD_DIR: '{{.ROOT_DIR}}/.flatpak/build'
   FLATPAK_REPO_DIR: '{{.ROOT_DIR}}/.flatpak/repo'
-  FLATPAK_BUNDLE: '{{.ROOT_DIR}}/{{.BIN_DIR}}/{{.RELEASE_ARTIFACT_NAME}}-x86_64.flatpak'
+  FLATPAK_ARCH: { sh: 'uname -m' }
+  FLATPAK_BUNDLE: '{{.ROOT_DIR}}/{{.BIN_DIR}}/{{.RELEASE_ARTIFACT_NAME}}-{{.FLATPAK_ARCH}}.flatpak'
   FLATPAK_RUNTIME_REPO: 'https://flathub.org/repo/flathub.flatpakrepo'
 
 tasks:
@@ -72,6 +73,17 @@ tasks:
     internal: true
     deps:
       - task: common:go:mod:tidy
+      - task: common:generate:icons
+      - task: generate:dotdesktop
+    preconditions:
+      - sh: '{{if eq .OBFUSCATED "true"}}command -v garble >/dev/null 2>&1{{else}}true{{end}}'
+        msg: "garble is required for obfuscated builds. Install it with: go install mvdan.cc/garble@v0.16.0 (requires Go 1.24+). See https://github.com/burrowers/garble/releases for version/toolchain compatibility."
+    cmds:
+      - task: common:build:custom-notification
+        vars:
+          ARCH: '{{.ARCH | default ARCH}}'
+          DEV: '{{.DEV}}'
+      - task: common:build:gnome-extension
       - task: common:build:frontend
         vars:
           BUILD_FLAGS:
@@ -80,12 +92,6 @@ tasks:
             ref: .OBFUSCATED
           DEV:
             ref: .DEV
-      - task: common:generate:icons
-      - task: generate:dotdesktop
-    preconditions:
-      - sh: '{{if eq .OBFUSCATED "true"}}command -v garble >/dev/null 2>&1{{else}}true{{end}}'
-        msg: "garble is required for obfuscated builds. Install it with: go install mvdan.cc/garble@v0.16.0 (requires Go 1.24+). See https://github.com/burrowers/garble/releases for version/toolchain compatibility."
-    cmds:
       - '{{if eq .OBFUSCATED "true"}}garble {{.GARBLE_ARGS}} build{{else}}go build{{end}} {{.BUILD_FLAGS}} -o {{.OUTPUT}}'
     vars:
       BUILD_FLAGS: '{{if eq .DEV "true"}}{{if or .EXTRA_TAGS (eq .OBFUSCATED "true")}}-tags {{if eq .OBFUSCATED "true"}}wails_obfuscated{{if .EXTRA_TAGS}},{{end}}{{end}}{{.EXTRA_TAGS}} {{end}}-buildvcs=false -gcflags=all="-l"{{else}}-tags production{{if eq .OBFUSCATED "true"}},wails_obfuscated{{end}}{{if .EXTRA_TAGS}},{{.EXTRA_TAGS}}{{end}} -trimpath -buildvcs=false -ldflags="-w -s -X {{.MODULE}}/backend.Version={{.APP_VERSION}}"{{end}}'
@@ -122,7 +128,7 @@ tasks:
       - mkdir -p {{.BIN_DIR}}
       - mv "bin/{{.APP_NAME}}-linux-{{.DOCKER_ARCH}}" "{{.OUTPUT}}"
     vars:
-      DOCKER_ARCH: '{{.ARCH | default "amd64"}}'
+      DOCKER_ARCH: '{{.ARCH | default ARCH}}'
       DEFAULT_OUTPUT: '{{.BIN_DIR}}/{{.APP_NAME}}'
       OUTPUT: '{{ .OUTPUT | default .DEFAULT_OUTPUT }}'
       # Generate Docker volume mounts: Go module cache + go.mod replace directives
@@ -206,8 +212,9 @@ tasks:
     dir: build
     cmds:
       - wails3 generate .desktop -name "{{.NAME}}" -exec "{{.EXEC}}" -icon "{{.ICON}}" -outputfile "{{.OUTPUTFILE}}" -categories "{{.CATEGORIES}}" -comment "{{.COMMENT}}" -keywords "{{.KEYWORDS}}"
-      - sed -i '/^StartupWMClass=/d' "{{.OUTPUTFILE}}"
-      - sed -i '$aStartupWMClass={{.STARTUP_WM_CLASS}}' "{{.OUTPUTFILE}}"
+      - sed '/^StartupWMClass=/d' "{{.OUTPUTFILE}}" > "{{.OUTPUTFILE}}.tmp"
+      - mv "{{.OUTPUTFILE}}.tmp" "{{.OUTPUTFILE}}"
+      - printf 'StartupWMClass=%s\n' "{{.STARTUP_WM_CLASS}}" >> "{{.OUTPUTFILE}}"
     vars:
       NAME: 'Sentinel'
       EXEC: '{{.APP_NAME}}'

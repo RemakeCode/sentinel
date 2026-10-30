@@ -1,0 +1,6 @@
+<RCC>
+  <qresource prefix="/sentinel">
+    <file alias="custom-notification.qss">custom-notification.qss</file>
+    <file alias="default-icon.png">../backend/notifier/media/sentinel.png</file>
+  </qresource>
+</RCC>

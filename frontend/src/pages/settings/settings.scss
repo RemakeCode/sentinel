@@ -37,6 +37,7 @@
           font-weight: var(--font-bold);
           font-size: var(--text-6);
           line-height: normal;
+
           &:hover, &.active {
             border-radius: var(--radius-medium);
           }
@@ -143,4 +144,8 @@
 
 .settings-select {
   width: 200px;
+}
+
+.settings-notification-setup-message {
+  color: var(--warning)
 }

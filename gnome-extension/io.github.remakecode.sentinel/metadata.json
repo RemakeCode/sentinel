@@ -1,0 +1,7 @@
+{
+  "uuid": "io.github.remakecode.sentinel",
+  "name": "sentinel custom notification",
+  "description": "Shows Sentinel achievement notifications above games.",
+  "shell-version": ["48", "49", "50"],
+  "version": 1
+}

@@ -1,0 +1,57 @@
+QFrame#card {
+    background: #232323;
+    border: 1px solid #454b57;
+    border-radius: 8px;
+}
+
+
+QLabel {
+    color: #d5d8de;
+    background: transparent;
+    font-size: 12px;
+}
+
+QLabel#icon {
+    background: #282c35;
+    border: 1px solid #454b57;
+    border-radius: 10px;
+}
+
+QLabel#icon[rare="true"] {
+    border-color: rgba(230, 209, 102, 0.90);
+}
+
+QLabel#gameName {
+    color: #a6adb8;
+    font-size: 14px;
+    border-bottom: 1px solid #454b57;
+    padding-bottom: 4px;
+}
+
+QLabel#title {
+    color: #f5f5f5;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+QLabel#description {
+    color: #d5d8de;
+    font-size: 14px;
+}
+
+QLabel#progressCount {
+    color: #d5d8de;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+QProgressBar {
+    background: #363d49;
+    border: none;
+    border-radius: 3px;
+}
+
+QProgressBar::chunk {
+    background: #f29422;
+    border-radius: 3px;
+}

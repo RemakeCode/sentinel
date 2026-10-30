@@ -1,0 +1,11 @@
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -37 +37 @@
+-find_package(Qt6 ${QT_MIN_VERSION} CONFIG REQUIRED COMPONENTS WaylandClient Qml)
++find_package(Qt6 ${QT_MIN_VERSION} CONFIG REQUIRED COMPONENTS WaylandClient)
+@@ -69 +69,0 @@
+-add_subdirectory(tests)
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -86 +86,0 @@
+-add_subdirectory(declarative)

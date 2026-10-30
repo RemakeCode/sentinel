@@ -1,0 +1,93 @@
+.sentinel-card {
+    width: 418px;
+    padding: 16px;
+    spacing: 8px;
+    background-color: #232323;
+    color: #d5d8de;
+    border: 1px solid #454b57;
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+}
+
+.sentinel-game-name {
+    color: #a6adb8;
+    font-size: 14px;
+    border-color: #454b57;
+    border-bottom-width: 1px;
+    padding-bottom: 4px;
+}
+
+.sentinel-row {
+    spacing: 12px;
+}
+
+.sentinel-icon {
+    /* 100px overall for every notification, including border and padding. */
+    width: 96px;
+    height: 96px;
+    padding: 1px;
+    background-color: #282c35;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    border: 1px solid #454b57;
+    border-radius: 10px;
+}
+
+.sentinel-icon-layers {
+    width: 100px;
+    height: 100px;
+}
+
+.sentinel-rare-glow {
+    width: 124px;
+    height: 124px;
+}
+
+.sentinel-content-column {
+    min-height: 100px;
+}
+
+.sentinel-rare {
+    border-color: rgba(230, 209, 102, 0.7);
+}
+
+.sentinel-content {
+    spacing: 6px;
+}
+
+.sentinel-content-progress {
+    height: 100px;
+    spacing: 4px;
+}
+
+.sentinel-title {
+    color: #f5f5f5;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+.sentinel-description {
+    font-size: 14px;
+}
+
+.sentinel-progress-count {
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.sentinel-progress-details {
+    spacing: 2px;
+}
+
+.sentinel-progress-track {
+    height: 9px;
+    margin-bottom: 2px;
+    border-radius: 3px;
+    background-color: #363d49;
+}
+
+.sentinel-progress-fill {
+    border-radius: 3px;
+    background-color: #f29422;
+}

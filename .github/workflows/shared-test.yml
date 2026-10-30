@@ -1,0 +1,29 @@
+name: Shared test
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up toolchain
+        uses: ./.github/actions/setup-toolchain
+
+      - name: Set up Linux builds
+        uses: ./.github/actions/setup-linux-build
+
+      - name: Generate embedded notification assets
+        run: |
+          task common:build:custom-notification
+          task common:build:gnome-extension
+
+      - name: Run tests
+        run: go test ./backend/... ./cmd/decky -v -short -coverprofile=coverage.out
