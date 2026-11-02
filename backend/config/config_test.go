@@ -35,6 +35,50 @@ func setupTestConfig(t *testing.T) (*File, string) {
 	return &File{}, tempDir
 }
 
+func TestBackupDirectoryDefaultsAndPersists(t *testing.T) {
+	cfg, _ := setupTestConfig(t)
+	require.NoError(t, os.WriteFile(backend.ConfigPath, []byte(`{}`), 0644))
+	_, err := cfg.LoadConfig()
+	require.NoError(t, err)
+	require.Equal(t, defaultBackupDirectory(), cfg.BackupDirectory)
+	custom := filepath.Join(t.TempDir(), "backups")
+	require.NoError(t, cfg.SetBackupDirectory(custom))
+	loaded := &File{}
+	_, err = loaded.LoadConfig()
+	require.NoError(t, err)
+	require.Equal(t, custom, loaded.BackupDirectory)
+}
+
+func TestBackupDirectoryEmptyDefaults(t *testing.T) {
+	cfg, _ := setupTestConfig(t)
+	require.NoError(t, os.WriteFile(backend.ConfigPath, []byte(`{"backupDirectory":""}`), 0644))
+	_, err := cfg.LoadConfig()
+	require.NoError(t, err)
+	require.Equal(t, defaultBackupDirectory(), cfg.BackupDirectory)
+	data, err := os.ReadFile(backend.ConfigPath)
+	require.NoError(t, err)
+	var saved File
+	require.NoError(t, json.Unmarshal(data, &saved))
+	require.Equal(t, cfg.BackupDirectory, saved.BackupDirectory)
+}
+
+func TestBackupDirectoryNewConfig(t *testing.T) {
+	cfg, dir := setupTestConfig(t)
+	oldConfigDir, oldDataDir, oldGameDir := backend.ConfigDir, backend.DataDir, backend.GameCacheDir
+	backend.ConfigDir, backend.DataDir = dir, filepath.Join(dir, "data-root")
+	backend.GameCacheDir = filepath.Join(backend.DataDir, "games")
+	t.Cleanup(func() {
+		backend.ConfigDir, backend.DataDir, backend.GameCacheDir = oldConfigDir, oldDataDir, oldGameDir
+	})
+	require.NoError(t, cfg.Start(context.Background()))
+	require.Equal(t, defaultBackupDirectory(), cfg.BackupDirectory)
+	data, err := os.ReadFile(backend.ConfigPath)
+	require.NoError(t, err)
+	var saved File
+	require.NoError(t, json.Unmarshal(data, &saved))
+	require.Equal(t, cfg.BackupDirectory, saved.BackupDirectory)
+}
+
 func TestLoadConfig_ValidFile(t *testing.T) {
 	_, _ = setupTestConfig(t)
 

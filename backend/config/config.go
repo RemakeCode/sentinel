@@ -97,6 +97,7 @@ type File struct {
 	AchievementProgressUpdateMode AchievementProgressUpdateMode `json:"achievementProgressUpdateMode"`
 	LogLevel                      string                        `json:"logLevel"`
 	StartOnLogin                  bool                          `json:"startOnLogin"`
+	BackupDirectory               string                        `json:"backupDirectory"`
 	Decky                         DeckyConfig                   `json:"decky"`
 	// ManagedGBESetups is persisted separately so public config responses and
 	// Wails settings bindings never expose installation paths.
@@ -226,8 +227,9 @@ func (c *File) Start(ctx context.Context) error {
 			Language: types.Language{
 				DisplayName: "English", API: "english", WebAPI: "en",
 			},
-			LogLevel:     "info",
-			StartOnLogin: true,
+			LogLevel:        "info",
+			StartOnLogin:    true,
+			BackupDirectory: defaultBackupDirectory(),
 			Decky: DeckyConfig{
 				UseSteamGrid: false,
 			},
@@ -411,6 +413,10 @@ func (c *File) applyProgressModeDefaults() {
 
 func (c *File) applyDefaults() bool {
 	changed := false
+	if c.BackupDirectory == "" {
+		c.BackupDirectory = defaultBackupDirectory()
+		changed = true
+	}
 	if !c.Desktop.NotificationRenderer.valid() {
 		c.Desktop.NotificationRenderer = DesktopNotificationRendererNative
 		changed = true
@@ -426,6 +432,22 @@ func (c *File) applyDefaults() bool {
 		changed = true
 	}
 	return changed
+}
+
+func defaultBackupDirectory() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+	return filepath.Join(home, "Documents", "sentinel", "backups")
+}
+
+func (c *File) SetBackupDirectory(path string) error {
+	if strings.TrimSpace(path) == "" {
+		return errors.New("backup directory is required")
+	}
+	c.BackupDirectory = path
+	return c.SaveConfig()
 }
 
 func (c *File) normalizeKnownEmulators() bool {
