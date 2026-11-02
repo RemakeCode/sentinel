@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"sentinel/backend/ach"
+	"sentinel/backend/backups"
 	"sentinel/backend/config"
 	"sentinel/backend/generator"
 	"sentinel/backend/logger"
@@ -20,6 +21,7 @@ type Services struct {
 	Watcher   *watcher.Service
 	Notifier  *notifier.Service
 	Generator *generator.Service
+	Backups   *backups.Service
 }
 
 type StartOptions struct {
@@ -55,6 +57,7 @@ func NewServices() *Services {
 		Watcher:   watcherService,
 		Notifier:  notifierService,
 		Generator: generatorService,
+		Backups:   &backups.Service{Config: configService},
 	}
 }
 
@@ -74,6 +77,7 @@ func StartSharedServices(ctx context.Context, services *Services, options StartO
 	if err := services.Config.Start(ctx); err != nil {
 		return fmt.Errorf("config startup: %w", err)
 	}
+	services.Backups.Start()
 	if err := services.Steam.Start(ctx); err != nil {
 		return fmt.Errorf("steam startup: %w", err)
 	}
