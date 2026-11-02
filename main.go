@@ -11,6 +11,7 @@ import (
 
 	"sentinel/backend"
 	"sentinel/backend/autostart"
+	"sentinel/backend/backups"
 	"sentinel/backend/bootstrap"
 	"sentinel/backend/contextmenu"
 	"sentinel/backend/generator"
@@ -37,6 +38,7 @@ func init() {
 	application.RegisterEvent[application.Void](backend.EventDataUpdated)
 	application.RegisterEvent[string](backend.EventRefreshGameRequested)
 	application.RegisterEvent[generator.Update](generator.EventAchievementSetupUpdate)
+	application.RegisterEvent[backups.Status](backups.EventStatus)
 }
 
 func main() {
@@ -69,6 +71,7 @@ func main() {
 			application.NewService(services.Watcher),
 			application.NewService(services.Notifier),
 			application.NewService(services.Generator),
+			application.NewService(services.Backups),
 			application.NewService(autostart.NewService(services.Config)),
 		},
 
