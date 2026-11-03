@@ -17,6 +17,7 @@ import { sentinelLogger } from '@/shared/utils/logger';
 import { rareAchievementGlowStyles } from '@/shared/rare-achievement-glow';
 import { dispatchGBESetupUpdate } from '@/shared/utils/gbe-setup-events';
 import { dispatchLibraryUpdate } from '@/shared/utils/library-update-events';
+import { dispatchBackupStatus, type BackupStatus } from '@/pages/settings/backup-restore/backup-status';
 import type { Update } from '@/shared/types/_generated/sentinel/backend/generator/models';
 import { restoreToastView, toastViewSize } from '@/shared/utils/toast-view';
 
@@ -198,6 +199,17 @@ async function handleNotificationMessage(ev: MessageEvent<string>) {
   }
   if (envelope.messageType === 'gbeSetup') {
     dispatchGBESetupUpdate(envelope.payload as Update);
+    return;
+  }
+  if (envelope.messageType === 'backupStatus') {
+    const status = envelope.payload as BackupStatus;
+    dispatchBackupStatus(status);
+    if (status.status === 'succeeded') {
+      if (status.operation === 'restore') dispatchLibraryUpdate();
+      toaster.toast({ title: 'Sentinel', body: status.operation === 'restore' ? 'Backup restored' : 'Backup created' });
+    } else if (status.status === 'failed') {
+      toaster.toast({ title: 'Backup operation failed', body: status.error || 'Please try again' });
+    }
     return;
   }
   if (envelope.messageType === 'achievement') {

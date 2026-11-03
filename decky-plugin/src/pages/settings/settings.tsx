@@ -16,7 +16,8 @@ import { clearMapping, type GameMapping, getAllMappings } from '@/shared/utils/g
 import { showConfirmModal } from '@/shared/components/confirm';
 import { BsTrash } from 'react-icons/bs';
 import { FaVolumeHigh, FaVolumeOff } from 'react-icons/fa6';
-import { FaBook, FaCircle, FaCog, FaLink, FaTrophy } from 'react-icons/fa';
+import { FaArchive, FaBook, FaCircle, FaCog, FaLink, FaTrophy } from 'react-icons/fa';
+import { BackupRestoreContent } from '@/pages/settings/backup-restore/backup-restore';
 import { AchievementSetupContent } from '@/pages/settings/achievement-setup/achievement-setup';
 
 const fetcher = new Fetcher();
@@ -397,6 +398,12 @@ const SettingsPage: FC = () => {
           content: <MappingsContent />
         },
 
+        {
+          title: 'Backup & Restore',
+          identifier: 'backup-restore',
+          icon: <FaArchive />,
+          content: <BackupRestoreContent />
+        },
         {
           title: 'Others',
           identifier: 'others',
