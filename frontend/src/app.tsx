@@ -5,6 +5,7 @@ import { AnimatePresence, MotionConfig, motion, type Variants } from 'framer-mot
 import { ScrollRestoration, useLocation, useNavigationType, useOutlet } from 'react-router';
 import { GetAppInfo } from '@wa/sentinel/backend/config/file';
 import { GamesProvider } from '@/shared/context/games-context';
+import { BackupProvider } from '@/shared/context/backup-context';
 import { Header } from '@/shared/components/header/header';
 
 // Spatial Layered Zoom variants based on navigation direction
@@ -85,6 +86,7 @@ const App: FC = () => {
   return (
     <MotionConfig reducedMotion='user'>
       <GamesProvider>
+        <BackupProvider>
         <Header id='global-header'>
           <div id='header-portal-root' className='header-portal-root' />
         </Header>
@@ -102,6 +104,7 @@ const App: FC = () => {
           </motion.div>
         </AnimatePresence>
         <ScrollRestoration />
+        </BackupProvider>
       </GamesProvider>
     </MotionConfig>
   );
