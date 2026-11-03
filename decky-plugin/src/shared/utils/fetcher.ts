@@ -1,3 +1,5 @@
+import { fetchNoCors } from '@decky/api';
+
 export const BASE_URL = 'http://127.0.0.1:48211/decky-backend';
 
 export const ASSET_URL = BASE_URL.replace('/decky-backend', '');
@@ -12,14 +14,14 @@ export class Fetcher {
   }
 
   async get<Type>(url: string): Promise<Type> {
-    return fetch(this.url(url), {
+    return fetchNoCors(this.url(url), {
       method: 'GET',
       headers: Fetcher.headers()
     }).then(Fetcher.processResponse);
   }
 
   async post<Type>(url: string, body: any): Promise<Type> {
-    return fetch(this.url(url), {
+    return fetchNoCors(this.url(url), {
       method: 'POST',
       headers: Fetcher.headers(),
       body: JSON.stringify(body)
@@ -27,14 +29,14 @@ export class Fetcher {
   }
 
   async delete(url: string): Promise<Response> {
-    return fetch(this.url(url), {
+    return fetchNoCors(this.url(url), {
       method: 'DELETE',
       headers: Fetcher.headers(false)
     }).then(Fetcher.processResponse);
   }
 
   async put<Type>(url: string, body: any): Promise<Type> {
-    return fetch(this.url(url), {
+    return fetchNoCors(this.url(url), {
       method: 'PUT',
       headers: Fetcher.headers(),
       body: JSON.stringify(body)
@@ -49,7 +51,7 @@ export class Fetcher {
     if (body !== undefined) {
       options.body = JSON.stringify(body);
     }
-    return fetch(this.url(url), options).then(Fetcher.processResponse);
+    return fetchNoCors(this.url(url), options).then(Fetcher.processResponse);
   }
 
   private url(url: string): string {
