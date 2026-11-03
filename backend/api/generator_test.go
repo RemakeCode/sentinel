@@ -17,7 +17,7 @@ func TestManagedGBESetupsLookup(t *testing.T) {
 		{AppID: "480"},
 	}}
 	service := &generator.Service{Config: configuration}
-	router := NewRouter(configuration, nil, nil, nil, service).Handler()
+	router := NewRouter(configuration, nil, nil, nil, service, nil).Handler()
 	request := httptest.NewRequest(http.MethodGet, "/decky-backend/gbe-setup/managed", nil)
 	response := httptest.NewRecorder()
 	router.ServeHTTP(response, request)
@@ -26,7 +26,7 @@ func TestManagedGBESetupsLookup(t *testing.T) {
 }
 
 func TestSearchGamesRejectsInvalidQuery(t *testing.T) {
-	router := NewRouter(&config.File{}, &steam.Service{}, nil, nil, &generator.Service{Config: &config.File{}}).Handler()
+	router := NewRouter(&config.File{}, &steam.Service{}, nil, nil, &generator.Service{Config: &config.File{}}, nil).Handler()
 	request := httptest.NewRequest(http.MethodGet, "/decky-backend/games/search?query=", nil)
 	response := httptest.NewRecorder()
 	router.ServeHTTP(response, request)
@@ -35,7 +35,7 @@ func TestSearchGamesRejectsInvalidQuery(t *testing.T) {
 
 func TestConfigEndpointDoesNotExposeManagedInstallPath(t *testing.T) {
 	configuration := &config.File{ManagedGBESetups: []config.ManagedGBESetup{{AppID: "620", Name: "Portal 2", Path: "/secret/game"}}}
-	router := NewRouter(configuration, nil, nil, nil, &generator.Service{Config: configuration}).Handler()
+	router := NewRouter(configuration, nil, nil, nil, &generator.Service{Config: configuration}, nil).Handler()
 	request := httptest.NewRequest(http.MethodGet, "/decky-backend/config", nil)
 	response := httptest.NewRecorder()
 	router.ServeHTTP(response, request)
