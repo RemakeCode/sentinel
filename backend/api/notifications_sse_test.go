@@ -40,7 +40,7 @@ func TestNotificationsSSEDeliversRealEnvelopeThroughHTTPHandler(t *testing.T) {
 	require.NoError(t, service.Start(context.Background()))
 	defer service.ServiceShutdown()
 
-	router := NewRouter(nil, nil, nil, service, nil).Handler()
+	router := NewRouter(nil, nil, nil, service, nil, nil).Handler()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 

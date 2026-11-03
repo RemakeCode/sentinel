@@ -50,7 +50,7 @@ func startDecky(startServices func() error, startSupervisor func(), startServer 
 }
 
 func startDeckyServer(ctx context.Context, services *bootstrap.Services) error {
-	router := api.NewRouter(services.Config, services.Steam, services.Watcher, services.Notifier, services.Generator)
+	router := api.NewRouter(services.Config, services.Steam, services.Watcher, services.Notifier, services.Generator, services.Backups)
 	addr, err := decky.GetAPIAddress()
 	if err != nil {
 		return err

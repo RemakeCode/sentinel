@@ -21,6 +21,8 @@ import (
 
 var cacheFolders = []string{"data", "games", "icon"}
 
+var ErrOperationRunning = errors.New("a backup or restore is already running")
+
 const maxExtractedBytes int64 = 20 << 30
 
 type Status struct {
@@ -107,7 +109,7 @@ func (s *Service) run(operation string, work func() error) error {
 	s.mu.Lock()
 	if s.running {
 		s.mu.Unlock()
-		return errors.New("a backup or restore is already running")
+		return ErrOperationRunning
 	}
 
 	s.running = true

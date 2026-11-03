@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"sentinel/backend"
+	"sentinel/backend/backups"
 	"sentinel/backend/config"
 	"sentinel/backend/decky"
 	"sentinel/backend/generator"
@@ -89,10 +90,11 @@ type Router struct {
 	Watcher   *watcher.Service
 	Notifier  *notifier.Service
 	Generator *generator.Service
+	Backups   *backups.Service
 }
 
-func NewRouter(c *config.File, s *steam.Service, w *watcher.Service, n *notifier.Service, g *generator.Service) *Router {
-	return &Router{Config: c, Steam: s, Watcher: w, Notifier: n, Generator: g}
+func NewRouter(c *config.File, s *steam.Service, w *watcher.Service, n *notifier.Service, g *generator.Service, b *backups.Service) *Router {
+	return &Router{Config: c, Steam: s, Watcher: w, Notifier: n, Generator: g, Backups: b}
 }
 
 // Handler returns a fully configured chi router as an http.Handler
@@ -119,6 +121,11 @@ func (r *Router) Handler() http.Handler {
 		api.Put("/config/steam-api-key", Wrap(r.handleSetSteamAPIKey))
 		api.Put("/config/steam-data-source", Wrap(r.handleSetSteamDataSource))
 		api.Put("/config/logging", Wrap(r.handleSetLogging))
+		api.Put("/config/backup-directory", Wrap(r.handleSetBackupDirectory))
+		api.Get("/backups", Wrap(r.handleListBackups))
+		api.Post("/backups", Wrap(r.handleCreateBackup))
+		api.Post("/backups/restore", Wrap(r.handleRestoreBackup))
+		api.Delete("/backups/{name}", Wrap(r.handleDeleteBackup))
 		api.Put("/config/achievement-progress-update-mode", Wrap(r.handleSetAchievementProgressUpdateMode))
 		api.Put("/config/decky/use-steam-grid", Wrap(r.handleSetDeckyUseSteamGrid))
 		api.Post("/config/notification-sound", Wrap(r.handleSetSound))
@@ -154,6 +161,73 @@ func (r *Router) Handler() http.Handler {
 	router.Get("/api/media/*", http.HandlerFunc(r.handleServeMedia))
 
 	return router
+}
+
+func (r *Router) handleListBackups(w http.ResponseWriter, _ *http.Request) error {
+	snapshots, err := r.Backups.List()
+	if err != nil {
+		return backupRequestError(err)
+	}
+
+	if snapshots == nil {
+		snapshots = []backups.Snapshot{}
+	}
+
+	return JSON(w, http.StatusOK, snapshots)
+}
+
+func (r *Router) handleCreateBackup(w http.ResponseWriter, _ *http.Request) error {
+	if err := r.Backups.Backup(); err != nil {
+		return backupRequestError(err)
+	}
+
+	return JSON(w, http.StatusOK, map[string]string{"status": "success"})
+}
+
+func (r *Router) handleRestoreBackup(w http.ResponseWriter, req *http.Request) error {
+	var body struct {
+		Path string `json:"path"`
+	}
+	if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
+		return AppError{Status: http.StatusBadRequest, Message: "Invalid request body"}
+	}
+
+	if strings.TrimSpace(body.Path) == "" {
+		return AppError{Status: http.StatusBadRequest, Message: "Backup archive path is required"}
+	}
+
+	if err := r.Backups.Restore(body.Path); err != nil {
+		return backupRequestError(err)
+	}
+
+	return JSON(w, http.StatusOK, map[string]string{"status": "success"})
+}
+
+func (r *Router) handleDeleteBackup(w http.ResponseWriter, req *http.Request) error {
+	if err := r.Backups.Delete(chi.URLParam(req, "name")); err != nil {
+		return backupRequestError(err)
+	}
+
+	return JSON(w, http.StatusOK, map[string]string{"status": "success"})
+}
+
+func (r *Router) handleSetBackupDirectory(w http.ResponseWriter, req *http.Request) error {
+	var body struct {
+		Path string `json:"path"`
+	}
+	if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
+		return AppError{Status: http.StatusBadRequest, Message: "Invalid request body"}
+	}
+
+	if strings.TrimSpace(body.Path) == "" {
+		return AppError{Status: http.StatusBadRequest, Message: "Backup directory is required"}
+	}
+
+	if err := r.Config.SetBackupDirectory(body.Path); err != nil {
+		return backupRequestError(err)
+	}
+
+	return JSON(w, http.StatusOK, map[string]string{"status": "success"})
 }
 
 func (r *Router) handleManagedGBESetups(w http.ResponseWriter, _ *http.Request) error {
@@ -568,4 +642,13 @@ func (r *Router) handleServeMedia(w http.ResponseWriter, req *http.Request) {
 
 	// Serve the file
 	http.ServeFile(w, req, fullPath)
+}
+
+func backupRequestError(err error) error {
+	status := http.StatusInternalServerError
+	if errors.Is(err, backups.ErrOperationRunning) {
+		status = http.StatusConflict
+	}
+
+	return AppError{Status: status, Message: err.Error()}
 }
