@@ -1,3 +1,5 @@
+@use './dialog';
+
 // Oat UI CSS imports
 @import '@knadh/oat/css/00-base.css';
 @import '@knadh/oat/css/01-theme.css';
@@ -112,3 +114,10 @@ progress {
   }
 }
 
+code {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+  background: none;
+}

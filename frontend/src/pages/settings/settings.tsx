@@ -352,17 +352,17 @@ const Settings: FC = () => {
                   </span>
 
                   <code>{emulatorSearchPaths[record.emu.id] ?? record.emu.id}</code>
-
-                  <label className='switch' title={'Toggle Notification for this emulator'}>
-                    <input
-                      type='checkbox'
-                      role='switch'
-                      checked={record.emu.shouldNotify}
-                      onChange={() => handleToggleNotify(record.index)}
-                    />
-                    {record.emu.shouldNotify ? <Volume2 size={18} /> : <VolumeOff size={18} />}
-                  </label>
-                  <div />
+                  <div className='settings-grid-actions'>
+                    <label className='switch' title={'Toggle Notification for this emulator'}>
+                      <input
+                        type='checkbox'
+                        role='switch'
+                        checked={record.emu.shouldNotify}
+                        onChange={() => handleToggleNotify(record.index)}
+                      />
+                      {record.emu.shouldNotify ? <Volume2 size={18} /> : <VolumeOff size={18} />}
+                    </label>
+                  </div>
                 </div>
               ))}
             </>

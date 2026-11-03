@@ -1,6 +1,4 @@
 .about-dialog {
-  color: var(--muted-foreground);
-
   &-logo {
     border-radius: 8px;
   }
@@ -26,10 +24,7 @@
 
   }
 
-  footer {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
+  &-footer {
     justify-content: space-between;
   }
 
@@ -55,14 +50,4 @@
     }
   }
 
-  &::backdrop {
-    background:rgba(0,0,0, 0.5);
-    backdrop-filter: blur(0px);
-    -webkit-backdrop-filter: blur(0px);
-    transition: backdrop-filter 0.3s ease-in-out;
-  }
-  &[open]::backdrop {
-    backdrop-filter: blur(3px);
-    -webkit-backdrop-filter: blur(3px);
-  }
 }
