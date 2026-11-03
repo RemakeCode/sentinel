@@ -39,8 +39,13 @@ type Snapshot struct {
 
 type Service struct {
 	Config  *config.File
+	Events  EventSink
 	mu      sync.Mutex
 	running bool
+}
+
+type EventSink interface {
+	SendEvent(string, any)
 }
 
 // Start reports recovery data from an interrupted restore without deleting it.

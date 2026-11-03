@@ -2,4 +2,8 @@
 
 package backups
 
-func (s *Service) emit(status Status) {}
+func (s *Service) emit(status Status) {
+	if s.Events != nil {
+		s.Events.SendEvent("backupStatus", status)
+	}
+}

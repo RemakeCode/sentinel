@@ -57,7 +57,7 @@ func NewServices() *Services {
 		Watcher:   watcherService,
 		Notifier:  notifierService,
 		Generator: generatorService,
-		Backups:   &backups.Service{Config: configService},
+		Backups:   &backups.Service{Config: configService, Events: notifierService},
 	}
 }
 
