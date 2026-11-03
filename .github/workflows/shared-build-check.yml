@@ -23,8 +23,8 @@ jobs:
       - name: Build Check
         run: task linux:build
 
-      - name: Build Flatpak
-        run: task linux:create:flatpak
+#      - name: Build Flatpak
+#        run: task linux:create:flatpak
 
       - name: Install decky-plugin dependencies
         run: task linux:decky:install:deps
