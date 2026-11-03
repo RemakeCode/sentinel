@@ -342,7 +342,7 @@ tasks:
       - cp -R dist/. out/{{.PLUGIN_NAME}}/dist/
       - cp ../bin/{{.APP_NAME}}-decky out/{{.PLUGIN_NAME}}/bin/{{.APP_NAME}}-decky
       - cp plugin.json package.json main.py out/{{.PLUGIN_NAME}}/
-      - node scripts/prepare-decky-manifest.cjs
+      - node scripts/prepare-decky-manifest.js
       - chmod +x out/{{.PLUGIN_NAME}}/bin/{{.APP_NAME}}-decky
     vars:
       PLUGIN_NAME: sentinel
@@ -357,13 +357,13 @@ tasks:
         msg: rsync is required to deploy the Decky plugin
       - sh: command -v sudo
         msg: sudo is required to deploy the Decky plugin
-      - sh: test -d "{{.DECKY_PLUGIN_DIR}}/{{.PLUGIN_NAME}}"
-        msg: "Install the Sentinel Decky plugin once before deploying locally."
+      - sh: test -d "{{.DECKY_PLUGIN_DIR}}"
+        msg: "Decky plugins directory not found at {{.DECKY_PLUGIN_DIR}}. Install Decky Loader before deploying locally."
     cmds:
       - task --parallel linux:decky:frontend linux:decky:backend
       - task: decky:sync:local
     vars:
-      DECKY_PLUGIN_DIR: '{{.HOME}}/homebrew/plugins'
+      DECKY_PLUGIN_DIR: '{{.DECKY_PLUGIN_DIR | default (printf "%s/homebrew/plugins" .HOME)}}'
       PLUGIN_NAME: sentinel
 
   decky:sync:local:
@@ -380,7 +380,7 @@ tasks:
       - 'sudo -n rsync -a --delete "{{.ROOT_DIR}}/decky-plugin/out/{{.PLUGIN_NAME}}/" "{{.DECKY_PLUGIN_DIR}}/{{.PLUGIN_NAME}}/"'
       - 'touch "{{.DECKY_PLUGIN_DIR}}/{{.PLUGIN_NAME}}/main.py"'
     vars:
-      DECKY_PLUGIN_DIR: '{{.HOME}}/homebrew/plugins'
+      DECKY_PLUGIN_DIR: '{{.DECKY_PLUGIN_DIR | default (printf "%s/homebrew/plugins" .HOME)}}'
       PLUGIN_NAME: sentinel
 
   decky:dev:
