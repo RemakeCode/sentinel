@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"sentinel/backend"
@@ -237,4 +238,40 @@ func TestListSortsTimestampsAndRetainsRecovery(t *testing.T) {
 	data, err := os.ReadFile(filepath.Join(rollback, "saved"))
 	require.NoError(t, err)
 	require.Equal(t, "old", string(data))
+}
+
+func TestRollbackFailureRetainsRecoveryData(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("requires Unix directory permissions")
+	}
+
+	previousDataDir := backend.DataDir
+	backend.DataDir = t.TempDir()
+	dataDir := backend.DataDir
+	t.Cleanup(func() {
+		require.NoError(t, os.Chmod(dataDir, 0700))
+		backend.DataDir = previousDataDir
+	})
+
+	rollback := filepath.Join(dataDir, ".snapshot-rollback")
+	oldFile := filepath.Join(rollback, "data", "123.json")
+	require.NoError(t, os.MkdirAll(filepath.Dir(oldFile), 0700))
+	require.NoError(t, os.WriteFile(oldFile, []byte("previous achievement progress"), 0600))
+	require.NoError(t, os.Mkdir(filepath.Join(dataDir, "data"), 0700))
+
+	// Simulate lost write access after the previous cache was moved aside.
+	require.NoError(t, os.Chmod(dataDir, 0500))
+	probe, probeErr := os.Create(filepath.Join(dataDir, "permission-probe"))
+	if probeErr == nil {
+		require.NoError(t, probe.Close())
+		t.Skip("current user can bypass directory permissions")
+	}
+
+	require.ErrorIs(t, probeErr, os.ErrPermission)
+	err := rollbackFailure(rollback, os.ErrPermission)
+	require.ErrorContains(t, err, "recovery data retained at "+rollback)
+	data, readErr := os.ReadFile(oldFile)
+	require.NoError(t, readErr)
+	require.Equal(t, "previous achievement progress", string(data))
+	t.Logf("Triggered rollback failure; previous cache retained and reported: %v", err)
 }
