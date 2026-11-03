@@ -6,6 +6,7 @@
     "test": "echo 'nothing'",
     "prepare": "husky",
     "release": "semantic-release",
+    "clean:nm": "rm -rf node_modules && rm -rf frontend/node_modules && rm -rf decky-plugin/node_modules && rm -rf gnome-extension/node_modules",
     "release:dry-run": "semantic-release --dry-run"
   },
   "repository": {
