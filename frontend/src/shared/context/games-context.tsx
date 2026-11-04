@@ -1,4 +1,5 @@
 import type { FC, ReactNode } from 'react';
+import { showToast } from '@/shared/components/toast';
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { LibrarySyncStatus, type GameBasics } from '@wa/sentinel/backend/steam';
 import { Events } from '@wailsio/runtime';
@@ -100,10 +101,10 @@ export const GamesProvider: FC<GamesProviderProps> = ({ children }) => {
       }
 
       replaceGame(refreshedGame);
-      window.ot?.toast(`${refreshedGame.Name || 'Game'} refreshed`, 'Success', { variant: 'success' });
+      showToast(`${refreshedGame.Name || 'Game'} refreshed`);
     } catch (error) {
       console.error(`Failed to refresh game ${appID}:`, error);
-      window.ot?.toast('Failed to refresh game', 'Error', { variant: 'danger' });
+      showToast('Failed to refresh game', 'danger');
       throw error;
     } finally {
       setRefreshingState((current) => {

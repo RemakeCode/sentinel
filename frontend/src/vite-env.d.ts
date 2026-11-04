@@ -11,11 +11,18 @@ declare global {
 
   interface Window {
     ot: {
-      toast: (
-        message: string,
-        title?: string,
-        options?: { variant?: 'success' | 'danger' | 'info' | 'warning' }
-      ) => void;
+      toast: {
+        (
+          message: string,
+          title?: string,
+          options?: {
+            variant?: 'success' | 'danger' | 'info' | 'warning';
+            placement?: 'top-right';
+            duration?: number;
+          }
+        ): HTMLElement;
+        clear: (placement?: 'top-right') => void;
+      };
     };
   }
 }

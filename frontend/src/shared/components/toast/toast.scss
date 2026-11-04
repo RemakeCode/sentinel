@@ -1,0 +1,15 @@
+.toast {
+  min-width: 0;
+  width: 20rem;
+  max-width: calc(100vw - 2rem);
+  margin: 0;
+  padding: var(--space-4);
+  border-radius: 0.4375rem;
+  font-size: var(--text-7);
+  line-height: 1.5;
+
+  > .toast-message {
+    color: var(--foreground);
+    overflow-wrap: anywhere;
+  }
+}
