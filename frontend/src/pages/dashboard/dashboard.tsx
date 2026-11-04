@@ -44,7 +44,7 @@ const Dashboard: FC = () => {
         <div className='logo'>
           <img src={logo} alt='sentinel logo' width='50px' height='50px' />
           <div className='logo-text'>
-            <div className='logo-text-label'>Sentinel</div>
+            <h3 className='logo-text-label'>Sentinel</h3>
             <div className='logo-text-meta'>An achievement watcher</div>
           </div>
         </div>
