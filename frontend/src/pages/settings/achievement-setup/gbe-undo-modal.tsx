@@ -1,3 +1,4 @@
+import '@/pages/settings/achievement-setup/achievement-setup.scss';
 import { useEffect, useRef, useState, type FC } from 'react';
 import { UndoGBESetup } from '@wa/sentinel/backend/generator/service';
 
@@ -44,7 +45,9 @@ export const GBEUndoModal: FC<{ isOpen: boolean; appId: string; gameName: string
   return (
     <dialog
       ref={dialogRef}
-      className='gbe-dialog'
+      className='app-dialog'
+      aria-labelledby='gbe-undo-title'
+      aria-describedby='gbe-undo-description'
       onCancel={(event) => {
         if (restoring) {
           event.preventDefault();
@@ -54,31 +57,30 @@ export const GBEUndoModal: FC<{ isOpen: boolean; appId: string; gameName: string
         onClose();
       }}
     >
-      <header className='gbe-dialog-header gbe-dialog-header--without-progress'>
-        <h3>Undo Achievements Setup</h3>
+      <header className='app-dialog-header'>
+        <h3 id='gbe-undo-title'>Undo achievement setup?</h3>
+        <p id='gbe-undo-description'>Undo setup for {gameName || 'this game'}.</p>
       </header>
-      <div className='gbe-dialog-content'>
+      <div className='app-dialog-content'>
         {state === 'confirm' && (
-          <p>
-            Restore the matching DLL and steam_settings backups for <strong>{gameName || 'this game'}</strong>?
-          </p>
+          <p>This will restore the game files backed up during achievement setup.</p>
         )}
         {state === 'restoring' && <p>Restoring Sentinel backups…</p>}
-        {state === 'failed' && (
-          <p className='gbe-dialog-error'>Unable to undo achievement setup. Please try again.</p>
-        )}
+        {state === 'failed' && <p className='gbe-dialog-error'>Unable to undo achievement setup. Please try again.</p>}
         {state === 'succeeded' && <p>Achievement setup was undone.</p>}
       </div>
-      <footer>
+      <footer className='app-dialog-footer'>
         {state === 'confirm' && (
           <>
-            <button onClick={() => void restore()}>Restore backups</button>
-            <button className='outline' onClick={onClose}>
-              Back
+            <button className='outline' autoFocus onClick={onClose}>
+              Cancel
+            </button>
+            <button data-variant='danger' onClick={() => void restore()}>
+              Undo setup
             </button>
           </>
         )}
-        {state === 'restoring' && <button disabled>Restoring…</button>}
+        {state === 'restoring' && <button data-variant='danger' disabled>Restoring…</button>}
         {finished && <button onClick={onClose}>Close</button>}
       </footer>
     </dialog>

@@ -1,13 +1,12 @@
 import './achievement-setup.scss';
 import { useEffect, useRef, useState, type FC } from 'react';
 import { motion } from 'framer-motion';
-import { Trophy } from 'lucide-react';
+import { Trophy, Gamepad2, Info, Search } from 'lucide-react';
 import { Events } from '@wailsio/runtime';
 import { SearchApps } from '@wa/sentinel/backend/steam/service';
 import type { AppSearchResult } from '@wa/sentinel/backend/steam/models';
 import { ManagedGBESetups } from '@wa/sentinel/backend/generator/service';
 import type { ManagedGBESetupSummary } from '@wa/sentinel/backend/generator/models';
-import EmptyState from '@/shared/components/empty-state';
 import { GBESetupModal } from './gbe-setup-modal';
 import { GBEUndoModal } from './gbe-undo-modal';
 import { settingsContentVariants, settingsSectionVariants } from '../settings-motion';
@@ -116,20 +115,28 @@ const AchievementSetup: FC = () => {
 
   return (
     <motion.section
-      className='settings-pane page-content'
+      className='settings-pane settings-pane--fill page-content'
       variants={settingsContentVariants}
       initial='hidden'
       animate='visible'
     >
+      <header className='settings-page-header'>
+        <h2>Achievement setup</h2>
+        <p>Find games and manage achievement tracking.</p>
+      </header>
       <motion.div
-        className='card settings-section settings-section-first achievement-setup-content'
+        className='card settings-section settings-section--fill settings-section-first achievement-setup-content'
         variants={settingsSectionVariants}
       >
-        <h4 className='settings-section-title'>
-          <Trophy /> <span>Achievement Setup</span>
-        </h4>
-        <hr className='divider' />
-        <ot-tabs data-anchor='achievement-setup'>
+        <header className='settings-section-header'>
+          <h3 className='settings-section-title'>
+            <Trophy /> <span>Achievement Setup</span>
+          </h3>
+          <span className='badge'>
+            {configured.length} configured
+          </span>
+        </header>
+        <ot-tabs className='settings-section-body' data-anchor='achievement-setup'>
           <div role='tablist'>
             <button role='tab' id='setup' aria-selected='true'>
               Setup Achievements
@@ -141,10 +148,11 @@ const AchievementSetup: FC = () => {
           <section role='tabpanel'>
             {!selected && (
               <>
-                <div>
+                <div className='achievement-setup-workflow'>
                   <label data-field className='achievement-setup-search'>
-                    Search game name on Steam
+                    Find a game on Steam
                     <div className='achievement-setup-search-control'>
+                      <Search className='achievement-setup-search-icon' size={18} aria-hidden='true' />
                       <input
                         autoComplete='off'
                         autoCapitalize='off'
@@ -152,7 +160,7 @@ const AchievementSetup: FC = () => {
                         autoFocus
                         value={query}
                         onChange={(event) => changeQuery(event.target.value)}
-                        placeholder='Search Steam games'
+                        placeholder='Search by game name'
                       />
                       {searchStatus === 'loading' && (
                         <span
@@ -173,12 +181,23 @@ const AchievementSetup: FC = () => {
                       </div>
                     )}
                   </label>
+                  {searchStatus === 'idle' && query.trim().length < 2 && (
+                    <div className='achievement-setup-hint'>
+                      <Info size={18} aria-hidden='true' />
+                      <div className='settings-grid-details'>
+                        <strong>Start by searching for a game.</strong>
+                        <p>Search for a game on Steam, then select a result to continue.</p>
+                      </div>
+                    </div>
+                  )}
                   {searchStatus === 'results' && (
                     <div className='achievement-setup-results' role='listbox' aria-label='Steam search results'>
                       {results.map((result) => (
-                        <div
+                        <button
+                          type='button'
                           className='achievement-setup-results-item'
                           role='option'
+                          aria-selected={false}
                           key={result.appId}
                           onClick={() => selectGame(result)}
                         >
@@ -187,7 +206,7 @@ const AchievementSetup: FC = () => {
                             <span>{result.name}</span>
                             <small>App ID {result.appId}</small>
                           </div>
-                        </div>
+                        </button>
                       ))}
                     </div>
                   )}
@@ -202,7 +221,7 @@ const AchievementSetup: FC = () => {
                   <span className='achievement-setup-selected-title'>{selected.name}</span>
                   <small className='text-light'>App ID {selected.appId}</small>
                 </div>
-                <div className='achievement-setup-selected-actions'>
+                <div className='settings-grid-actions'>
                   <button ref={selectDLLButtonRef} type='button' onClick={openSetupModal}>
                     Select DLL in Game Folder
                   </button>
@@ -214,16 +233,25 @@ const AchievementSetup: FC = () => {
             )}
           </section>
           <section role='tabpanel' aria-label='Configured games'>
-            <div className='settings-grid'>
-              {configured.length === 0 && <EmptyState message='No games have been configured yet.' />}
-
-              {configured.length > 0 &&
-                configured.map((game) => (
+            <p className='settings-description'>These games are already set up for achievement tracking.</p>
+            {configured.length === 0 ? (
+              <div className='settings-empty'>
+                <span className='settings-grid-icon' aria-hidden='true'>
+                  <Gamepad2 size={20} />
+                </span>
+                <div className='settings-grid-details'>
+                  <strong>No games configured yet</strong>
+                  <p>Use the Setup Achievements tab to add your first game.</p>
+                </div>
+              </div>
+            ) : (
+              <div className='settings-grid settings-grid--flush'>
+                {configured.map((game) => (
                   <div className='settings-grid-item achievement-setup-configured-row' key={game.appId}>
-                    <span className='badge' data-variant='success'>
-                      Configured
+                    <span className='settings-grid-icon'>
+                      <Gamepad2 size={20} />
                     </span>
-                    <div className='achievement-setup-configured-details'>
+                    <div className='settings-grid-details'>
                       <strong>{game.name}</strong>
                     </div>
                     <div className='settings-grid-actions'>
@@ -231,10 +259,10 @@ const AchievementSetup: FC = () => {
                         Undo Achievements Setup
                       </button>
                     </div>
-                    <div />
                   </div>
                 ))}
-            </div>
+              </div>
+            )}
           </section>
         </ot-tabs>
         {setupGame && (
