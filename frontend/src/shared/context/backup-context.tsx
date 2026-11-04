@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, type FC, type ReactNode } from 'react';
+import { showToast } from '@/shared/components/toast';
 import { Events } from '@wailsio/runtime';
 import type { Status } from '@wa/sentinel/backend/backups/models';
 import { useGames } from '@/shared/context/games-context';
@@ -22,9 +23,9 @@ export const BackupProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
       if (next.status === 'succeeded') {
         if (next.operation === 'restore') void refresh();
-        window.ot?.toast(next.operation === 'restore' ? 'Backup restored' : 'Backup created', 'Success', { variant: 'success' });
+        showToast(next.operation === 'restore' ? 'Backup restored' : 'Backup created');
       } else if (next.status === 'failed') {
-        window.ot?.toast(next.error || 'Backup operation failed', 'Error', { variant: 'danger' });
+        showToast(next.error || 'Backup operation failed', 'danger');
       }
     });
   }, [refresh]);
