@@ -1,5 +1,3 @@
-@use './dialog';
-
 // Oat UI CSS imports
 @import '@knadh/oat/css/00-base.css';
 @import '@knadh/oat/css/01-theme.css';
@@ -22,6 +20,107 @@
 @import '@knadh/oat/css/tooltip.css';
 @import '@knadh/oat/css/utilities.css';
 
+
+.badge {
+  background-color: color-mix(in srgb, var(--warning) 20%, var(--card));
+  color: color-mix(in srgb, var(--warning) 75%, var(--foreground));
+  font-weight: var(--font-semibold);
+}
+
+.app-dialog {
+  color: var(--muted-foreground);
+  width: min(100% - 2rem, 32rem);
+  font-size: var(--text-7);
+
+  &-header {
+    padding: var(--space-6);
+    padding-block-end: var(--space-4);
+    border-bottom: 1px solid var(--border);
+
+    > h3 {
+      font-size: var(--text-5);
+      font-weight: var(--font-semibold);
+    }
+  }
+
+  &-content {
+    padding: var(--space-6);
+    overflow-wrap: anywhere;
+
+    > :first-child {
+      margin-block-start: 0;
+    }
+
+    > :last-child {
+      margin-block-end: 0;
+    }
+  }
+
+  &-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--space-2);
+    padding: var(--space-6);
+    padding-block-start: var(--space-4);
+    border-top: 1px solid var(--border);
+  }
+
+  &::backdrop {
+    backdrop-filter: blur(0);
+    -webkit-backdrop-filter: blur(0);
+    transition:
+      background-color 150ms ease,
+      backdrop-filter 0.3s ease-in-out,
+      overlay 150ms ease allow-discrete,
+      display 150ms ease allow-discrete;
+  }
+
+  &[open]::backdrop {
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+  }
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+:is(
+  input:not(
+    [type='checkbox'],
+    [type='radio'],
+    [type='range'],
+    [type='file'],
+    [type='color'],
+    [type='submit'],
+    [type='reset'],
+    [type='button'],
+    [type='hidden']
+  ),
+  textarea,
+  select
+) {
+  &:focus {
+    outline: none;
+    box-shadow: none;
+  }
+
+  &:focus-visible {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 1px var(--primary);
+  }
+
+  &:is([aria-invalid='true'], :user-invalid):focus-visible {
+    border-color: var(--danger);
+    box-shadow: 0 0 0 1px var(--danger);
+  }
+}
 
 :root {
   --primary: light-dark(#4e4b4b, #f29422);
@@ -92,10 +191,11 @@ hr.divider {
     line-height: 1;
 
     &-label {
-      font-size: var(--text-4);
+      margin: 0;
     }
 
     &-meta {
+      font-weight: var(--font-bold);
       color: var(--warning);
       opacity: 0.8;
       font-size: var(--text-8);
