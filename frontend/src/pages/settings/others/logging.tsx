@@ -1,4 +1,5 @@
 import '@/pages/settings/settings.scss';
+import { showToast } from '@/shared/components/toast';
 import { type FC, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Terminal } from 'lucide-react';
@@ -11,7 +12,7 @@ const Logging: FC = () => {
   useEffect(() => {
     LoadConfig()
       .then((config) => setLoggingEnabled(config?.logLevel === 'info'))
-      .catch(() => window.ot?.toast('Failed to load settings', 'Error', { variant: 'danger' }));
+      .catch(() => showToast('Failed to load settings', 'danger'));
   }, []);
 
   const handleLoggingToggle = async () => {
@@ -19,28 +20,30 @@ const Logging: FC = () => {
     try {
       await SetLoggingEnabled(newValue);
       setLoggingEnabled(newValue);
-      window.ot?.toast(`Logging ${newValue ? 'enabled' : 'disabled'}`, 'Success', { variant: 'success' });
+      showToast(`Logging ${newValue ? 'enabled' : 'disabled'}`);
     } catch (err) {
-      window.ot?.toast('Failed to update logging setting', 'Error', { variant: 'danger' });
+      showToast('Failed to update logging setting', 'danger');
     }
   };
 
   return (
     <motion.div className='card settings-section' variants={settingsSectionVariants}>
-      <h4 className='settings-section-title'>
-        <Terminal /> Logging
-      </h4>
-      <hr className='divider' />
+      <header className='settings-section-header'>
+        <h3 className='settings-section-title'>
+          Logging
+        </h3>
+      </header>
       <div className='settings-grid'>
         <div className='settings-grid-item'>
-          <span className='badge' data-variant='success'>
-            Console
-          </span>
-          <span>Enable logging</span>
+          <div className='settings-grid-details'>
+            <strong>Enable logging</strong>
+            <p>Print diagnostic information to help troubleshoot issues.</p>
+          </div>
           <div className='settings-grid-actions'>
             <label className='switch' title='Toggle backend logging'>
               <input type='checkbox' role='switch' checked={loggingEnabled} onChange={handleLoggingToggle} />
             </label>
+            <small>{loggingEnabled ? 'On' : 'Off'}</small>
           </div>
         </div>
       </div>

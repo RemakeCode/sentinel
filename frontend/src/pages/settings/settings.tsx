@@ -1,8 +1,9 @@
 import './settings.scss';
+import { showToast } from '@/shared/components/toast';
 import type { ChangeEvent, FC } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { DatabaseSearchIcon, FolderOpen, Globe, Rocket, Trash2, Volume2, VolumeOff } from 'lucide-react';
+import { Bell, BellDot, DatabaseSearchIcon, FolderOpen, Gamepad2, Globe, Plus, Rocket, Trash2, Volume2, VolumeOff } from 'lucide-react';
 
 import {
   AddPrefix,
@@ -36,7 +37,7 @@ import {
 } from '@wa/sentinel/backend/config/models';
 
 import EmptyState from '@/shared/components/empty-state';
-import { settingsContentVariants, settingsSectionVariants } from './settings-motion';
+import { settingsContentVariants, settingsSectionVariants } from '@/pages/settings/settings-motion';
 
 import { Dialogs } from '@wailsio/runtime';
 import { Start, Stop } from '@wa/sentinel/backend/watcher/service';
@@ -81,6 +82,8 @@ const Settings: FC = () => {
     useState<AchievementProgressUpdateMode>(AchievementProgressUpdateMode.AchievementProgressUpdateModeDefault);
   const [testNotificationDisabled, setTestNotificationDisabled] = useState(false);
   const [startOnLogin, setStartOnLogin] = useState(false);
+  const [prefixToRemove, setPrefixToRemove] = useState<PrefixItem | null>(null);
+  const removeDialogRef = useRef<HTMLDialogElement>(null);
   const testNotificationTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -95,24 +98,38 @@ const Settings: FC = () => {
 
     let active = true;
     SetupCustomNotifications()
-      .then(message => {
+      .then((message) => {
         if (active) setNotificationSetupMessage(message);
       })
-      .catch(error => {
+      .catch((error) => {
         if (active) setNotificationSetupMessage(String(error));
       });
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [notificationRenderer]);
+
+  useEffect(() => {
+    if (prefixToRemove && !removeDialogRef.current?.open) removeDialogRef.current?.showModal();
+    if (!prefixToRemove && removeDialogRef.current?.open) removeDialogRef.current.close();
+  }, [prefixToRemove]);
+
+  useEffect(
+    () => () => {
+      if (testNotificationTimeout.current) clearTimeout(testNotificationTimeout.current);
+    },
+    []
+  );
 
   const handleSteamDataSourceChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value as SteamSource;
-    setStmSrc(value);
     try {
       await SetSteamDataSource(value);
-      window.ot?.toast('Steam data source updated', 'Success', { variant: 'success' });
+      setStmSrc(value);
+      showToast('Steam data source updated');
     } catch (err) {
       console.error('Failed to save Steam data source:', err);
-      window.ot?.toast('Failed to save Steam data source', 'Error', { variant: 'danger' });
+      showToast('Failed to save Steam data source', 'danger');
     }
   };
 
@@ -131,7 +148,7 @@ const Settings: FC = () => {
       );
       setStartOnLogin(cfg?.startOnLogin ?? false);
     } catch (err) {
-      window.ot?.toast('Failed to load settings', 'Error', { variant: 'danger' });
+      showToast('Failed to load settings', 'danger');
     }
   };
 
@@ -158,9 +175,9 @@ const Settings: FC = () => {
     try {
       await SetAutostartEnabled(newValue);
       setStartOnLogin(newValue);
-      window.ot?.toast(`Autostart ${newValue ? 'enabled' : 'disabled'}`, 'Success', { variant: 'success' });
+      showToast(`Autostart ${newValue ? 'enabled' : 'disabled'}`);
     } catch (err) {
-      window.ot?.toast('Failed to update autostart setting', 'Error', { variant: 'danger' });
+      showToast('Failed to update autostart setting', 'danger');
     }
   };
 
@@ -169,9 +186,9 @@ const Settings: FC = () => {
     try {
       await SetLanguage(value);
       setSelectedLanguage(value);
-      window.ot?.toast('Language updated', 'Success', { variant: 'success' });
+      showToast('Language updated');
     } catch (err) {
-      window.ot?.toast('Failed to update language', 'Error', { variant: 'danger' });
+      showToast('Failed to update language', 'danger');
     }
   };
 
@@ -181,9 +198,9 @@ const Settings: FC = () => {
     try {
       await SetDesktopNotificationRenderer(renderer);
       setNotificationRenderer(renderer);
-      window.ot?.toast('Notification appearance updated', 'Success', { variant: 'success' });
+      showToast('Notification appearance updated');
     } catch (err) {
-      window.ot?.toast('Failed to save notification appearance', 'Error', { variant: 'danger' });
+      showToast('Failed to save notification appearance', 'danger');
     } finally {
       setSavingRenderer(false);
     }
@@ -192,23 +209,25 @@ const Settings: FC = () => {
   const handleSoundChange = async (e: ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     try {
-      setSelectedSound(value);
       await SetNotificationSound(value);
+      setSelectedSound(value);
 
       if (value) {
         await handlePlaySound(value);
       }
-    } catch (err) {}
+    } catch (err) {
+      showToast('Failed to save notification sound', 'danger');
+    }
   };
 
   const handleAchievementProgressUpdateModeChange = async (e: ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value as AchievementProgressUpdateMode;
     try {
-      setSelectedAchievementProgressUpdateMode(value);
       await SetAchievementProgressUpdateMode(value);
-      window.ot?.toast('Achievement progress updates updated', 'Success', { variant: 'success' });
+      setSelectedAchievementProgressUpdateMode(value);
+      showToast('Achievement progress updates updated');
     } catch (err) {
-      window.ot?.toast('Failed to update achievement progress updates', 'Error', { variant: 'danger' });
+      showToast('Failed to update achievement progress updates', 'danger');
     }
   };
 
@@ -231,7 +250,8 @@ const Settings: FC = () => {
       await TestNotification();
       testNotificationTimeout.current = setTimeout(() => setTestNotificationDisabled(false), expireTime);
     } catch (err) {
-      console.error('Failed to send test notification:', err);
+      setTestNotificationDisabled(false);
+      showToast('Failed to send test notification', 'danger');
     }
   };
 
@@ -245,7 +265,8 @@ const Settings: FC = () => {
       await TestNotificationProgress();
       testNotificationTimeout.current = setTimeout(() => setTestNotificationDisabled(false), expireTime);
     } catch (err) {
-      console.error('Failed to send test progress notification:', err);
+      setTestNotificationDisabled(false);
+      showToast('Failed to send test progress notification', 'danger');
     }
   };
 
@@ -254,7 +275,7 @@ const Settings: FC = () => {
       await ToggleEmulatorNotification(index);
       await loadConfig();
     } catch (err) {
-      window.ot?.toast('Failed to update setting', 'Error', { variant: 'danger' });
+      showToast('Failed to update setting', 'danger');
     }
   };
 
@@ -270,22 +291,24 @@ const Settings: FC = () => {
       if (selectedPath) {
         await AddPrefix(selectedPath);
         await Stop(); // stops watcher
-        window.ot?.toast('Prefix path added', 'Success', { variant: 'success' });
+        showToast('Prefix path added');
         await Promise.all([Start(), loadConfig()]);
       }
     } catch (err) {
       console.error('Failed to add prefix:', err);
-      window.ot?.toast('Failed to add prefix', 'Error', { variant: 'danger' });
+      showToast('Failed to add prefix', 'danger');
     }
   };
 
   const handleRemovePrefix = async (index: number) => {
+    setPrefixToRemove(null);
     try {
       await RemovePrefix(index);
-      window.ot?.toast('Prefix removed', 'Success', { variant: 'success' });
-      await loadConfig();
+      await Stop();
+      await Promise.all([Start(), loadConfig()]);
+      showToast('Prefix removed');
     } catch (err) {
-      window.ot?.toast('Failed to remove prefix', 'Error', { variant: 'danger' });
+      showToast('Failed to remove prefix', 'danger');
     }
   };
 
@@ -302,151 +325,199 @@ const Settings: FC = () => {
       initial='hidden'
       animate='visible'
     >
+      <header className='settings-page-header'>
+        <h2>General settings</h2>
+        <p>Manage how Sentinel behaves and where it looks for games.</p>
+      </header>
+
       <motion.div className='card settings-section settings-section-first' variants={settingsSectionVariants}>
-        <div className='flex justify-between items-center'>
-          <h4 className='settings-section-title'>
-            <FolderOpen /> <span>Prefix Paths</span>
-          </h4>
-          <button className='outline' onClick={handleAddPrefix}>
-            <FolderOpen /> Add Prefix Folder
-          </button>
-        </div>
-        <hr className='divider' />
+        <header className='settings-section-header'>
+          <h3 className='settings-section-title'>
+            <FolderOpen /> Prefix paths
+          </h3>
+          <div className='settings-grid-actions'>
+            <button className='outline' onClick={handleAddPrefix}>
+              <Plus size={16} /> Add folder
+            </button>
+          </div>
+        </header>
         <div className='settings-grid'>
           {allPrefixes.length === 0 ? (
-            <EmptyState message='No prefix paths configured' />
+            <div className='settings-empty'>
+              <span className='settings-grid-icon' aria-hidden='true'>
+                <FolderOpen size={20} />
+              </span>
+              <div className='settings-grid-details'>
+                <strong>No prefix folders added</strong>
+                <p>Add a folder to include custom game prefix locations. Added folders will appear here.</p>
+              </div>
+            </div>
           ) : (
-            <>
-              {allPrefixes.map((record) => (
-                <div key={record.index} className='settings-grid-item'>
-                  <span className='badge' data-variant='success'>
-                    Prefix
-                  </span>
-                  <code>{record.prefix.path}</code>
-                  <div className='settings-grid-actions' title={'Delete Prefix'}>
-                    <Trash2 size={20} onClick={() => handleRemovePrefix(record.index)} />
-                  </div>
+            allPrefixes.map((record) => (
+              <div key={record.index} className='settings-grid-item'>
+                <span className='settings-grid-icon'>
+                  <FolderOpen size={20} />
+                </span>
+                <div className='settings-grid-details'>
+                  <strong>Game prefix</strong>
+                  <code title={record.prefix.path}>{record.prefix.path}</code>
                 </div>
-              ))}
-            </>
+                <div className='settings-grid-actions'>
+                  <button
+                    className='ghost'
+                    aria-label={`Remove prefix ${record.prefix.path}`}
+                    onClick={() => setPrefixToRemove(record)}
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </div>
+              </div>
+            ))
           )}
         </div>
       </motion.div>
 
       <motion.div className='card settings-section' variants={settingsSectionVariants}>
-        <div className='flex justify-between items-center'>
-          <h4 className='settings-section-title'>
-            <FolderOpen /> <span>Emulators</span>
-          </h4>
-        </div>
-        <hr className='divider' />
+        <header className='settings-section-header'>
+          <h3 className='settings-section-title'>
+            <Gamepad2 /> Emulators
+          </h3>
+          <small>Notifications</small>
+        </header>
         <div className='settings-grid'>
           {allEmulators.length === 0 ? (
             <EmptyState message='No emulators configured' />
           ) : (
-            <>
-              {allEmulators.map((record) => (
-                <div key={record.index} className='settings-grid-item'>
-                  <span className='badge' data-variant='success'>
-                    Emulator
-                  </span>
-
-                  <code>{emulatorSearchPaths[record.emu.id] ?? record.emu.id}</code>
-                  <div className='settings-grid-actions'>
-                    <label className='switch' title={'Toggle Notification for this emulator'}>
-                      <input
-                        type='checkbox'
-                        role='switch'
-                        checked={record.emu.shouldNotify}
-                        onChange={() => handleToggleNotify(record.index)}
-                      />
-                      {record.emu.shouldNotify ? <Volume2 size={18} /> : <VolumeOff size={18} />}
-                    </label>
-                  </div>
+            allEmulators.map((record) => (
+              <div key={record.emu.id} className='settings-grid-item'>
+                <span className='settings-grid-icon'>
+                  <FolderOpen size={20} />
+                </span>
+                <div className='settings-grid-details'>
+                  <strong>
+                    {record.emu.id === 'gse'
+                      ? 'GSE Saves'
+                      : record.emu.id === 'codex'
+                        ? 'CODEX'
+                        : record.emu.id === 'rune'
+                          ? 'RUNE'
+                          : record.emu.id === 'goldberg-steamemu'
+                            ? 'Goldberg SteamEmu'
+                            : 'Goldberg UplayEmu'}
+                  </strong>
+                  <code title={emulatorSearchPaths[record.emu.id]}>
+                    {emulatorSearchPaths[record.emu.id] ?? record.emu.id}
+                  </code>
                 </div>
-              ))}
-            </>
+                <div className='settings-grid-actions'>
+                  <label className='switch' title='Toggle notifications for this emulator'>
+                    <input
+                      aria-label={`Notifications for ${record.emu.id}`}
+                      type='checkbox'
+                      role='switch'
+                      checked={record.emu.shouldNotify}
+                      onChange={() => handleToggleNotify(record.index)}
+                    />
+                    {record.emu.shouldNotify ? <Volume2 size={18} /> : <VolumeOff size={18} />}
+                  </label>
+                </div>
+              </div>
+            ))
           )}
         </div>
       </motion.div>
 
       <motion.div className='card settings-section' variants={settingsSectionVariants}>
-        <h4 className='settings-section-title'>
-          <DatabaseSearchIcon /> Steam Data Source
-        </h4>
-        <hr className='divider' />
-
-        <div className='settings-table-form'>
-          <fieldset className='hstack'>
-            <legend>Preference</legend>
-            <label className='radio-option'>
-              <input
-                type='radio'
-                name='steamDataSource'
-                value={SteamSource.Key}
-                checked={stmSrc === SteamSource.Key}
-                onChange={handleSteamDataSourceChange}
-              />
-              Steam
-            </label>
-            <label className='radio-option'>
-              <input
-                type='radio'
-                name='steamDataSource'
-                value={SteamSource.External}
-                checked={stmSrc === SteamSource.External}
-                onChange={handleSteamDataSourceChange}
-              />
-              External Sources
-            </label>
-          </fieldset>
-          {/* TODO: restore API key input and masked key display if Steam ever requires key auth */}
+        <header className='settings-section-header'>
+          <h3 className='settings-section-title'>
+            <DatabaseSearchIcon /> Steam Data Source
+          </h3>
+        </header>
+        <div className='settings-grid'>
+          <div className='settings-grid-item settings-grid-item--preference'>
+            <div className='settings-grid-details'>
+              <strong>Preferred source</strong>
+              <p>Choose where Sentinel retrieves Steam achievement information.</p>
+            </div>
+            <fieldset className='settings-grid-actions' aria-label='Preferred Steam data source'>
+              <label className='settings-choice'>
+                <input
+                  type='radio'
+                  name='steamDataSource'
+                  value={SteamSource.Key}
+                  checked={stmSrc === SteamSource.Key}
+                  onChange={handleSteamDataSourceChange}
+                />{' '}
+                Steam
+              </label>
+              <label className='settings-choice'>
+                <input
+                  type='radio'
+                  name='steamDataSource'
+                  value={SteamSource.External}
+                  checked={stmSrc === SteamSource.External}
+                  onChange={handleSteamDataSourceChange}
+                />{' '}
+                External Sources
+              </label>
+            </fieldset>
+          </div>
         </div>
       </motion.div>
 
       <motion.div className='card settings-section' variants={settingsSectionVariants}>
-        <h4 className='settings-section-title'>
-          <Volume2 /> Notification
-        </h4>
-        <hr className='divider' />
-        <div className='settings-table-form'>
-          <fieldset>
-            <legend>Appearance</legend>
-            <label data-field>
+        <header className='settings-section-header'>
+          <h3 className='settings-section-title'>
+            <Bell /> Notifications
+          </h3>
+        </header>
+        <div className='settings-grid'>
+          <div className='settings-grid-item settings-grid-item--preference'>
+            <div className='settings-grid-details'>
+              <label htmlFor='notification-appearance'>Appearance</label>
+              <p>Choose how achievement notifications are displayed.</p>
+            </div>
+            <div className='settings-grid-actions settings-grid-actions--field'>
               <select
-                aria-label='Notification appearance'
-                className='settings-select'
+                id='notification-appearance'
                 value={notificationRenderer}
                 onChange={handleRendererChange}
                 disabled={savingRenderer}
+                aria-describedby={notificationSetupMessage ? 'notification-setup-message' : undefined}
               >
                 <option value={DesktopNotificationRenderer.DesktopNotificationRendererNative}>Native (default)</option>
                 <option value={DesktopNotificationRenderer.DesktopNotificationRendererCustom}>Custom</option>
               </select>
               {notificationSetupMessage && (
-                <small id='password-hint' data-hint className='settings-notification-setup-message'>
+                <small id='notification-setup-message' className='settings-notification-setup-message'>
                   {notificationSetupMessage}
                 </small>
               )}
-            </label>
-          </fieldset>
-          <fieldset className='hstack'>
-            <legend>Sound Selection</legend>
-            <label>
-              <select className='settings-select' value={selectedSound} onChange={handleSoundChange}>
+            </div>
+          </div>
+          <div className='settings-grid-item settings-grid-item--preference'>
+            <div className='settings-grid-details'>
+              <label htmlFor='notification-sound'>Notification sound</label>
+              <p>Sound played when you unlock an achievement.</p>
+            </div>
+            <div className='settings-grid-actions'>
+              <select id='notification-sound' value={selectedSound} onChange={handleSoundChange}>
                 {availableSounds.map((sound) => (
                   <option key={sound.value} value={sound.value}>
                     {sound.name}
                   </option>
                 ))}
               </select>
-            </label>
-          </fieldset>
-          <fieldset className='hstack'>
-            <legend>Achievement Progress Updates</legend>
-            <label>
+            </div>
+          </div>
+          <div className='settings-grid-item settings-grid-item--preference'>
+            <div className='settings-grid-details'>
+              <label htmlFor='achievement-progress-mode'>Progress updates</label>
+              <p>Choose how achievement progress updates are delivered.</p>
+            </div>
+            <div className='settings-grid-actions'>
               <select
-                className='settings-select'
+                id='achievement-progress-mode'
                 value={selectedAchievementProgressUpdateMode}
                 onChange={handleAchievementProgressUpdateModeChange}
               >
@@ -456,67 +527,108 @@ const Settings: FC = () => {
                   </option>
                 ))}
               </select>
-            </label>
-          </fieldset>
-          <fieldset className='hstack'>
-            <legend>Test Notification</legend>
-            <div className='hstack'>
+            </div>
+          </div>
+          <div className='settings-grid-item settings-grid-item--preference'>
+            <div className='settings-grid-details'>
+              <strong>Preview notifications</strong>
+              <p>Send a test notification to check your preferences.</p>
+            </div>
+            <div className='settings-grid-actions'>
               <button className='outline' onClick={handleTestNotification} disabled={testNotificationDisabled}>
-                Normal
+                <Bell size={16} /> Normal
               </button>
               <button className='outline' onClick={handleTestNotificationProgress} disabled={testNotificationDisabled}>
-                Progress
+                <BellDot size={16} /> Progress
               </button>
             </div>
-          </fieldset>
+          </div>
         </div>
       </motion.div>
 
       <motion.div className='card settings-section' variants={settingsSectionVariants}>
-        <h4 className='settings-section-title'>
-          <Globe /> Language
-        </h4>
-        <hr className='divider' />
-        <div className='settings-table-form'>
-          <fieldset className='hstack'>
-            <legend>Preferred Language</legend>
-            <label>
-              <select
-                className='settings-select'
-                value={selectedLanguage}
-                onChange={handleLanguageChange}
-                disabled={true}
-              >
-                {languages.map((lang: { api: string; displayName: string }) => (
+        <header className='settings-section-header'>
+          <h3 className='settings-section-title'>
+            <Globe /> Language
+          </h3>
+          <span className='badge'>Coming soon</span>
+        </header>
+        <div className='settings-grid'>
+          <div className='settings-grid-item settings-grid-item--preference'>
+            <div className='settings-grid-details'>
+              <label htmlFor='display-language'>Display language</label>
+              <p>Language selection is not available yet.</p>
+            </div>
+            <div className='settings-grid-actions'>
+              <select id='display-language' value={selectedLanguage} onChange={handleLanguageChange} disabled>
+                {languages.map((lang) => (
                   <option key={lang.api} value={lang.api}>
                     {lang.displayName}
                   </option>
                 ))}
               </select>
-            </label>
-            <span className='badge'>Coming Soon</span>
-          </fieldset>
+            </div>
+          </div>
         </div>
       </motion.div>
 
       <motion.div className='card settings-section' variants={settingsSectionVariants}>
-        <h4 className='settings-section-title'>
-          <Rocket /> Startup
-        </h4>
-        <hr className='divider' />
+        <header className='settings-section-header'>
+          <h3 className='settings-section-title'>
+            <Rocket /> Startup
+          </h3>
+        </header>
         <div className='settings-grid'>
-          <div className='settings-grid-item'>
-            <span className='badge' data-variant='success'>
-              Autostart
-            </span>
-            <span>Start on login (minimized to tray)</span>
-            <label className='switch' title='Toggle autostart on login'>
-              <input type='checkbox' role='switch' checked={startOnLogin} onChange={handleStartOnLoginToggle} />
-            </label>
-            <div />
+          <div className='settings-grid-item settings-grid-item--preference'>
+            <div className='settings-grid-details'>
+              <strong>Start on login</strong>
+              <p>Launch Sentinel minimized to the tray when you sign in.</p>
+            </div>
+            <div className='settings-grid-actions'>
+              <label className='switch'>
+                <input
+                  aria-label='Start on login'
+                  type='checkbox'
+                  role='switch'
+                  checked={startOnLogin}
+                  onChange={handleStartOnLoginToggle}
+                />
+              </label>
+              <small>{startOnLogin ? 'On' : 'Off'}</small>
+            </div>
           </div>
         </div>
       </motion.div>
+
+      <dialog
+        ref={removeDialogRef}
+        className='app-dialog'
+        aria-labelledby='remove-prefix-title'
+        onClose={() => setPrefixToRemove(null)}
+      >
+        <header className='app-dialog-header'>
+          <h3 id='remove-prefix-title'>Remove prefix folder?</h3>
+        </header>
+        <div className='app-dialog-content'>
+          <p>
+            <strong>{prefixToRemove?.prefix.path}</strong>
+          </p>
+          <p>This folder will no longer be tracked by Sentinel. Files on disk will not be deleted.</p>
+        </div>
+        <footer className='app-dialog-footer'>
+          <button className='outline' onClick={() => setPrefixToRemove(null)}>
+            Cancel
+          </button>
+          <button
+            data-variant='danger'
+            onClick={() => {
+              if (prefixToRemove) void handleRemovePrefix(prefixToRemove.index);
+            }}
+          >
+            Remove folder
+          </button>
+        </footer>
+      </dialog>
     </motion.section>
   );
 };
