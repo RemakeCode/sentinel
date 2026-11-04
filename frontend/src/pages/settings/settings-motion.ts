@@ -1,4 +1,6 @@
-export const settingsContentVariants = {
+import type { Variants } from 'framer-motion';
+
+export const settingsContentVariants: Variants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
@@ -6,7 +8,7 @@ export const settingsContentVariants = {
   }
 };
 
-export const settingsSectionVariants = {
+export const settingsSectionVariants: Variants = {
   hidden: { opacity: 0, y: 12 },
   visible: {
     opacity: 1,

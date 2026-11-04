@@ -6,6 +6,7 @@ import { createHashRouter, Navigate, RouterProvider } from 'react-router';
 import GameDetails from '@/pages/game-details/game-details';
 import Settings from '@/pages/settings/settings';
 import SettingsLayout from '@/pages/settings/settings-layout';
+import BackupRestorePage from '@/pages/settings/backup-restore/backup-restore-page';
 import Others from '@/pages/settings/others/others';
 import AchievementSetup from '@/pages/settings/achievement-setup/achievement-setup';
 import Dashboard from '@/pages/dashboard/dashboard';
@@ -42,6 +43,10 @@ const router = createHashRouter([
           {
             path: 'general',
             element: <Settings />
+          },
+          {
+            path: 'backup-restore',
+            element: <BackupRestorePage />
           },
           {
             path: 'others',

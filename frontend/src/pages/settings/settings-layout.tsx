@@ -1,7 +1,7 @@
 import './settings.scss';
 import type { FC } from 'react';
 import { useState } from 'react';
-import { ArrowLeft, Ellipsis, Info, SlidersHorizontal, Trophy } from 'lucide-react';
+import { Archive, ArrowLeft, Ellipsis, Info, ShieldCheck, SlidersHorizontal, Trophy } from 'lucide-react';
 import { Link, NavLink, Outlet } from 'react-router';
 
 import { GetAppInfo } from '@wa/sentinel/backend/config/file';
@@ -28,10 +28,10 @@ const SettingsLayout: FC = () => {
     <div className='full-layout settings-layout'>
       <HeaderPortal>
         <div className='header-nav'>
-          <Link to='/'>
+          <Link to='/' className='settings-header-back' aria-label='Back to library'>
             <ArrowLeft />
           </Link>
-          <h2>Settings</h2>
+          <h3>Settings</h3>
         </div>
         <button
           className='settings-header-about-icon'
@@ -46,7 +46,8 @@ const SettingsLayout: FC = () => {
 
       <div data-sidebar-layout='always' className='settings-workspace'>
         <aside data-sidebar aria-label='Settings sections'>
-          <nav>
+          <nav aria-labelledby='settings-sidebar-label'>
+            <p id='settings-sidebar-label' className='settings-sidebar-label'>Preferences</p>
             <ul>
               <li>
                 <NavLink to='general'>
@@ -59,12 +60,21 @@ const SettingsLayout: FC = () => {
                 </NavLink>
               </li>
               <li>
+                <NavLink to='backup-restore'>
+                  <Archive size={18} /> <span>Backup &amp; Restore</span>
+                </NavLink>
+              </li>
+              <li>
                 <NavLink to='others'>
                   <Ellipsis size={18} /> <span>Others</span>
                 </NavLink>
               </li>
             </ul>
           </nav>
+          <footer className='settings-sidebar-footer'>
+            <ShieldCheck size={20} aria-hidden='true' />
+            <span>Sentinel · Settings</span>
+          </footer>
         </aside>
         <main aria-label='Settings content' className='full-layout'>
           <Outlet />
