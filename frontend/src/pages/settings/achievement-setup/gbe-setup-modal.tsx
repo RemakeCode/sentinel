@@ -91,8 +91,8 @@ const SetupHeader: FC<{ stage: SetupProgressStage; label: string; showProgress?:
   label,
   showProgress = true
 }) => (
-  <header className='gbe-dialog-header'>
-    <h3>Setup Achievements</h3>
+  <header className='app-dialog-header gbe-dialog-header'>
+    <h3 id='gbe-setup-title'>Setup Achievements</h3>
     {showProgress && <SetupProgress stage={stage} label={label} />}
   </header>
 );
@@ -126,7 +126,7 @@ const DLLSelectionFlow: FC<{
   return (
     <>
       <SetupHeader stage={dllSelectionStage} label={dllSelectionStage.label} />
-      <div className='gbe-dialog-content'>
+      <div className='app-dialog-content gbe-dialog-content'>
         {!dllPath ? (
           <div className='gbe-dialog-copy'>
             <p>
@@ -145,7 +145,7 @@ const DLLSelectionFlow: FC<{
           </div>
         )}
       </div>
-      <footer>
+      <footer className='app-dialog-footer'>
         {!dllPath && (
           <button autoFocus onClick={() => void selectDLL()}>
             Select Steam API DLL
@@ -245,7 +245,7 @@ const SetupFlow: FC<{
   return (
     <>
       <SetupHeader stage={progressStage} label={progressLabel} showProgress={showsHeaderProgress(update.phase)} />
-      <div className='gbe-dialog-content'>
+      <div className='app-dialog-content gbe-dialog-content'>
         {update.phase === Phase.PhaseAwaitingQR && update.challengeUrl && (
           <SetupQRCode value={update.challengeUrl} message='Scan and approve with the Steam Mobile app.' />
         )}
@@ -282,7 +282,7 @@ const SetupFlow: FC<{
           </div>
         )}
       </div>
-      <footer>
+      <footer className='app-dialog-footer'>
         {active && (
           <button onClick={() => void cancelSetup()} disabled={cancelPending}>
             Cancel
@@ -326,7 +326,8 @@ export const GBESetupModal: FC<{
   return (
     <dialog
       ref={dialogRef}
-      className='gbe-dialog'
+      className='app-dialog gbe-dialog'
+      aria-labelledby='gbe-setup-title'
       onCancel={(event) => {
         event.preventDefault();
         if (!active) {
