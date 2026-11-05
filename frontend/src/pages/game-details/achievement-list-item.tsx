@@ -1,9 +1,9 @@
 import type { FC } from 'react';
-import { motion } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 import { EyeOff } from 'lucide-react';
 import type { achievement } from '@wa/sentinel/backend/steam/models';
 
-const itemVariants = {
+const itemVariants: Variants = {
   hidden: { opacity: 0, y: 15 },
   visible: {
     opacity: 1,
@@ -37,8 +37,8 @@ export const AchievementListItem: FC<AchievementListItemProps> = ({ ach }) => {
 
   return (
     <motion.li className='game-details-ach-item' variants={itemVariants}>
-      <div className={`game-details-ach-icon${isRare ? ' game-details-ach-icon--rare' : ''}`}>
-        <img src={ach.Icon} alt={ach.DisplayName} width={64} height={64} />
+      <div className={`game-details-ach-icon${isRare ? ' game-details-ach-icon-rare' : ''}`}>
+        <img src={ach.Icon} alt={ach.DisplayName} width={80} height={80} />
       </div>
       <div className='game-details-ach-info'>
         <span className='game-details-ach-title'>{ach.DisplayName}</span>
