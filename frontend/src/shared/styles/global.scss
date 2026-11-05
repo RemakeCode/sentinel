@@ -20,7 +20,6 @@
 @import '@knadh/oat/css/tooltip.css';
 @import '@knadh/oat/css/utilities.css';
 
-
 .badge {
   background-color: color-mix(in srgb, var(--warning) 20%, var(--card));
   color: color-mix(in srgb, var(--warning) 75%, var(--foreground));
@@ -28,6 +27,7 @@
 }
 
 .app-dialog {
+  border-radius: var(--radius-large);
   color: var(--muted-foreground);
   width: min(100% - 2rem, 32rem);
   font-size: var(--text-7);
@@ -69,11 +69,10 @@
   &::backdrop {
     backdrop-filter: blur(0);
     -webkit-backdrop-filter: blur(0);
-    transition:
-      background-color 150ms ease,
-      backdrop-filter 0.3s ease-in-out,
-      overlay 150ms ease allow-discrete,
-      display 150ms ease allow-discrete;
+    transition: background-color 150ms ease,
+    backdrop-filter 0.3s ease-in-out,
+    overlay 150ms ease allow-discrete,
+    display 150ms ease allow-discrete;
   }
 
   &[open]::backdrop {
@@ -127,24 +126,23 @@
   --primary-foreground: light-dark(#f29422, #18181b);
 }
 
-
 @font-face {
   font-family: 'Raleway';
-  src: url('src/assets/fonts/Raleway.woff2') format('woff2');
+  src: url('../../assets/fonts/Raleway.woff2') format('woff2');
   font-style: normal;
   font-display: swap;
   font-weight: 400 900;
 }
 
 :root {
-  --game-card-width: 160px;
-  --game-card-height: 210px;
-  --blue: #0557c8;
-  --blue-foreground: #7ab1f4;
-  --font-sans: "Raleway", sans-serif;
+  --game-card-width: 220px;
+  --radius-medium: 0.5rem;
+  --radius-large: 0.625rem;
+  --font-sans: 'Raleway', sans-serif;
 }
 
 html {
+  min-width: 1080px;
   scroll-behavior: smooth;
   color-scheme: dark;
 
@@ -153,14 +151,9 @@ html {
   }
 }
 
-
 body {
+  min-width: 1080px;
   margin: 0;
-}
-
-hr.divider {
-  border-bottom: 1px solid var(--border);
-  margin: var(--space-3) 0;
 }
 
 .full-layout {
@@ -172,6 +165,31 @@ hr.divider {
 .page-content {
   padding-block: var(--space-10);
   padding-inline: var(--space-10);
+}
+
+.desktop-page-intro {
+  margin-block-end: var(--space-6);
+
+  &-eyebrow {
+    display: block;
+    margin-block-end: var(--space-2);
+    font-size: var(--text-8);
+    font-weight: var(--font-bold);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--primary);
+  }
+
+  h1 {
+    margin: 0;
+    font-size: var(--text-2);
+  }
+
+  p {
+    margin: var(--space-2) 0 0;
+    font-size: var(--text-6);
+    color: var(--muted-foreground);
+  }
 }
 
 .logo {
@@ -201,13 +219,14 @@ hr.divider {
       font-size: var(--text-8);
     }
   }
-
 }
 
 progress {
   -webkit-appearance: none;
   border: 1px solid var(--faint-foreground);
   opacity: 1;
+  display: flex;
+  height: 10px;
 
   &::-webkit-progress-bar {
     background-color: transparent;
@@ -220,4 +239,6 @@ code {
   white-space: nowrap;
   max-width: 100%;
   background: none;
+  margin: 0;
+  padding: 0;
 }

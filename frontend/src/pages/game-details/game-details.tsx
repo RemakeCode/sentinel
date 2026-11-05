@@ -1,14 +1,14 @@
 import './game-details.scss';
 import type { FC, ReactNode } from 'react';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link, useLocation } from 'react-router';
-import { ArrowDown, ArrowLeft, ArrowUp, Clock, Ghost, Glasses, History, ListCheck, Trophy } from 'lucide-react';
-import { GameBasics } from '@wa/sentinel/backend/steam';
+import { ArrowDown, ArrowLeft, ArrowUp, Clock, History, Lock, Trophy } from 'lucide-react';
+import type { GameBasics } from '@wa/sentinel/backend/steam';
 import { computeProgress } from '@/shared/utils';
 import missingCover from '@/assets/images/missing-cover.png';
 import { HeaderPortal } from '@/shared/components/header/header';
-import { AchievementListItem } from './achievement-list-item';
+import { AchievementListItem } from '@/pages/game-details/achievement-list-item';
 
 type SortOption = 'name-asc' | 'name-desc' | 'time-newest' | 'time-oldest';
 
@@ -34,19 +34,6 @@ const containerVariants = {
 const GameDetails: FC = () => {
   const location = useLocation();
   const game = location.state?.game as GameBasics | undefined;
-
-  useEffect(() => {
-    const handleScroll = () => {
-      const headers = document.querySelectorAll('.game-details-ach-subheader');
-      headers.forEach((header) => {
-        const rect = header.getBoundingClientRect();
-        header.classList.toggle('is-sticky', rect.top <= 150);
-      });
-    };
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
 
   const [sortBy, setSortBy] = useState<SortOption>(() => {
     if (typeof window !== 'undefined') {
@@ -119,13 +106,18 @@ const GameDetails: FC = () => {
     <main className='full-layout'>
       <HeaderPortal>
         <div className='header-nav'>
-          <Link to='/'>
+          <Link to='/' className='header-back' aria-label='Back to library'>
             <ArrowLeft />
           </Link>
-          <h2>Achievements</h2>
+          <h3>Achievements</h3>
         </div>
       </HeaderPortal>
       <section className='page-content'>
+        <div className='desktop-page-intro'>
+          <span className='desktop-page-intro-eyebrow'>Game progress</span>
+          <h1>{game?.Name}</h1>
+          <p>Browse what you've unlocked and see what's left to discover.</p>
+        </div>
         <div className='game-details-section'>
           <div className='game-details-container'>
             <div className='game-details-container-inner'>
@@ -138,57 +130,60 @@ const GameDetails: FC = () => {
                   }}
                 />
               </div>
-              <progress value={stats.percentage} max={100} className='mt-6'></progress>
               <div className='game-details-stats'>
-                <div className='game-details-stat-card card'>
-                  <Trophy className='game-details-stat-icon' />
-                  <span className='game-details-stat-value'>{stats.percentage}%</span>
-                  <span className='game-details-stat-label'>Complete</span>
+                <div className='game-details-stat-summary'>
+                  <div className='game-details-stat-topline'>
+                    <strong>{stats.percentage}%</strong>
+                    <span>Complete</span>
+                  </div>
+                  <progress value={stats.percentage} max={100} aria-label='Game completion' />
                 </div>
-                <div className='game-details-stat-card card'>
-                  <ListCheck className='game-details-stat-icon' />
+                <div className='game-details-stat-row'>
+                  <span>Unlocked</span>
                   <span className='game-details-stat-value'>
                     {stats.achievedCount} / {stats.totalCount}
                   </span>
-                  <span className='game-details-stat-label'>Total</span>
                 </div>
-                <div className='game-details-stat-card card'>
-                  <Ghost className='game-details-stat-icon' />
+                <div className='game-details-stat-row'>
+                  <span>Hidden</span>
                   <span className='game-details-stat-value'>
                     {stats.hiddenEarned} / {stats.hiddenTotal}
                   </span>
-                  <span className='game-details-stat-label'>Hidden</span>
                 </div>
-                <div className='game-details-stat-card card'>
-                  <Glasses className='game-details-stat-icon' />
+                <div className='game-details-stat-row'>
+                  <span>Visible</span>
                   <span className='game-details-stat-value'>
                     {stats.visibleEarned} / {stats.visibleTotal}
                   </span>
-                  <span className='game-details-stat-label'>Visible</span>
                 </div>
               </div>
             </div>
           </div>
           <div className='game-details-ach'>
             <div className='game-details-ach-header'>
-              <h1>{game?.Name}</h1>
-              <div className='game-details-ach-sort'>
+              <h2>Achievements</h2>
+              <div className='game-details-ach-sort' role='group' aria-label='Sort achievements'>
                 {SORT_OPTIONS.map((opt) => (
-                  <div
-                    role='button'
+                  <button
+                    type='button'
                     key={opt.value}
                     className={`${sortBy === opt.value ? 'active' : ''}`}
                     onClick={() => handleSortChange(opt.value)}
                     title={opt.value.replace('-', ' ')}
+                    aria-label={opt.value.replace('-', ' ')}
+                    aria-pressed={sortBy === opt.value}
                   >
                     {opt.icon}
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>
             {sortedUnlocked.length > 0 && (
-              <>
-                <h3 className='game-details-ach-subheader'>Unlocked</h3>
+              <section className='game-details-ach-group' aria-labelledby='unlocked-heading'>
+                <h3 className='game-details-ach-subheader' id='unlocked-heading'>
+                  <Trophy aria-hidden='true' />
+                  Unlocked
+                </h3>
                 <motion.ul
                   className='game-details-ach-list'
                   variants={containerVariants}
@@ -199,11 +194,14 @@ const GameDetails: FC = () => {
                     <AchievementListItem key={`${ach.Name}#${i}`} ach={ach} />
                   ))}
                 </motion.ul>
-              </>
+              </section>
             )}
             {sortedLocked.length > 0 && (
-              <>
-                <h3 className='game-details-ach-subheader'>Locked</h3>
+              <section className='game-details-ach-group' aria-labelledby='locked-heading'>
+                <h3 className='game-details-ach-subheader' id='locked-heading'>
+                  <Lock aria-hidden='true' />
+                  Locked
+                </h3>
                 <motion.ul
                   className='game-details-ach-list'
                   variants={containerVariants}
@@ -214,7 +212,7 @@ const GameDetails: FC = () => {
                     <AchievementListItem key={`${ach.Name}#${i}`} ach={ach} />
                   ))}
                 </motion.ul>
-              </>
+              </section>
             )}
           </div>
         </div>

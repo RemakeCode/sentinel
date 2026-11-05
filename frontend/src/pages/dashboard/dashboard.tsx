@@ -1,6 +1,6 @@
 import './dashboard.scss';
 import type { CSSProperties, FC } from 'react';
-import { motion } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 
 import { Gamepad2, Settings } from 'lucide-react';
 import { Link } from 'react-router';
@@ -21,7 +21,7 @@ const containerVariants = {
   }
 };
 
-const itemVariants = {
+const itemVariants: Variants = {
   hidden: { opacity: 0, y: 10, scale: 0.98 },
   visible: {
     opacity: 1,
@@ -48,12 +48,23 @@ const Dashboard: FC = () => {
             <div className='logo-text-meta'>An achievement watcher</div>
           </div>
         </div>
-        <Link to='/settings' className='dashboard-header-settings-link'>
-          <Settings className='dashboard-header-settings-link-icon' />
+        <Link to='/settings' className='header-icon' aria-label='Settings'>
+          <Settings />
         </Link>
       </HeaderPortal>
       <section className='page-content'>
-        <h2 className='dashboard-section-header'>Library</h2>
+        <div className='desktop-page-intro'>
+          <span className='desktop-page-intro-eyebrow'>Your collection</span>
+          <h1>Library</h1>
+          <p>See your progress, pick up where you left off, and explore achievements.</p>
+        </div>
+        <div className='dashboard-section-header'>
+          <Gamepad2 aria-hidden='true' />
+          <h2>Games</h2>
+          <span className='dashboard-game-count' aria-label={`${games.length} games`}>
+            {games.length}
+          </span>
+        </div>
 
         {showLoader ? (
           <div className='dashboard-loader' aria-busy='true' data-spinner='large' />
@@ -85,21 +96,28 @@ const Dashboard: FC = () => {
                       } as CSSProperties
                     }
                   >
-                    <Link to={`/game/${game.AppID}`} state={{ game, idx }} className='games-item-link'>
+                    <Link
+                      to={`/game/${game.AppID}`}
+                      state={{ game, idx }}
+                      className='games-item-link'
+                      aria-label={`Open ${game.Name} achievements, ${progress}% complete`}
+                    >
                       <div className='games-item-card card'>
-                        <div className='games-item-progress'>
-                          <progress value={progress} max={100} />
+                        <div className='games-item-cover'>
+                          <img
+                            src={game.PortraitImage}
+                            alt={game.Name || ''}
+                            onError={(e) => {
+                              e.currentTarget.src = missingCover;
+                            }}
+                          />
                         </div>
-                        <img
-                          src={game.PortraitImage}
-                          alt={game.Name || ''}
-                          onError={(e) => {
-                            e.currentTarget.src = missingCover;
-                          }}
-                        />
-
-                        <div className='games-item-overlay'>
+                        <div className='games-item-content'>
                           <div className='games-item-title'>{game.Name}</div>
+                          <div className='games-item-meta'>
+                            {progress}%
+                          </div>
+                          <progress value={progress} max={100} aria-label={`${game.Name} completion`} />
                         </div>
                       </div>
                     </Link>
