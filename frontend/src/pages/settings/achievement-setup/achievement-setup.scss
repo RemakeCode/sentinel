@@ -19,10 +19,6 @@
     }
   }
 
-  &-header--without-progress {
-    grid-template-columns: 1fr;
-  }
-
   &-content {
     box-sizing: border-box;
     display: flex;
@@ -55,7 +51,7 @@
     width: 160px;
     height: 160px;
     background: white;
-    border-radius: 0.35rem;
+    border-radius: var(--radius-medium);
     overflow: hidden;
   }
 
@@ -83,7 +79,7 @@
     transform: translate(-50%, -50%);
   }
 
-  &-qr-image--blurred {
+  &-qr-image-blurred {
     filter: blur(6px);
     transform: scale(1.04);
   }
@@ -121,25 +117,10 @@
     width: 100%;
   }
 
-  &-warning {
-    color: var(--warning);
-  }
-
   &-error {
     color: var(--danger);
   }
 
-  @media (max-width: 34rem) {
-    &-header {
-      grid-template-columns: 1fr;
-
-      .gbe-dialog-progress {
-        justify-self: stretch;
-        width: 100%;
-        text-align: left;
-      }
-    }
-  }
 }
 
 .achievement-setup {
@@ -179,7 +160,7 @@
     padding: var(--space-4);
     border: 1px solid var(--border);
     border-radius: var(--radius-medium);
-    background: var(--muted);
+    background: var(--faint);
 
     > svg {
       flex-shrink: 0;
@@ -202,9 +183,6 @@
       position: absolute;
       inset-block-start: 50%;
       translate: 0 -50%;
-    }
-
-    &-icon {
       inset-inline-start: var(--space-3);
       color: var(--muted-foreground);
       pointer-events: none;

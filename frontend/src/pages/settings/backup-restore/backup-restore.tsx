@@ -125,7 +125,7 @@ const BackupRestore: FC = () => {
 
   return (
     <motion.div
-      className='card settings-section settings-section--fill settings-section-first backup-restore'
+      className='card settings-section settings-section-fill settings-section-first backup-restore'
       variants={settingsSectionVariants as Variants}
     >
       <header className='settings-section-header'>
@@ -137,8 +137,8 @@ const BackupRestore: FC = () => {
       <div className='settings-section-body'>
         <div className='backup-restore-intro'>
           <div>
-            <h4 className='settings-label'>Keep a backup of your data</h4>
-            <p className='settings-description'>Back up your cached games, achievement progress, and images.</p>
+            <h4 className='settings-details-label'>Keep a backup of your data</h4>
+            <p className='settings-details-description'>Back up your cached games, achievement progress, and images.</p>
           </div>
           <div className='settings-grid-actions'>
             <button
@@ -162,9 +162,9 @@ const BackupRestore: FC = () => {
           <span className='settings-grid-icon'>
             <Folder size={22} />
           </span>
-          <div className='backup-restore-folder-details'>
-            <span className='settings-metadata'>Backup folder</span>
-            <code className='backup-restore-directory settings-metadata'>{directory}</code>
+          <div className='settings-details'>
+            <span className='settings-details-label'>Backup folder</span>
+            <code className='backup-restore-directory settings-details-description'>{directory}</code>
           </div>
           <button className='outline' onClick={() => void chooseDirectory()}>
             Change folder <ChevronRight size={18} />
@@ -173,7 +173,7 @@ const BackupRestore: FC = () => {
         {running && (
           <p aria-live='polite'>{status.operation === 'restore' ? 'Restoring backup…' : 'Creating backup…'}</p>
         )}
-        <h4 className='backup-restore-list-heading settings-label'>
+        <h4 className='backup-restore-list-heading settings-details-label'>
           Available backups
         </h4>
         {snapshots.length === 0 ? (
@@ -182,8 +182,8 @@ const BackupRestore: FC = () => {
               <History size={22} />
             </span>
             <div>
-              <strong className='settings-label'>No backups in this folder</strong>
-              <p className='settings-description'>Backups you create will appear here.</p>
+              <strong className='settings-details-label'>No backups in this folder</strong>
+              <p className='settings-details-description'>Backups you create will appear here.</p>
             </div>
           </div>
         ) : (
@@ -193,9 +193,9 @@ const BackupRestore: FC = () => {
                 <span className='settings-grid-icon'>
                   <FileArchive size={22} />
                 </span>
-                <div className='settings-grid-details'>
-                  <strong>{snapshot.name}</strong>
-                  <small>
+                <div className='settings-details'>
+                  <strong className='settings-details-label'>{snapshot.name}</strong>
+                  <small className='settings-details-metadata'>
                     {formatBackupDate(snapshot.timestamp)}
                   </small>
                 </div>

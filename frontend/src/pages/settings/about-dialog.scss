@@ -1,6 +1,6 @@
 .about-dialog {
   &-logo {
-    border-radius: 8px;
+    border-radius: var(--radius-medium);
   }
 
   &-content {

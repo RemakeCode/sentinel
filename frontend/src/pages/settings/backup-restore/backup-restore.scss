@@ -16,7 +16,6 @@
       margin: 0;
     }
     p {
-      color: var(--muted-foreground);
       margin: var(--space-1) 0 0;
     }
   }
@@ -26,31 +25,18 @@
     border: 1px solid var(--border);
     border-radius: var(--radius-large);
     padding: var(--space-3);
+    background: var(--faint);
   }
 
   &-folder {
-    background: var(--background);
-
     > button {
       margin-inline-start: auto;
-    }
-  }
-
-  &-folder-details {
-    display: grid;
-    min-width: 0;
-    gap: var(--space-1);
-
-    > span {
-      color: var(--muted-foreground);
     }
   }
 
   &-directory {
     overflow-wrap: anywhere;
     white-space: normal;
-    background: none;
-    padding: 0;
   }
 
   &-list-heading {
@@ -61,7 +47,6 @@
     border-style: dashed;
     p {
       margin: var(--space-1) 0 0;
-      color: var(--muted-foreground);
     }
   }
 
@@ -120,20 +105,4 @@
     }
   }
 
-  @media (max-width: 45rem) {
-    &-folder {
-      flex-wrap: wrap;
-
-      > button {
-        margin-inline-start: 0;
-      }
-      &-details {
-        flex: 1;
-      }
-    }
-
-    &-intro > .settings-grid-actions {
-      width: 100%;
-    }
-  }
 }
