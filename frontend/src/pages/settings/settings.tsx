@@ -58,12 +58,18 @@ const achievementProgressUpdateModes: { name: string; value: AchievementProgress
   { name: 'Disabled', value: AchievementProgressUpdateMode.AchievementProgressUpdateModeDisabled }
 ];
 
-const emulatorSearchPaths: Record<string, string> = {
-  'gse': 'users/steamuser/AppData/Roaming/GSE Saves',
-  'goldberg-steamemu': 'users/steamuser/AppData/Roaming/Goldberg SteamEmu Saves',
-  'uplay-r2': 'users/steamuser/AppData/Roaming/Goldberg UplayEmu Saves',
-  'codex': 'users/Public/Documents/Steam/CODEX',
-  'rune': 'users/Public/Documents/Steam/RUNE'
+const emulatorDetails: Record<string, { displayName: string; searchPath: string }> = {
+  'gse': { displayName: 'GSE Saves', searchPath: 'users/steamuser/AppData/Roaming/GSE Saves' },
+  'goldberg-steamemu': {
+    displayName: 'Goldberg SteamEmu',
+    searchPath: 'users/steamuser/AppData/Roaming/Goldberg SteamEmu Saves'
+  },
+  'uplay-r2': {
+    displayName: 'Goldberg UplayEmu',
+    searchPath: 'users/steamuser/AppData/Roaming/Goldberg UplayEmu Saves'
+  },
+  'codex': { displayName: 'CODEX', searchPath: 'users/Public/Documents/Steam/CODEX' },
+  'rune': { displayName: 'RUNE', searchPath: 'users/Public/Documents/Steam/RUNE' }
 };
 
 const Settings: FC = () => {
@@ -347,9 +353,9 @@ const Settings: FC = () => {
               <span className='settings-grid-icon' aria-hidden='true'>
                 <FolderOpen size={20} />
               </span>
-              <div className='settings-grid-details'>
-                <strong>No prefix folders added</strong>
-                <p>Add a folder to include custom game prefix locations. Added folders will appear here.</p>
+              <div className='settings-details'>
+                <strong className='settings-details-label'>No prefix folders added</strong>
+                <p className='settings-details-description'>Add a folder to include custom game prefix locations. Added folders will appear here.</p>
               </div>
             </div>
           ) : (
@@ -358,9 +364,9 @@ const Settings: FC = () => {
                 <span className='settings-grid-icon'>
                   <FolderOpen size={20} />
                 </span>
-                <div className='settings-grid-details'>
-                  <strong>Game prefix</strong>
-                  <code title={record.prefix.path}>{record.prefix.path}</code>
+                <div className='settings-details'>
+                  <strong className='settings-details-label'>Game prefix</strong>
+                  <code className='settings-details-metadata' title={record.prefix.path}>{record.prefix.path}</code>
                 </div>
                 <div className='settings-grid-actions'>
                   <button
@@ -382,7 +388,6 @@ const Settings: FC = () => {
           <h3 className='settings-section-title'>
             <Gamepad2 /> Emulators
           </h3>
-          <small>Notifications</small>
         </header>
         <div className='settings-grid'>
           {allEmulators.length === 0 ? (
@@ -393,24 +398,17 @@ const Settings: FC = () => {
                 <span className='settings-grid-icon'>
                   <FolderOpen size={20} />
                 </span>
-                <div className='settings-grid-details'>
-                  <strong>
-                    {record.emu.id === 'gse'
-                      ? 'GSE Saves'
-                      : record.emu.id === 'codex'
-                        ? 'CODEX'
-                        : record.emu.id === 'rune'
-                          ? 'RUNE'
-                          : record.emu.id === 'goldberg-steamemu'
-                            ? 'Goldberg SteamEmu'
-                            : 'Goldberg UplayEmu'}
+                <div className='settings-details'>
+                  <strong className='settings-details-label'>
+                    {emulatorDetails[record.emu.id]?.displayName ?? record.emu.id}
                   </strong>
-                  <code title={emulatorSearchPaths[record.emu.id]}>
-                    {emulatorSearchPaths[record.emu.id] ?? record.emu.id}
+
+                  <code className='settings-details-metadata' title={emulatorDetails[record.emu.id]?.searchPath}>
+                    {emulatorDetails[record.emu.id]?.searchPath ?? record.emu.id}
                   </code>
                 </div>
                 <div className='settings-grid-actions'>
-                  <label className='switch' title='Toggle notifications for this emulator'>
+                  <label className='switch' title='Toggle notifications for this emulator' data-tooltip-placement='left'>
                     <input
                       aria-label={`Notifications for ${record.emu.id}`}
                       type='checkbox'
@@ -434,10 +432,10 @@ const Settings: FC = () => {
           </h3>
         </header>
         <div className='settings-grid'>
-          <div className='settings-grid-item settings-grid-item--preference'>
-            <div className='settings-grid-details'>
-              <strong>Preferred source</strong>
-              <p>Choose where Sentinel retrieves Steam achievement information.</p>
+          <div className='settings-grid-item settings-grid-item-preference'>
+            <div className='settings-details'>
+              <strong className='settings-details-label'>Preferred source</strong>
+              <p className='settings-details-description'>Choose where Sentinel retrieves Steam achievement information.</p>
             </div>
             <fieldset className='settings-grid-actions' aria-label='Preferred Steam data source'>
               <label className='settings-choice'>
@@ -472,12 +470,12 @@ const Settings: FC = () => {
           </h3>
         </header>
         <div className='settings-grid'>
-          <div className='settings-grid-item settings-grid-item--preference'>
-            <div className='settings-grid-details'>
-              <label htmlFor='notification-appearance'>Appearance</label>
-              <p>Choose how achievement notifications are displayed.</p>
+          <div className='settings-grid-item settings-grid-item-preference'>
+            <div className='settings-details'>
+              <label className='settings-details-label' htmlFor='notification-appearance'>Appearance</label>
+              <p className='settings-details-description'>Choose how achievement notifications are displayed.</p>
             </div>
-            <div className='settings-grid-actions settings-grid-actions--field'>
+            <div className='settings-grid-actions settings-grid-actions-field'>
               <select
                 id='notification-appearance'
                 value={notificationRenderer}
@@ -495,10 +493,10 @@ const Settings: FC = () => {
               )}
             </div>
           </div>
-          <div className='settings-grid-item settings-grid-item--preference'>
-            <div className='settings-grid-details'>
-              <label htmlFor='notification-sound'>Notification sound</label>
-              <p>Sound played when you unlock an achievement.</p>
+          <div className='settings-grid-item settings-grid-item-preference'>
+            <div className='settings-details'>
+              <label className='settings-details-label' htmlFor='notification-sound'>Notification sound</label>
+              <p className='settings-details-description'>Sound played when you unlock an achievement.</p>
             </div>
             <div className='settings-grid-actions'>
               <select id='notification-sound' value={selectedSound} onChange={handleSoundChange}>
@@ -510,10 +508,10 @@ const Settings: FC = () => {
               </select>
             </div>
           </div>
-          <div className='settings-grid-item settings-grid-item--preference'>
-            <div className='settings-grid-details'>
-              <label htmlFor='achievement-progress-mode'>Progress updates</label>
-              <p>Choose how achievement progress updates are delivered.</p>
+          <div className='settings-grid-item settings-grid-item-preference'>
+            <div className='settings-details'>
+              <label className='settings-details-label' htmlFor='achievement-progress-mode'>Progress updates</label>
+              <p className='settings-details-description'>Choose how achievement progress updates are delivered.</p>
             </div>
             <div className='settings-grid-actions'>
               <select
@@ -529,10 +527,10 @@ const Settings: FC = () => {
               </select>
             </div>
           </div>
-          <div className='settings-grid-item settings-grid-item--preference'>
-            <div className='settings-grid-details'>
-              <strong>Preview notifications</strong>
-              <p>Send a test notification to check your preferences.</p>
+          <div className='settings-grid-item settings-grid-item-preference'>
+            <div className='settings-details'>
+              <strong className='settings-details-label'>Preview notifications</strong>
+              <p className='settings-details-description'>Send a test notification to check your preferences.</p>
             </div>
             <div className='settings-grid-actions'>
               <button className='outline' onClick={handleTestNotification} disabled={testNotificationDisabled}>
@@ -554,10 +552,10 @@ const Settings: FC = () => {
           <span className='badge'>Coming soon</span>
         </header>
         <div className='settings-grid'>
-          <div className='settings-grid-item settings-grid-item--preference'>
-            <div className='settings-grid-details'>
-              <label htmlFor='display-language'>Display language</label>
-              <p>Language selection is not available yet.</p>
+          <div className='settings-grid-item settings-grid-item-preference'>
+            <div className='settings-details'>
+              <label className='settings-details-label' htmlFor='display-language'>Display language</label>
+              <p className='settings-details-description'>Language selection is not available yet.</p>
             </div>
             <div className='settings-grid-actions'>
               <select id='display-language' value={selectedLanguage} onChange={handleLanguageChange} disabled>
@@ -579,10 +577,10 @@ const Settings: FC = () => {
           </h3>
         </header>
         <div className='settings-grid'>
-          <div className='settings-grid-item settings-grid-item--preference'>
-            <div className='settings-grid-details'>
-              <strong>Start on login</strong>
-              <p>Launch Sentinel minimized to the tray when you sign in.</p>
+          <div className='settings-grid-item settings-grid-item-preference'>
+            <div className='settings-details'>
+              <strong className='settings-details-label'>Start on login</strong>
+              <p className='settings-details-description'>Launch Sentinel minimized to the tray when you sign in.</p>
             </div>
             <div className='settings-grid-actions'>
               <label className='switch'>
@@ -594,7 +592,6 @@ const Settings: FC = () => {
                   onChange={handleStartOnLoginToggle}
                 />
               </label>
-              <small>{startOnLogin ? 'On' : 'Off'}</small>
             </div>
           </div>
         </div>

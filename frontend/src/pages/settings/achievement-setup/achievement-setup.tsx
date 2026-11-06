@@ -115,7 +115,7 @@ const AchievementSetup: FC = () => {
 
   return (
     <motion.section
-      className='settings-pane settings-pane--fill page-content'
+      className='settings-pane page-content'
       variants={settingsContentVariants}
       initial='hidden'
       animate='visible'
@@ -125,7 +125,7 @@ const AchievementSetup: FC = () => {
         <p>Find games and manage achievement tracking.</p>
       </header>
       <motion.div
-        className='card settings-section settings-section--fill settings-section-first achievement-setup-content'
+        className='card settings-section settings-section-fill settings-section-first achievement-setup-content'
         variants={settingsSectionVariants}
       >
         <header className='settings-section-header'>
@@ -184,9 +184,9 @@ const AchievementSetup: FC = () => {
                   {searchStatus === 'idle' && query.trim().length < 2 && (
                     <div className='achievement-setup-hint'>
                       <Info size={18} aria-hidden='true' />
-                      <div className='settings-grid-details'>
-                        <strong>Start by searching for a game.</strong>
-                        <p>Search for a game on Steam, then select a result to continue.</p>
+                      <div className='settings-details'>
+                        <strong className='settings-details-label'>Start by searching for a game.</strong>
+                        <p className='settings-details-description'>Search for a game on Steam, then select a result to continue.</p>
                       </div>
                     </div>
                   )}
@@ -233,26 +233,26 @@ const AchievementSetup: FC = () => {
             )}
           </section>
           <section role='tabpanel' aria-label='Configured games'>
-            <p className='settings-description'>These games are already set up for achievement tracking.</p>
+            <p className='settings-details-description'>These games are already set up for achievement tracking.</p>
             {configured.length === 0 ? (
               <div className='settings-empty'>
                 <span className='settings-grid-icon' aria-hidden='true'>
                   <Gamepad2 size={20} />
                 </span>
-                <div className='settings-grid-details'>
-                  <strong>No games configured yet</strong>
-                  <p>Use the Setup Achievements tab to add your first game.</p>
+                <div className='settings-details'>
+                  <strong className='settings-details-label'>No games configured yet</strong>
+                  <p className='settings-details-description'>Use the Setup Achievements tab to add your first game.</p>
                 </div>
               </div>
             ) : (
-              <div className='settings-grid settings-grid--flush'>
+              <div className='settings-grid settings-grid-flush'>
                 {configured.map((game) => (
-                  <div className='settings-grid-item achievement-setup-configured-row' key={game.appId}>
+                  <div className='settings-grid-item' key={game.appId}>
                     <span className='settings-grid-icon'>
                       <Gamepad2 size={20} />
                     </span>
-                    <div className='settings-grid-details'>
-                      <strong>{game.name}</strong>
+                    <div className='settings-details'>
+                      <strong className='settings-details-label'>{game.name}</strong>
                     </div>
                     <div className='settings-grid-actions'>
                       <button type='button' className='outline' onClick={() => setUndoGame(game)}>

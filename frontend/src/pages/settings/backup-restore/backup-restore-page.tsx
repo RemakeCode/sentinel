@@ -6,7 +6,7 @@ import BackupRestore from '@/pages/settings/backup-restore/backup-restore';
 
 const BackupRestorePage: FC = () => (
   <motion.section
-    className='settings-pane settings-pane--fill page-content'
+    className='settings-pane page-content'
     variants={settingsContentVariants}
     initial='hidden'
     animate='visible'

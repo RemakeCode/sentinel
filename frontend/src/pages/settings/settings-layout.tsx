@@ -28,13 +28,13 @@ const SettingsLayout: FC = () => {
     <div className='full-layout settings-layout'>
       <HeaderPortal>
         <div className='header-nav'>
-          <Link to='/' className='settings-header-back' aria-label='Back to library'>
+          <Link to='/' className='header-back' aria-label='Back to library'>
             <ArrowLeft />
           </Link>
           <h3>Settings</h3>
         </div>
         <button
-          className='settings-header-about-icon'
+          className='header-icon'
           onClick={handleAboutDialog}
           title='About'
           aria-label='About'
@@ -47,7 +47,7 @@ const SettingsLayout: FC = () => {
       <div data-sidebar-layout='always' className='settings-workspace'>
         <aside data-sidebar aria-label='Settings sections'>
           <nav aria-labelledby='settings-sidebar-label'>
-            <p id='settings-sidebar-label' className='settings-sidebar-label'>Preferences</p>
+            <p id='settings-sidebar-label'>Preferences</p>
             <ul>
               <li>
                 <NavLink to='general'>
@@ -71,7 +71,7 @@ const SettingsLayout: FC = () => {
               </li>
             </ul>
           </nav>
-          <footer className='settings-sidebar-footer'>
+          <footer>
             <ShieldCheck size={20} aria-hidden='true' />
             <span>Sentinel · Settings</span>
           </footer>

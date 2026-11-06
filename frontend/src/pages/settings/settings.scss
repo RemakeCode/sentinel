@@ -1,63 +1,16 @@
 .settings-layout {
-  --radius-medium: 0.4375rem;
-  --radius-large: 0.5625rem;
   min-height: calc(100dvh - 80px);
 }
 
 .settings {
-  &-header {
-    display: flex;
-    justify-content: space-between;
-
-    &-back,
-    &-about-icon {
-      display: inline-grid;
-      place-items: center;
-      background: transparent;
-      border-radius: 0.4375rem;
-      transition: background-color var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
-    }
-
-    &-back {
-      width: var(--space-8);
-      height: var(--space-8);
-      margin-inline: calc(-1 * var(--space-1));
-      padding: var(--space-1);
-      color: var(--primary);
-
-      &:hover,
-      &:focus-visible {
-        background: color-mix(in srgb, var(--primary), transparent 90%);
-        color: var(--primary);
-      }
-
-      &:focus-visible {
-        outline-offset: 0;
-      }
-    }
-
-    &-about-icon {
-      width: calc(var(--space-8) + var(--space-1));
-      height: calc(var(--space-8) + var(--space-1));
-      padding: 0;
-      color: var(--muted-foreground);
-      border: 1px solid transparent;
-
-      &:hover,
-      &:focus-visible {
-        background: var(--muted);
-        border-color: var(--border);
-        color: var(--foreground);
-      }
-    }
-  }
-
   &-workspace {
     --sidebar-width: calc(16rem + 20px);
+    grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
     height: calc(100dvh - 80px);
     min-height: 0;
 
     > main.full-layout {
+      grid-column: 2;
       min-width: 0;
       min-height: 0;
       padding: 0;
@@ -65,19 +18,28 @@
     }
 
     > aside[data-sidebar] {
+      grid-column: 1;
+      width: auto;
+      transform: none;
       padding-block-start: var(--space-6);
       background-color: color-mix(in srgb, var(--background), var(--card) 50%);
 
+      > nav > p {
+        margin: var(--space-2) 0 var(--space-3);
+        padding-inline: calc(var(--space-10) - var(--space-2));
+        font-size: var(--text-8);
+        font-weight: var(--font-semibold);
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--faint-foreground);
+      }
+
       > nav ul {
-        display: flex;
-        flex-direction: column;
         gap: var(--space-2);
       }
 
       > nav a {
-        display: flex;
         align-items: center;
-        gap: var(--space-2);
         padding: var(--space-3) var(--space-4);
         padding-inline-start: calc(var(--space-10) - var(--space-2));
         font-size: var(--text-6);
@@ -90,11 +52,6 @@
           height: 24px;
         }
 
-        &:hover,
-        &.active {
-          border-radius: var(--radius-medium);
-        }
-
         &.active {
           color: var(--foreground);
           font-weight: var(--font-semibold);
@@ -104,54 +61,36 @@
           color: var(--primary);
         }
       }
-    }
-  }
 
-  &-sidebar-label {
-    margin: var(--space-2) 0 var(--space-3);
-    padding-inline: calc(var(--space-10) - var(--space-2));
-    font-size: var(--text-8);
-    font-weight: var(--font-semibold);
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--faint-foreground);
-  }
+      > footer {
+        display: flex;
+        align-items: center;
+        gap: var(--space-3);
+        margin-inline: var(--space-2);
+        padding: var(--space-5) calc(var(--space-10) - var(--space-2));
+        border-top: 1px solid var(--border);
+        font-size: var(--text-8);
+        color: var(--muted-foreground);
 
-  &-sidebar-footer {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    margin-inline: var(--space-2);
-    padding: var(--space-5) calc(var(--space-10) - var(--space-2));
-    border-top: 1px solid var(--border);
-    font-size: var(--text-8);
-    color: var(--muted-foreground);
-
-    > svg {
-      flex-shrink: 0;
-      color: var(--primary);
+        > svg {
+          flex-shrink: 0;
+          color: var(--primary);
+        }
+      }
     }
   }
 
   &-pane {
     font-size: var(--text-7);
     min-width: 0;
-    max-width: 80rem;
-    margin-inline: auto;
-  }
-
-  &-pane--fill {
     display: flex;
     flex-direction: column;
     height: 100%;
     min-height: 0;
-
-    > .settings-page-header {
-      flex-shrink: 0;
-    }
   }
 
   &-page-header {
+    flex-shrink: 0;
     margin-block-end: var(--space-6);
 
     h2 {
@@ -166,10 +105,10 @@
   }
 
   &-section {
+    flex-shrink: 0;
     margin-block-start: var(--space-6);
     padding: 0;
     overflow: hidden;
-    border: 1px solid var(--border);
     border-radius: var(--radius-large);
 
     &-header {
@@ -181,9 +120,6 @@
       padding: var(--space-5) var(--space-6);
       border-bottom: 1px solid var(--border);
 
-      > small {
-        color: var(--muted-foreground);
-      }
     }
 
     &-title {
@@ -204,7 +140,7 @@
       display: block;
       padding: var(--space-6);
     }
-    &--fill {
+    &-fill {
       display: flex;
       flex-direction: column;
       flex: 1;
@@ -231,7 +167,7 @@
     flex-direction: column;
     padding-inline: var(--space-6);
 
-    &--flush {
+    &-flush {
       padding-inline: 0;
     }
 
@@ -241,44 +177,16 @@
       gap: var(--space-4);
       align-items: center;
       padding-block: var(--space-4);
+      border-top: 1px solid var(--border);
 
-      & + & {
-        border-top: 1px solid var(--border);
+      &:first-child {
+        border-top: 0;
       }
 
-      &--preference {
+      &-preference {
         grid-template-columns: minmax(0, 1fr) minmax(12rem, auto);
       }
 
-      > .badge {
-        justify-self: start;
-      }
-    }
-
-    &-details {
-      display: grid;
-      gap: var(--space-1);
-      min-width: 0;
-
-      > label,
-      > strong {
-        font-weight: var(--font-semibold);
-      }
-      p,
-      small,
-      code {
-        margin: 0;
-        color: var(--muted-foreground);
-      }
-      code,
-      strong {
-        overflow-wrap: anywhere;
-      }
-      code {
-        white-space: normal;
-        background: none;
-        padding: 0;
-      }
     }
 
     &-icon {
@@ -314,11 +222,8 @@
         max-width: 100%;
         margin: 0;
       }
-      small {
-        color: var(--muted-foreground);
-      }
 
-      &--field {
+      &-field {
         flex-direction: column;
         align-items: stretch;
         max-width: 20rem;
@@ -326,23 +231,24 @@
     }
   }
 
-  &-label,
-  &-grid-details > label,
-  &-grid-details > strong {
-    font-size: var(--text-7);
-    font-weight: var(--font-semibold);
-  }
+  &-details {
+    display: grid;
+    gap: var(--space-1);
+    min-width: 0;
 
-  &-description,
-  &-metadata,
-  &-grid-details > p,
-  &-grid-details > small,
-  &-grid-details > code,
-  &-grid-actions > small,
-  &-section-header > small {
-    font-size: var(--text-8);
-    font-weight: var(--font-normal);
-    color: var(--muted-foreground);
+    &-label {
+      font-size: var(--text-6);
+      font-weight: var(--font-semibold);
+      overflow-wrap: anywhere;
+    }
+
+    &-description,
+    &-metadata {
+      margin: 0;
+      font-size: var(--text-7);
+      font-weight: var(--font-normal);
+      color: var(--muted-foreground);
+    }
   }
 
   &-empty {
@@ -358,7 +264,6 @@
 
     > .settings-grid-icon {
       flex-shrink: 0;
-      border-radius: calc(var(--radius-large) + 1px);
     }
   }
 
@@ -381,65 +286,8 @@
   }
 
   &-notification-setup-message {
+    font-size: var(--text-8);
+    font-weight: var(--font-normal);
     color: var(--warning);
-  }
-
-  @media (max-width: 60rem) {
-    &-workspace {
-      --sidebar-width: calc(12rem + 20px);
-    }
-    &-pane.page-content {
-      padding: var(--space-5);
-    }
-  }
-
-  @media (max-width: 48rem) {
-    &-workspace {
-      display: flex;
-      flex-direction: column;
-
-      > main.full-layout {
-        flex: 1;
-        overflow-y: auto;
-      }
-
-      > aside[data-sidebar] {
-        position: static;
-        width: 100%;
-        height: auto;
-        flex-shrink: 0;
-        transform: none;
-        padding: var(--space-2);
-
-        nav ul {
-          display: flex;
-          flex-direction: row;
-          flex-wrap: wrap;
-        }
-      }
-    }
-
-    &-sidebar-label,
-    &-sidebar-footer {
-      display: none;
-    }
-
-    &-grid-item--preference {
-      grid-template-columns: minmax(0, 1fr);
-    }
-    &-grid-actions {
-      justify-self: start;
-      justify-content: flex-start;
-    }
-    &-grid-item:not(.settings-grid-item--preference) > .settings-grid-actions {
-      grid-column: 2;
-    }
-    &-section-header,
-    &-section-body {
-      padding: var(--space-4);
-    }
-    &-grid:not(.settings-grid--flush) {
-      padding-inline: var(--space-4);
-    }
   }
 }

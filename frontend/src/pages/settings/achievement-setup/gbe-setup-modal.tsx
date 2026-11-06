@@ -68,7 +68,7 @@ const SetupQRCode: FC<{ value: string; message: string; blurred?: boolean; label
 }) => (
   <div className='gbe-dialog-qr'>
     <div className='gbe-dialog-qr-code' role='img' aria-label={label}>
-      <div className={`gbe-dialog-qr-image${blurred ? ' gbe-dialog-qr-image--blurred' : ''}`}>
+      <div className={`gbe-dialog-qr-image${blurred ? ' gbe-dialog-qr-image-blurred' : ''}`}>
         <div dangerouslySetInnerHTML={{ __html: renderSVG(value, { border: 2, ecc: 'H' }) }} />
         <img className='gbe-dialog-qr-overlay' src={trophyOverlay} alt='' />
       </div>

@@ -35,15 +35,14 @@ const Logging: FC = () => {
       </header>
       <div className='settings-grid'>
         <div className='settings-grid-item'>
-          <div className='settings-grid-details'>
-            <strong>Enable logging</strong>
-            <p>Print diagnostic information to help troubleshoot issues.</p>
+          <div className='settings-details'>
+            <strong className='settings-details-label'>Enable logging</strong>
+            <p className='settings-details-description'>Print diagnostic information to help troubleshoot issues.</p>
           </div>
           <div className='settings-grid-actions'>
             <label className='switch' title='Toggle backend logging'>
-              <input type='checkbox' role='switch' checked={loggingEnabled} onChange={handleLoggingToggle} />
+              <input type='checkbox' role='switch' aria-label='Enable logging' checked={loggingEnabled} onChange={handleLoggingToggle} />
             </label>
-            <small>{loggingEnabled ? 'On' : 'Off'}</small>
           </div>
         </div>
       </div>
