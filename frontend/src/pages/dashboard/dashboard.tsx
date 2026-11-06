@@ -69,12 +69,18 @@ const Dashboard: FC = () => {
         {showLoader ? (
           <div className='dashboard-loader' aria-busy='true' data-spinner='large' />
         ) : games.length === 0 ? (
-          <div className='dashboard-empty-state'>
-            <EmptyState
-              message={syncStatus.State === 'error' ? 'Game metadata could not be loaded.' : 'No games found.'}
-              icon={<Gamepad2 />}
-            />
-          </div>
+          <EmptyState
+            message={syncStatus.State === 'error' ? 'Game metadata could not be loaded.' : 'No games detected yet'}
+            description={syncStatus.State === 'error'
+              ? 'Check the sync error message for details.'
+              : 'Games appear here when Sentinel detects achievement data. Check your configured paths if a game is missing.'}
+            icon={<Gamepad2 />}
+            action={syncStatus.State !== 'error' ? (
+              <Link to='/settings/general' className='button outline'>
+                <Settings size={18} /> Open settings
+              </Link>
+            ) : undefined}
+          />
         ) : (
           <motion.div className='games-container' variants={containerVariants} initial='hidden' animate='visible'>
             {games.map((game, idx) => {
