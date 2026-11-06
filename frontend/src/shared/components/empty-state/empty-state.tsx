@@ -4,16 +4,20 @@ import { FileX } from 'lucide-react';
 
 interface EmptyStateProps {
   message?: string;
+  description?: string;
   icon?: ReactNode;
+  action?: ReactNode;
 }
 
-const EmptyState: FC<EmptyStateProps> = ({ message = 'No data available', icon }) => {
+const EmptyState: FC<EmptyStateProps> = ({ message = 'No data available', description, icon, action }) => {
   return (
     <div className='empty-state'>
+      <div className='empty-state-icon' aria-hidden='true'>{icon ?? <FileX />}</div>
       <div className='empty-state-content'>
-        <div className='empty-state-icon'>{icon ? icon : <FileX />}</div>
-        <p className='empty-state-message'>{message}</p>
+        <h3 className='empty-state-message'>{message}</h3>
+        {description && <p className='empty-state-description'>{description}</p>}
       </div>
+      {action && <div className='empty-state-action'>{action}</div>}
     </div>
   );
 };
