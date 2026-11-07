@@ -58,6 +58,9 @@
         .games-item-cover > img {
           transform: scale(1.025);
         }
+        .games-item-overlay {
+          opacity: 1;
+        }
       }
       &.is-refreshing .games-item-cover > img {
         filter: saturate(0.85) brightness(0.7);
@@ -78,7 +81,8 @@
       border-radius: var(--radius-large);
     }
     &-cover {
-      aspect-ratio: 9 / 13;
+      position: relative;
+      aspect-ratio: 3 / 4;
       overflow: hidden;
       > img {
         display: block;
@@ -91,17 +95,30 @@
       }
     }
     &-content {
+      padding: var(--space-1) var(--space-4) var(--space-3);
+    }
+    &-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: flex-end;
       padding: var(--space-4);
+      background: linear-gradient(to top, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.3) 50%, transparent 100%);
+      opacity: 0;
+      transition: opacity 0.25s ease;
+      pointer-events: none;
     }
     &-title {
-      color: var(--foreground);
+      color: #fff;
       overflow: hidden;
-      white-space: nowrap;
-      text-overflow: ellipsis;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
+      -webkit-box-orient: vertical;
       font-size: var(--text-6);
       font-weight: var(--font-semibold);
       line-height: 1.4;
-      min-height: 1.4em;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
     }
     &-meta {
       display: flex;
@@ -131,6 +148,9 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
+    &-item-overlay {
+      transition: none;
+    }
     &-item-shell:hover,
     &-item-shell:focus-within {
       .games-item-cover > img {
