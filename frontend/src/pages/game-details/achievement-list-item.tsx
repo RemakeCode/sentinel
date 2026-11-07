@@ -1,6 +1,5 @@
 import type { FC } from 'react';
 import { motion, type Variants } from 'framer-motion';
-import { EyeOff } from 'lucide-react';
 import type { achievement } from '@wa/sentinel/backend/steam/models';
 
 const itemVariants: Variants = {
@@ -44,7 +43,6 @@ export const AchievementListItem: FC<AchievementListItemProps> = ({ ach }) => {
         <span className='game-details-ach-title'>{ach.DisplayName}</span>
         <span className='game-details-ach-desc'>
           <span className={isHiddenLocked ? 'blur' : ''}>{ach.Description || ''}</span>
-          {isHiddenLocked && <EyeOff width={18} height={18} />}
         </span>
         {hasProgress && (
           <div className='game-details-ach-progress'>
