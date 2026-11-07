@@ -117,9 +117,11 @@ const Dashboard: FC = () => {
                               e.currentTarget.src = missingCover;
                             }}
                           />
+                          <div className='games-item-overlay'>
+                            <div className='games-item-title'>{game.Name}</div>
+                          </div>
                         </div>
                         <div className='games-item-content'>
-                          <div className='games-item-title'>{game.Name}</div>
                           <div className='games-item-meta'>
                             {progress}%
                           </div>
