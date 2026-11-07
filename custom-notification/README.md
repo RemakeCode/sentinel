@@ -72,4 +72,4 @@ JSON
 
 Go supplies typed fields, the existing absolute artwork path, and earned/progress durations. Qt trusts the payload and displays strings as plain text. Set a longer `durationMs` when editing styling. Missing artwork uses the embedded icon. Progress shows exact counts above a clamped bar without percentage text; nonpositive maximums render an empty bar. Earned notifications omit progress widgets. Rare earned notifications use `isRare: true`; Go suppresses rarity for progress.
 
-Linux compositor acceptance and packaged runtime measurements remain pending in the OpenSpec task list.
+Linux compositor acceptance and packaged runtime measurements remain pending.
