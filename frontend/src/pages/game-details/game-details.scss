@@ -289,9 +289,6 @@
     &-desc {
       color: var(--muted-foreground);
       font-size: var(--text-6);
-      display: flex;
-      align-items: center;
-      gap: var(--space-2);
 
       > .blur {
         filter: blur(4px);
@@ -326,6 +323,7 @@
       flex-direction: column;
       gap: var(--space-1);
       margin-left: auto;
+      padding-inline-start: var(--space-4);
       align-self: center;
       min-width: 0;
       flex: 0 0 auto;
