@@ -26,8 +26,8 @@ const pageVariants: Variants = {
   },
   exit: (direction: 'into' | 'out') => ({
     opacity: 0,
-    scale: direction === 'into' ? 0.98 : 1.05,
-    y: direction === 'into' ? -10 : 20,
+    scale: direction === 'into' ? 0.98 : 1,
+    y: direction === 'into' ? -10 : 0,
     transition: {
       duration: 0.2,
       ease: 'easeIn'
