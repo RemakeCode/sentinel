@@ -526,6 +526,38 @@ func TestScanAndWatchPrefix_NonCompatdata_FiltersShortcuts(t *testing.T) {
 	assert.Equal(t, 1, achMock.saveCalls)
 }
 
+func TestComputeSourceRoots_SkipsDriveCAndFindsSiblingPrefixes(t *testing.T) {
+	for _, layout := range []string{"heroic", "steam"} {
+		t.Run(layout, func(t *testing.T) {
+			root := t.TempDir()
+			var expected []string
+			for _, game := range []string{"100", "200"} {
+				prefix := filepath.Join(root, game)
+				if layout == "steam" {
+					prefix = filepath.Join(prefix, "pfx")
+				}
+
+				driveC := filepath.Join(prefix, "drive_c")
+				require.NoError(t, os.MkdirAll(filepath.Join(driveC, "nested", "drive_c"), 0755))
+				expected = append(expected, filepath.Join(driveC, backend.EmuDir))
+			}
+
+			service := &Service{Config: &config.File{
+				Emulators: []config.Emulator{{ID: "gse"}},
+			}}
+			sources, err := service.computeSourceRoots(root)
+			require.NoError(t, err)
+
+			var actual []string
+			for _, source := range sources {
+				actual = append(actual, source.Path)
+				assert.Equal(t, "gse", source.Source.ID)
+			}
+			assert.ElementsMatch(t, expected, actual)
+		})
+	}
+}
+
 func TestScanAndWatchPrefix_PrefixNoLongerExists(t *testing.T) {
 	achMock := &mockAchManager{}
 	service := &Service{

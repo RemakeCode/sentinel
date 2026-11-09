@@ -571,6 +571,8 @@ func (s *Service) computeSourceRoots(prefixPath string) ([]resolvedSource, error
 						Source: source,
 					})
 				}
+
+				continue
 			}
 
 			subPath := filepath.Join(dir, entry.Name())
