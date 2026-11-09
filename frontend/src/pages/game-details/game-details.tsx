@@ -33,7 +33,8 @@ const containerVariants = {
 
 const GameDetails: FC = () => {
   const location = useLocation();
-  const game = location.state?.game as GameBasics | undefined;
+  // Keep this route's game while AnimatePresence finishes its exit after navigation.
+  const [game] = useState<GameBasics | undefined>(() => location.state?.game);
 
   const [sortBy, setSortBy] = useState<SortOption>(() => {
     if (typeof window !== 'undefined') {
