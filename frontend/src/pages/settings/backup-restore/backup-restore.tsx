@@ -158,7 +158,7 @@ const BackupRestore: FC = () => {
             </button>
           </div>
         </div>
-        <div className='backup-restore-folder'>
+        <div className='backup-restore-folder settings-inset'>
           <span className='settings-grid-icon'>
             <Folder size={22} />
           </span>
@@ -177,7 +177,7 @@ const BackupRestore: FC = () => {
           Available backups
         </h4>
         {snapshots.length === 0 ? (
-          <div className='backup-restore-empty'>
+          <div className='backup-restore-empty settings-inset'>
             <span className='settings-grid-icon'>
               <History size={22} />
             </span>

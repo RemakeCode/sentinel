@@ -20,14 +20,6 @@
     }
   }
 
-  &-folder,
-  &-empty {
-    border: 1px solid var(--border);
-    border-radius: var(--radius-large);
-    padding: var(--space-3);
-    background: var(--faint);
-  }
-
   &-folder {
     > button {
       margin-inline-start: auto;
