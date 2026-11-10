@@ -251,6 +251,13 @@
     }
   }
 
+  &-inset {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-large);
+    padding: var(--space-3);
+    background: var(--faint);
+  }
+
   &-empty {
     display: flex;
     align-items: center;
