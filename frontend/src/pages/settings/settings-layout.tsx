@@ -8,10 +8,12 @@ import { GetAppInfo } from '@wa/sentinel/backend/config/file';
 import type { AppInfo } from '@wa/sentinel/backend/config/models';
 
 import { HeaderPortal } from '@/shared/components/header/header';
+import { useUpdate } from '@/shared/context/update-context';
 
 import AboutDialog from './about-dialog';
 
 const SettingsLayout: FC = () => {
+  const { release } = useUpdate();
   const [aboutDialogOpen, setAboutDialogOpen] = useState(false);
   const [appInfo, setAppInfo] = useState<AppInfo | null>(null);
 
@@ -67,6 +69,7 @@ const SettingsLayout: FC = () => {
               <li>
                 <NavLink to='others'>
                   <Ellipsis size={18} /> <span>Others</span>
+                  {release && <span className='header-update-dot' role='img' aria-label='Update available' />}
                 </NavLink>
               </li>
             </ul>

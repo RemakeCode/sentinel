@@ -1,0 +1,27 @@
+.updates {
+  &-error {
+    margin: 0;
+    color: var(--danger);
+    overflow-wrap: anywhere;
+  }
+
+  &-notes {
+    &-actions {
+      margin-block-start: var(--space-3);
+    }
+
+    h4 {
+      margin: 0;
+    }
+  }
+
+  &-excerpt {
+    margin: var(--space-3) 0 0;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 10;
+    line-clamp: 10;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}

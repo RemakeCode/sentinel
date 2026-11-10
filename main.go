@@ -16,6 +16,7 @@ import (
 	"sentinel/backend/contextmenu"
 	"sentinel/backend/generator"
 	"sentinel/backend/logger"
+	desktopupdater "sentinel/backend/updater"
 
 	"path/filepath"
 	"strings"
@@ -65,6 +66,7 @@ func main() {
 		Logger:      appLogger,
 		LogLevel:    logger.ParseLevel(logLevel),
 		Services: []application.Service{
+			application.NewService(&desktopupdater.Service{}),
 			application.NewService(services.Config),
 			application.NewService(services.Steam),
 			application.NewService(services.Ach),

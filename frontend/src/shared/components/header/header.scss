@@ -11,6 +11,7 @@
   padding-inline: var(--space-10);
 
   &-icon {
+    position: relative;
     display: inline-grid;
     place-items: center;
     width: calc(var(--space-8) + var(--space-1));
@@ -56,6 +57,20 @@
     }
     &:focus-visible {
       outline-offset: 0;
+    }
+  }
+
+  &-update-dot {
+    display: inline-block;
+    width: var(--space-2);
+    height: var(--space-2);
+    border-radius: 50%;
+    background: var(--primary);
+
+    .header-icon > & {
+      position: absolute;
+      top: var(--space-1);
+      right: var(--space-1);
     }
   }
 
