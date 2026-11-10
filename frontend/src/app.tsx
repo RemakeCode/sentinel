@@ -6,6 +6,7 @@ import { ScrollRestoration, useLocation, useNavigationType, useOutlet } from 're
 import { GetAppInfo } from '@wa/sentinel/backend/config/file';
 import { GamesProvider } from '@/shared/context/games-context';
 import { BackupProvider } from '@/shared/context/backup-context';
+import { UpdateProvider } from '@/shared/context/update-context';
 import { Header } from '@/shared/components/header/header';
 
 // Spatial Layered Zoom variants based on navigation direction
@@ -85,6 +86,7 @@ const App: FC = () => {
 
   return (
     <MotionConfig reducedMotion='user'>
+      <UpdateProvider>
       <GamesProvider>
         <BackupProvider>
         <Header id='global-header'>
@@ -106,6 +108,7 @@ const App: FC = () => {
         <ScrollRestoration />
         </BackupProvider>
       </GamesProvider>
+      </UpdateProvider>
     </MotionConfig>
   );
 };

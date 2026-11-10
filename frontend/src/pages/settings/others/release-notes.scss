@@ -1,0 +1,25 @@
+.release-notes {
+  color: var(--muted-foreground);
+  overflow-wrap: anywhere;
+
+  > :first-child {
+    margin-block-start: 0;
+  }
+
+  > :last-child {
+    margin-block-end: 0;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-size: var(--text-6);
+  }
+
+  pre, table {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  img {
+    max-width: 100%;
+  }
+}

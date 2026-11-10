@@ -7,6 +7,7 @@ import { Link } from 'react-router';
 import EmptyState from '@/shared/components/empty-state';
 import { computeProgress } from '@/shared/utils';
 import { useGames } from '@/shared/context/games-context';
+import { useUpdate } from '@/shared/context/update-context';
 import logo from '@/assets/images/sentinel.webp';
 import missingCover from '@/assets/images/missing-cover.png';
 import { HeaderPortal } from '@/shared/components/header/header';
@@ -35,6 +36,7 @@ const itemVariants: Variants = {
 };
 
 const Dashboard: FC = () => {
+  const { release } = useUpdate();
   const { games, loading, syncStatus, isRefreshingGame } = useGames();
   const showLoader = loading || (syncStatus.State === 'running' && games.length === 0);
 
@@ -48,8 +50,9 @@ const Dashboard: FC = () => {
             <div className='logo-text-meta'>An achievement watcher</div>
           </div>
         </div>
-        <Link to='/settings' className='header-icon' aria-label='Settings'>
+        <Link to='/settings' className='header-icon' aria-label={release ? 'Settings, update available' : 'Settings'}>
           <Settings />
+          {release && <span className='header-update-dot' aria-hidden='true' />}
         </Link>
       </HeaderPortal>
       <section className='page-content'>

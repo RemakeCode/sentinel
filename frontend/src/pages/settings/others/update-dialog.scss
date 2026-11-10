@@ -1,0 +1,24 @@
+.update-dialog {
+  width: min(100% - 2rem, 48rem);
+
+  .app-dialog-content {
+    max-height: 60vh;
+    overflow-y: auto;
+  }
+
+  &-progress {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+
+    progress {
+      flex: 1;
+      min-width: 0;
+    }
+  }
+
+  &-error {
+    color: var(--danger);
+    overflow-wrap: anywhere;
+  }
+}
