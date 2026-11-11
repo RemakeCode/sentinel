@@ -50,6 +50,12 @@
         "draftRelease": true,
         "assets": [
           {
+            "path": "bin/sentinel-linux-*.tar.gz"
+          },
+          {
+            "path": "bin/SHA256SUMS"
+          },
+          {
             "path": "bin/*.deb"
           },
           {

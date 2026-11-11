@@ -2,7 +2,7 @@ import './update-dialog.scss';
 import { useEffect, useRef, useState, type FC } from 'react';
 import { Events } from '@wailsio/runtime';
 import { Download, Restart, State } from '@wa/sentinel/backend/updater/service';
-import ReleaseNotes from '@/pages/settings/others/release-notes';
+import ReleaseNotes from '@/pages/settings/others/update/release-notes';
 
 type Phase = 'loading' | 'idle' | 'downloading' | 'verifying' | 'installing' | 'ready' | 'error' | 'restarting';
 
