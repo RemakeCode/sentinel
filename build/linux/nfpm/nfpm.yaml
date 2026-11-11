@@ -21,8 +21,14 @@ version_schema: semver
 
 
 contents:
-  - src: "./bin/sentinel"
+  - src: "./build/linux/sentinel-launcher.sh"
     dst: "/usr/local/bin/sentinel"
+    file_info:
+      mode: 0755
+  - src: "./bin/sentinel-bootstrap.tar.gz"
+    dst: "/usr/lib/sentinel/sentinel-bootstrap.tar.gz"
+    file_info:
+      mode: 0644
   - src: "./build/appicon.png"
     dst: "/usr/share/icons/hicolor/128x128/apps/${APP_ID}.png"
     expand: true
@@ -35,6 +41,8 @@ contents:
       mode: 0644
 
 depends:
+  - util-linux
+  - tar
   - libgtk-4-1
   - libwebkitgtk-6.0-4
   - libqt6widgets6
@@ -51,6 +59,8 @@ overrides:
   # Fedora 44+ supplies Wayland client support in Qt 6.10's base GUI package.
   rpm:
     depends:
+      - util-linux
+      - tar
       - gtk4
       - webkitgtk6.0
       - qt6-qtbase-gui >= 6.10
@@ -60,6 +70,8 @@ overrides:
   # Arch Linux packages
   archlinux:
     depends:
+      - util-linux
+      - tar
       - gtk4
       - webkitgtk-6.0
       - qt6-base

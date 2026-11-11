@@ -145,6 +145,19 @@ tasks:
       - task: create:rpm
       - task: create:aur
 
+  generate:update-archive:
+    summary: Compresses the built executable and generates its update checksum
+    cmds:
+      - tar -czf "{{.BIN_DIR}}/{{.APP_NAME}}-linux-{{.ARCH | default ARCH}}.tar.gz" -C "{{.BIN_DIR}}" "{{.APP_NAME}}"
+      - cp "{{.BIN_DIR}}/{{.APP_NAME}}-linux-{{.ARCH | default ARCH}}.tar.gz" "{{.BIN_DIR}}/{{.APP_NAME}}-bootstrap.tar.gz"
+      - |
+        cd "{{.BIN_DIR}}"
+        if command -v sha256sum >/dev/null 2>&1; then
+          sha256sum "{{.APP_NAME}}-linux-{{.ARCH | default ARCH}}.tar.gz" > SHA256SUMS
+        else
+          shasum -a 256 "{{.APP_NAME}}-linux-{{.ARCH | default ARCH}}.tar.gz" > SHA256SUMS
+        fi
+
   create:deb:
     summary: Creates a deb package
     deps:
@@ -194,18 +207,24 @@ tasks:
 
   generate:deb:
     summary: Creates a deb package
+    deps:
+      - task: generate:update-archive
     cmds:
-      - APP_NAME="{{.APP_NAME}}" APP_ID="{{.APP_ID}}" APP_VERSION="{{.APP_VERSION}}" wails3 tool package -name "{{.RELEASE_ARTIFACT_NAME}}" -format deb -config ./build/linux/nfpm/nfpm.yaml -out {{.ROOT_DIR}}/bin
+      - GOARCH="{{.ARCH | default ARCH}}" APP_NAME="{{.APP_NAME}}" APP_ID="{{.APP_ID}}" APP_VERSION="{{.APP_VERSION}}" wails3 tool package -name "{{.RELEASE_ARTIFACT_NAME}}" -format deb -config ./build/linux/nfpm/nfpm.yaml -out "{{.ROOT_DIR}}/bin"
 
   generate:rpm:
     summary: Creates a rpm package
+    deps:
+      - task: generate:update-archive
     cmds:
-      - APP_NAME="{{.APP_NAME}}" APP_ID="{{.APP_ID}}" APP_VERSION="{{.APP_VERSION}}" wails3 tool package -name "{{.RELEASE_ARTIFACT_NAME}}" -format rpm -config ./build/linux/nfpm/nfpm.yaml -out {{.ROOT_DIR}}/bin
+      - GOARCH="{{.ARCH | default ARCH}}" APP_NAME="{{.APP_NAME}}" APP_ID="{{.APP_ID}}" APP_VERSION="{{.APP_VERSION}}" wails3 tool package -name "{{.RELEASE_ARTIFACT_NAME}}" -format rpm -config ./build/linux/nfpm/nfpm.yaml -out "{{.ROOT_DIR}}/bin"
 
   generate:aur:
     summary: Creates a arch linux packager package
+    deps:
+      - task: generate:update-archive
     cmds:
-      - APP_NAME="{{.APP_NAME}}" APP_ID="{{.APP_ID}}" APP_VERSION="{{.APP_VERSION}}" wails3 tool package -name "{{.RELEASE_ARTIFACT_NAME}}" -format archlinux -config ./build/linux/nfpm/nfpm.yaml -out {{.ROOT_DIR}}/bin
+      - GOARCH="{{.ARCH | default ARCH}}" APP_NAME="{{.APP_NAME}}" APP_ID="{{.APP_ID}}" APP_VERSION="{{.APP_VERSION}}" wails3 tool package -name "{{.RELEASE_ARTIFACT_NAME}}" -format archlinux -config ./build/linux/nfpm/nfpm.yaml -out "{{.ROOT_DIR}}/bin"
 
   generate:dotdesktop:
     summary: Generates a `.desktop` file
