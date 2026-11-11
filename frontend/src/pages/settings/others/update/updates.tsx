@@ -5,8 +5,8 @@ import { motion } from 'framer-motion';
 import { GetAppInfo } from '@wa/sentinel/backend/config/file';
 import { useUpdate } from '@/shared/context/update-context';
 import { settingsSectionVariants } from '@/pages/settings/settings-motion';
-import UpdateDialog from '@/pages/settings/others/update-dialog';
-import ReleaseNotes from '@/pages/settings/others/release-notes';
+import UpdateDialog from '@/pages/settings/others/update/update-dialog';
+import ReleaseNotes from '@/pages/settings/others/update/release-notes';
 
 const Updates: FC = () => {
   const [version, setVersion] = useState('');

@@ -3,7 +3,7 @@ import type { FC } from 'react';
 import { motion } from 'framer-motion';
 import { settingsContentVariants } from '@/pages/settings/settings-motion';
 import Logging from '@/pages/settings/others/logging';
-import Updates from '@/pages/settings/others/updates';
+import Updates from '@/pages/settings/others/update/updates';
 
 const Others: FC = () => (
   <motion.section
