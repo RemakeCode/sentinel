@@ -22,8 +22,7 @@ vars:
   FLATPAK_METAINFO: '{{.ROOT_DIR}}/build/flatpak/{{.APP_ID}}.metainfo.xml'
   FLATPAK_BUILD_DIR: '{{.ROOT_DIR}}/.flatpak/build'
   FLATPAK_REPO_DIR: '{{.ROOT_DIR}}/.flatpak/repo'
-  FLATPAK_ARCH: { sh: 'uname -m' }
-  FLATPAK_BUNDLE: '{{.ROOT_DIR}}/{{.BIN_DIR}}/{{.RELEASE_ARTIFACT_NAME}}-{{.FLATPAK_ARCH}}.flatpak'
+  FLATPAK_BUNDLE: '{{.ROOT_DIR}}/{{.BIN_DIR}}/{{.RELEASE_ARTIFACT_NAME}}.flatpak'
   FLATPAK_RUNTIME_REPO: 'https://flathub.org/repo/flathub.flatpakrepo'
 
 tasks:
@@ -148,14 +147,14 @@ tasks:
   generate:update-archive:
     summary: Compresses the built executable and generates its update checksum
     cmds:
-      - tar -czf "{{.BIN_DIR}}/{{.APP_NAME}}-linux-{{.ARCH | default ARCH}}.tar.gz" -C "{{.BIN_DIR}}" "{{.APP_NAME}}"
-      - cp "{{.BIN_DIR}}/{{.APP_NAME}}-linux-{{.ARCH | default ARCH}}.tar.gz" "{{.BIN_DIR}}/{{.APP_NAME}}-bootstrap.tar.gz"
+      - tar -czf "{{.BIN_DIR}}/{{.APP_NAME}}-linux.tar.gz" -C "{{.BIN_DIR}}" "{{.APP_NAME}}"
+      - cp "{{.BIN_DIR}}/{{.APP_NAME}}-linux.tar.gz" "{{.BIN_DIR}}/{{.APP_NAME}}-bootstrap.tar.gz"
       - |
         cd "{{.BIN_DIR}}"
         if command -v sha256sum >/dev/null 2>&1; then
-          sha256sum {{.APP_NAME}}*-linux-{{.ARCH | default ARCH}}.tar.gz > SHA256SUMS
+          sha256sum {{.APP_NAME}}*-linux.tar.gz > SHA256SUMS
         else
-          shasum -a 256 {{.APP_NAME}}*-linux-{{.ARCH | default ARCH}}.tar.gz > SHA256SUMS
+          shasum -a 256 {{.APP_NAME}}*-linux.tar.gz > SHA256SUMS
         fi
 
   create:deb:
@@ -191,13 +190,13 @@ tasks:
       - rm -f "{{.FLATPAK_BUNDLE}}"
       - flatpak-builder --user --disable-rofiles-fuse --install-deps-from=flathub --force-clean --repo="{{.FLATPAK_REPO_DIR}}" "{{.FLATPAK_BUILD_DIR}}" "{{.FLATPAK_MANIFEST}}"
       - flatpak build-bundle --runtime-repo="{{.FLATPAK_RUNTIME_REPO}}" "{{.FLATPAK_REPO_DIR}}" "{{.FLATPAK_BUNDLE}}" "{{.APP_ID}}"
-      - cp "{{.FLATPAK_BUILD_DIR}}/files/lib/sentinel/sentinel-bootstrap.tar.gz" "{{.BIN_DIR}}/{{.APP_NAME}}-flatpak-linux-{{.ARCH | default ARCH}}.tar.gz"
+      - cp "{{.FLATPAK_BUILD_DIR}}/files/lib/sentinel/sentinel-bootstrap.tar.gz" "{{.BIN_DIR}}/{{.APP_NAME}}-flatpak-linux.tar.gz"
       - |
         cd "{{.BIN_DIR}}"
         if command -v sha256sum >/dev/null 2>&1; then
-          sha256sum {{.APP_NAME}}*-linux-{{.ARCH | default ARCH}}.tar.gz > SHA256SUMS
+          sha256sum {{.APP_NAME}}*-linux.tar.gz > SHA256SUMS
         else
-          shasum -a 256 {{.APP_NAME}}*-linux-{{.ARCH | default ARCH}}.tar.gz > SHA256SUMS
+          shasum -a 256 {{.APP_NAME}}*-linux.tar.gz > SHA256SUMS
         fi
     preconditions:
       - sh: command -v flatpak >/dev/null 2>&1
