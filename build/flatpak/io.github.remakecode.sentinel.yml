@@ -109,8 +109,8 @@ modules:
         test -n "$release_version"
         go build -tags production -trimpath -buildvcs=false -ldflags="-w -s -X sentinel/backend.Version=$release_version" -o sentinel
       - mkdir -p /app/lib/sentinel
-      - tar -czf /app/lib/sentinel/sentinel-bootstrap.tar.gz sentinel
-      - install -Dm755 build/linux/sentinel-launcher.sh /app/bin/sentinel
+      - touch "/app/lib/sentinel/install-$(cat /proc/sys/kernel/random/uuid)"
+      - install -Dm755 sentinel /app/bin/sentinel
       - install -Dm644 build/linux/sentinel.desktop /app/share/applications/io.github.remakecode.sentinel.desktop
       - install -Dm644 build/appicon.png /app/share/icons/hicolor/256x256/apps/io.github.remakecode.sentinel.png
       - install -Dm644 build/flatpak/io.github.remakecode.sentinel.metainfo.xml /app/share/metainfo/io.github.remakecode.sentinel.metainfo.xml

@@ -148,7 +148,6 @@ tasks:
     summary: Compresses the built executable and generates its update checksum
     cmds:
       - tar -czf "{{.BIN_DIR}}/{{.APP_NAME}}-linux.tar.gz" -C "{{.BIN_DIR}}" "{{.APP_NAME}}"
-      - cp "{{.BIN_DIR}}/{{.APP_NAME}}-linux.tar.gz" "{{.BIN_DIR}}/{{.APP_NAME}}-bootstrap.tar.gz"
       - |
         cd "{{.BIN_DIR}}"
         if command -v sha256sum >/dev/null 2>&1; then
@@ -190,7 +189,7 @@ tasks:
       - rm -f "{{.FLATPAK_BUNDLE}}"
       - flatpak-builder --user --disable-rofiles-fuse --install-deps-from=flathub --force-clean --repo="{{.FLATPAK_REPO_DIR}}" "{{.FLATPAK_BUILD_DIR}}" "{{.FLATPAK_MANIFEST}}"
       - flatpak build-bundle --runtime-repo="{{.FLATPAK_RUNTIME_REPO}}" "{{.FLATPAK_REPO_DIR}}" "{{.FLATPAK_BUNDLE}}" "{{.APP_ID}}"
-      - cp "{{.FLATPAK_BUILD_DIR}}/files/lib/sentinel/sentinel-bootstrap.tar.gz" "{{.BIN_DIR}}/{{.APP_NAME}}-flatpak-linux.tar.gz"
+      - tar -czf "{{.BIN_DIR}}/{{.APP_NAME}}-flatpak-linux.tar.gz" -C "{{.FLATPAK_BUILD_DIR}}/files/bin" "{{.APP_NAME}}"
       - |
         cd "{{.BIN_DIR}}"
         if command -v sha256sum >/dev/null 2>&1; then

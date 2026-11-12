@@ -1,5 +1,13 @@
 #!/bin/sh
 
+# Every explicit installation supersedes the user's current executable.
+set -e
+mkdir -p /var/local
+installation_id=$(cat /proc/sys/kernel/random/uuid)
+rm -f /var/local/sentinel-install-*
+touch "/var/local/sentinel-install-$installation_id"
+chmod 644 "/var/local/sentinel-install-$installation_id"
+
 # Update desktop database for .desktop file changes
 # This makes the application appear in application menus and registers its capabilities.
 if command -v update-desktop-database >/dev/null 2>&1; then
