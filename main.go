@@ -23,6 +23,7 @@ import (
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
+	"github.com/wailsapp/wails/v3/pkg/updater"
 )
 
 //go:embed all:frontend/dist
@@ -43,6 +44,12 @@ func init() {
 }
 
 func main() {
+	updater.HandleHelperMode()
+	if err := desktopupdater.Prepare(); err != nil {
+		fmt.Fprintln(os.Stderr, "Sentinel startup:", err)
+		os.Exit(1)
+	}
+
 	flag.Parse()
 	var window *application.WebviewWindow
 
