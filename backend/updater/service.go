@@ -58,7 +58,7 @@ func matchArtifact(kind string) github.AssetMatcher {
 		if kind == "flatpak" {
 			prefix += "-flatpak"
 		}
-		name := fmt.Sprintf("%s-%s-%s.tar.gz", prefix, request.Platform, request.Arch)
+		name := fmt.Sprintf("%s-%s.tar.gz", prefix, request.Platform)
 		for index, asset := range assets {
 			if asset.Name == name {
 				return index
