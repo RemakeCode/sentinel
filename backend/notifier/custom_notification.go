@@ -227,7 +227,7 @@ func installGNOMEExtension() error {
 
 func gnomeExtensionDirectory() (string, error) {
 	directory := filepath.Join(backend.GetUserDataDir(), "gnome-shell", "extensions", gnomeExtensionUUID)
-	if os.Getenv("FLATPAK_ID") == "" {
+	if !backend.IsFlatpak() {
 		return directory, nil
 	}
 
