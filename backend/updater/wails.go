@@ -26,7 +26,7 @@ func (s *Service) Start(ctx context.Context) error {
 	s.engine = app.Updater
 	s.ctx = ctx
 
-	kind := installation()
+	kind := nativeOrFlatpak()
 
 	provider, err := github.New(github.Config{
 		Repository:    "RemakeCode/sentinel",

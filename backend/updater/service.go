@@ -44,7 +44,7 @@ func (s *Service) Restart() error {
 	return s.engine.Restart(s.ctx)
 }
 
-func installation() string {
+func nativeOrFlatpak() string {
 	if backend.IsFlatpak() {
 		return "flatpak"
 	}
