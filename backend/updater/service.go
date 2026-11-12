@@ -2,10 +2,10 @@ package updater
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
-	"os"
+
+	"sentinel/backend"
 
 	wup "github.com/wailsapp/wails/v3/pkg/updater"
 	"github.com/wailsapp/wails/v3/pkg/updater/providers/github"
@@ -44,14 +44,12 @@ func (s *Service) Restart() error {
 	return s.engine.Restart(s.ctx)
 }
 
-func installation() (string, error) {
-	if _, err := os.Stat("/.flatpak-info"); err == nil {
-		return "flatpak", nil
-	} else if !errors.Is(err, os.ErrNotExist) {
-		return "", fmt.Errorf("inspect Flatpak environment: %w", err)
+func installation() string {
+	if backend.IsFlatpak() {
+		return "flatpak"
 	}
 
-	return "native", nil
+	return "native"
 }
 
 func matchArtifact(kind string) github.AssetMatcher {

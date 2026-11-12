@@ -4,11 +4,12 @@ package autostart
 
 import (
 	"context"
-	"os"
+
+	"sentinel/backend"
 )
 
 func setEnabled(ctx context.Context, enabled bool) error {
-	if _, err := os.Stat("/.flatpak-info"); err == nil {
+	if backend.IsFlatpak() {
 		return setFlatpakAutostart(ctx, enabled)
 	}
 

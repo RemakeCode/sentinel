@@ -53,6 +53,9 @@
             "path": "bin/sentinel-linux-*.tar.gz"
           },
           {
+            "path": "bin/sentinel-flatpak-linux-*.tar.gz"
+          },
+          {
             "path": "bin/SHA256SUMS"
           },
           {

@@ -29,6 +29,12 @@ var UserCacheDir, _ = os.UserCacheDir()
 var UserConfigDir, _ = os.UserConfigDir()
 
 // GetUserDataDir returns the XDG data root or its home-directory fallback.
+// IsFlatpak reports whether the process is running inside a Flatpak sandbox.
+func IsFlatpak() bool {
+	_, err := os.Stat("/.flatpak-info")
+	return err == nil
+}
+
 func GetUserDataDir() string {
 	if dir := os.Getenv("XDG_DATA_HOME"); dir != "" {
 		return dir

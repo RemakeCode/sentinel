@@ -2,6 +2,9 @@
 set -eu
 
 bootstrap=/usr/lib/sentinel/sentinel-bootstrap.tar.gz
+if [ -f /.flatpak-info ]; then
+    bootstrap=/app/lib/sentinel/sentinel-bootstrap.tar.gz
+fi
 data_root=${XDG_DATA_HOME:-${HOME:?HOME must be set}/.local/share}
 client_dir=$data_root/sentinel/app
 client=$client_dir/sentinel

@@ -26,11 +26,7 @@ func (s *Service) Start(ctx context.Context) error {
 	s.engine = app.Updater
 	s.ctx = ctx
 
-	kind, err := installation()
-	if err != nil {
-		slog.Info("Desktop updater unavailable", "reason", err)
-		return nil
-	}
+	kind := installation()
 
 	provider, err := github.New(github.Config{
 		Repository:    "RemakeCode/sentinel",
