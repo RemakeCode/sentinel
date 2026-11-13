@@ -1,5 +1,5 @@
 import { type FC, useCallback, useEffect, useRef, useState } from 'react';
-import { DialogHeader, Focusable, Menu, MenuItem, Navigation, Spinner, showContextMenu } from '@decky/ui';
+import { DialogHeader, Focusable, Menu, MenuItem, Navigation, ScrollPanel, Spinner, showContextMenu } from '@decky/ui';
 import { toaster } from '@decky/api';
 import { LibraryImage } from '@/shared/components/library-image';
 import { EmptyState } from '@/shared/components/empty-state';
@@ -12,14 +12,34 @@ import { subscribeLibraryUpdates } from '@/shared/utils/library-update-events';
 
 //language=css
 const libraryStyles = `
+  .sentinel-library-scroll {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - var(--basicui-header-height) - var(--gamepadui-current-footer-height) - 24px);
+    min-height: 0;
+    margin-inline: -12px;
+  }
+
+  .sentinel-library-scroll > div:not(.sentinel-library-header) {
+    flex: 1;
+    min-height: 0;
+    box-sizing: border-box;
+    padding: 12px 12px 44px;
+    scroll-padding-bottom: 44px;
+  }
+
   .sentinel-library-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 24px;
+    grid-template-columns: repeat(auto-fill, 172px);
+    column-gap: 16px;
+    row-gap: 42px;
+    justify-content: space-between;
   }
 
   .sentinel-library-header {
+    flex-shrink: 0;
     font-size: 24px;
+    margin-inline: 12px;
   }
 
   .sentinel-library-loader {
@@ -251,41 +271,47 @@ const LibraryPage: FC = () => {
           </div>
         </div>
       )}
-      {showInitialSpinner ? (
-        <div className='sentinel-library-loader' aria-busy='true'>
-          <Spinner />
-        </div>
-      ) : showEmptyState ? (
-        <EmptyState
-          variant='library'
-          label={isSyncError ? 'Game metadata could not be loaded' : 'No games found'}
-          buttonText='Go to Settings'
-          buttonClick={() => Navigation.Navigate('/sentinel/settings')}
-        />
-      ) : (
-        <>
+      <div className='sentinel-library-scroll'>
+        {!showInitialSpinner && !showEmptyState && (
           <DialogHeader className={'sentinel-library-header'}>Games</DialogHeader>
-          <Focusable className='sentinel-library-grid' autoFocus>
-            {games.map((game) => {
-              const progress = computeProgress(game.Achievement.List);
-              const isRefreshing = refreshingGameIds.includes(game.AppID);
-              return (
-                <LibraryImage
-                  key={game.AppID}
-                  src={game.PortraitImage}
-                  fallbackSrc={game.FallbackPortraitImage}
-                  alt={game.Name}
-                  name={game.Name}
-                  progress={progress}
-                  isRefreshing={isRefreshing}
-                  onActivate={() => Navigation.Navigate(`/sentinel/games/${game.AppID}`)}
-                  onOpenContextMenu={(parent) => void openGameContextMenu(game.AppID, parent)}
-                />
-              );
-            })}
-          </Focusable>
-        </>
-      )}
+        )}
+        <ScrollPanel>
+          {showInitialSpinner ? (
+            <div className='sentinel-library-loader' aria-busy='true'>
+              <Spinner />
+            </div>
+          ) : showEmptyState ? (
+            <EmptyState
+              variant='library'
+              label={isSyncError ? 'Game metadata could not be loaded' : 'No games found'}
+              buttonText='Go to Settings'
+              buttonClick={() => Navigation.Navigate('/sentinel/settings')}
+            />
+          ) : (
+            <>
+              <Focusable className='sentinel-library-grid' autoFocus>
+                {games.map((game) => {
+                  const progress = computeProgress(game.Achievement.List);
+                  const isRefreshing = refreshingGameIds.includes(game.AppID);
+                  return (
+                    <LibraryImage
+                      key={game.AppID}
+                      src={game.PortraitImage}
+                      fallbackSrc={game.FallbackPortraitImage}
+                      alt={game.Name}
+                      name={game.Name}
+                      progress={progress}
+                      isRefreshing={isRefreshing}
+                      onActivate={() => Navigation.Navigate(`/sentinel/games/${game.AppID}`)}
+                      onOpenContextMenu={(parent) => void openGameContextMenu(game.AppID, parent)}
+                    />
+                  );
+                })}
+              </Focusable>
+            </>
+          )}
+        </ScrollPanel>
+      </div>
     </div>
   );
 };
