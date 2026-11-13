@@ -13,9 +13,8 @@ import {
   Spinner
 } from '@decky/ui';
 import { FaUnlock } from 'react-icons/fa';
-import { LibraryImage } from '@/shared/components/library-image';
 import { EmptyState } from '@/shared/components/empty-state';
-import { BASE_URL, Fetcher } from '@/shared/utils/fetcher';
+import { ASSET_URL, BASE_URL, Fetcher } from '@/shared/utils/fetcher';
 import {
   getTrackerStatus,
   runningGames,
@@ -62,25 +61,17 @@ const mainStyles = `
   .sentinel-qam-game-content {
     display: flex;
     flex-direction: column;
-    flex: 1;
-  }
-
-  .sentinel-qam-game-title {
-    font-size: 12px;
-    line-height: 1.25;
-    text-transform: uppercase;
-    font-weight: 700;
-    margin-block-end: 8px;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    gap: 6px;
+    min-width: 0;
   }
 
   .sentinel-qam-game-image {
-    width: 50px;
-    height: 75px;
+    width: 100%;
+    aspect-ratio: 460 / 215;
+    object-fit: cover;
+    border-radius: 4px;
+    border: 1px solid hsla(0, 0%, 100%, .1);
+    box-sizing: border-box;
   }
 
   .sentinel-qam-progress-count {
@@ -369,20 +360,15 @@ const MainPage: FC = () => {
             focusClassName='sentinel-qam-header-card--focus'
           >
             <div className='sentinel-qam-header'>Now Playing</div>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <div className='sentinel-qam-game-image'>
-                <LibraryImage
-                  src={matchedGame.PortraitImage}
-                  fallbackSrc={matchedGame.FallbackPortraitImage}
-                  alt={matchedGame.Name}
-                />
-              </div>
-              <div className='sentinel-qam-game-content'>
-                <div className='sentinel-qam-game-title'>{matchedGame.Name}</div>
-                <ProgressBar nProgress={progress} focusable={false} />
-                <div className={joinClassNames(achievementListClasses.ProgressCount, 'sentinel-qam-progress-count')}>
-                  <strong>{progress}% complete</strong> - {earned}/{achievementList.length}
-                </div>
+            <div className='sentinel-qam-game-content'>
+              <img
+                className='sentinel-qam-game-image'
+                src={matchedGame.HeaderImage ? `${ASSET_URL}${matchedGame.HeaderImage}` : undefined}
+                alt={matchedGame.Name}
+              />
+              <ProgressBar nProgress={progress} focusable={false} />
+              <div className={joinClassNames(achievementListClasses.ProgressCount, 'sentinel-qam-progress-count')}>
+                <strong>{progress}% complete</strong> - {earned}/{achievementList.length}
               </div>
             </div>
           </Focusable>
@@ -473,11 +459,6 @@ const MainPage: FC = () => {
             </PanelSectionRow>
           );
         })}
-        <PanelSectionRow>
-          <ButtonItem layout={'below'} onClick={() => Navigation.Navigate('/sentinel/library')}>
-            Browse All Games
-          </ButtonItem>
-        </PanelSectionRow>
       </PanelSection>
     );
   }
