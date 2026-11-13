@@ -36,7 +36,7 @@
   &-container {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(var(--game-card-width), 1fr));
-    gap: var(--space-5);
+    gap: var(--space-8);
     width: 100%;
     align-items: start;
   }
@@ -75,6 +75,9 @@
       border-radius: var(--radius-large);
     }
     &-card {
+      display: grid;
+      grid-template-rows: minmax(0, 1fr) 24px;
+      aspect-ratio: 2 / 3;
       width: 100%;
       padding: 0;
       overflow: hidden;
@@ -82,9 +85,11 @@
     }
     &-cover {
       position: relative;
-      aspect-ratio: 3 / 4;
+      min-height: 0;
       overflow: hidden;
       > img {
+        position: absolute;
+        inset: 0;
         display: block;
         width: 100%;
         height: 100%;
@@ -95,20 +100,31 @@
       }
     }
     &-content {
-      padding: var(--space-1) var(--space-4) var(--space-3);
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      min-width: 0;
+      padding-inline: var(--space-2);
+      > progress {
+        flex: 1;
+        min-width: 0;
+        width: 0;
+        height: 8px;
+        margin: 0;
+      }
     }
     &-overlay {
       position: absolute;
       inset: 0;
-      display: flex;
-      align-items: flex-end;
-      padding: var(--space-4);
       background: linear-gradient(to top, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.3) 50%, transparent 100%);
       opacity: 0;
       transition: opacity 0.25s ease;
       pointer-events: none;
     }
     &-title {
+      position: absolute;
+      inset-inline: var(--space-4);
+      bottom: 0;
       color: #fff;
       overflow: hidden;
       display: -webkit-box;
@@ -121,6 +137,9 @@
       text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
     }
     &-meta {
+      order: 1;
+      flex-shrink: 0;
+      line-height: 1;
       display: flex;
       justify-content: flex-end;
       color: var(--muted-foreground);
