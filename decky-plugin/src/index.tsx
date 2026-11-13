@@ -1,4 +1,5 @@
 import { DialogButton, Navigation } from '@decky/ui';
+import { useEffect, useState } from 'react';
 import { definePlugin, injectCssIntoTab, removeCssFromTab, routerHook, toaster } from '@decky/api';
 import { FaBook, FaGear } from 'react-icons/fa6';
 import { NOTIFICATION_SSE_URL } from '@/shared/utils/fetcher';
@@ -20,6 +21,8 @@ import { dispatchLibraryUpdate } from '@/shared/utils/library-update-events';
 import { dispatchBackupStatus, type BackupStatus } from '@/pages/settings/backup-restore/backup-status';
 import type { Update } from '@/shared/types/_generated/sentinel/backend/generator/models';
 import { restoreToastView, toastViewSize } from '@/shared/utils/toast-view';
+import { checkForUpdate, dispatchUpdateStatus, getUpdateStatus, subscribeUpdateStatus, type UpdateState } from '@/pages/settings/updates/update-status';
+import { BASE_URL, Fetcher } from '@/shared/utils/fetcher';
 
 let sseController: SSEController | null = null;
 
@@ -197,6 +200,10 @@ async function handleNotificationMessage(ev: MessageEvent<string>) {
     dispatchLibraryUpdate();
     return;
   }
+  if (envelope.messageType === 'updateStatus') {
+    dispatchUpdateStatus(envelope.payload as UpdateState);
+    return;
+  }
   if (envelope.messageType === 'gbeSetup') {
     dispatchGBESetupUpdate(envelope.payload as Update);
     return;
@@ -242,7 +249,38 @@ async function handleNotificationMessage(ev: MessageEvent<string>) {
   sentinelLogger.warn(`Ignoring unknown Sentinel SSE message type: ${String(envelope.messageType)}`);
 }
 
+function PluginTitle() {
+  const [state, setState] = useState(getUpdateStatus);
+  useEffect(() => subscribeUpdateStatus(setState), []);
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+      <span>Sentinel{state.release ? ' • Update available' : ''}</span>
+      <div style={{ display: 'flex', gap: '8px' }}>
+        <DialogButton onClick={() => Navigation.Navigate('/sentinel/library')} style={{ padding: '8px', minWidth: 'fit-content' }}>
+          <FaBook />
+        </DialogButton>
+        <DialogButton onClick={() => Navigation.Navigate('/sentinel/settings')} style={{ padding: '8px', minWidth: 'fit-content' }}>
+          <FaGear />
+        </DialogButton>
+      </div>
+    </div>
+  );
+}
+
 export default definePlugin(() => {
+  let active = true;
+  void (async () => {
+    const backend = new Fetcher(BASE_URL);
+    for (let attempt = 0; attempt < 20 && active; attempt++) {
+      try {
+        await backend.get('/ready');
+        if (active) await checkForUpdate();
+        return;
+      } catch {
+        if (attempt < 19) await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
+    }
+  })();
   sseController = new SSEController({ url: NOTIFICATION_SSE_URL, onMessage: handleNotificationMessage });
   sseController.start();
   const cleanupTracker: TrackerCleanup = initTracker();
@@ -253,28 +291,11 @@ export default definePlugin(() => {
 
   return {
     name: 'Sentinel',
-    titleView: (
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-        <span>Sentinel</span>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <DialogButton
-            onClick={() => Navigation.Navigate('/sentinel/library')}
-            style={{ padding: '8px', minWidth: 'fit-content' }}
-          >
-            <FaBook />
-          </DialogButton>
-          <DialogButton
-            onClick={() => Navigation.Navigate('/sentinel/settings')}
-            style={{ padding: '8px', minWidth: 'fit-content' }}
-          >
-            <FaGear />
-          </DialogButton>
-        </div>
-      </div>
-    ),
+    titleView: <PluginTitle />,
     content: <MainPage />,
     icon: <PiTrophy />,
     async onDismount() {
+      active = false;
       sseController?.dispose();
       sseController = null;
       await restoreToastView();

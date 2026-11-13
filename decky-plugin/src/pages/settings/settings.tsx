@@ -19,6 +19,7 @@ import { FaVolumeHigh, FaVolumeOff } from 'react-icons/fa6';
 import { FaArchive, FaBook, FaCircle, FaCog, FaLink, FaTrophy } from 'react-icons/fa';
 import { BackupRestoreContent } from '@/pages/settings/backup-restore/backup-restore';
 import { AchievementSetupContent } from '@/pages/settings/achievement-setup/achievement-setup';
+import { Updates } from '@/pages/settings/updates/updates';
 
 const fetcher = new Fetcher();
 
@@ -418,6 +419,7 @@ const SettingsPage: FC = () => {
                   />
                 </Field>
               </DialogControlsSection>
+              <Updates />
               <DialogControlsSection>
                 <DialogControlsSectionHeader>Logging</DialogControlsSectionHeader>
                 <Field label='Enable logging'>

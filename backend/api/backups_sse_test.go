@@ -30,7 +30,7 @@ func TestBackupStatusThroughDeckySSE(t *testing.T) {
 	defer notifications.ServiceShutdown()
 
 	service := &backups.Service{Config: configuration, Events: notifications}
-	router := NewRouter(configuration, nil, nil, notifications, nil, service).Handler()
+	router := NewRouter(configuration, nil, nil, notifications, nil, service, nil).Handler()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 

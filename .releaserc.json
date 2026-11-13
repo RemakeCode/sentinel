@@ -57,6 +57,9 @@
             "path": "bin/update-flatpak.json"
           },
           {
+            "path": "bin/update-decky.json"
+          },
+          {
             "path": "bin/sentinel-linux.tar.gz"
           },
           {

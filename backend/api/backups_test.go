@@ -13,7 +13,7 @@ import (
 )
 
 func TestBackupRoutesRejectInvalidRequests(t *testing.T) {
-	router := NewRouter(&config.File{}, nil, nil, nil, nil, nil).Handler()
+	router := NewRouter(&config.File{}, nil, nil, nil, nil, nil, nil).Handler()
 	for _, test := range []struct {
 		method string
 		path   string

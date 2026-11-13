@@ -13,6 +13,7 @@ import (
 	"sentinel/backend/backups"
 	"sentinel/backend/config"
 	"sentinel/backend/decky"
+	"sentinel/backend/decky/updater"
 	"sentinel/backend/generator"
 	"sentinel/backend/notifier"
 	"sentinel/backend/steam"
@@ -91,10 +92,46 @@ type Router struct {
 	Notifier  *notifier.Service
 	Generator *generator.Service
 	Backups   *backups.Service
+	Updater   *updater.Service
 }
 
-func NewRouter(c *config.File, s *steam.Service, w *watcher.Service, n *notifier.Service, g *generator.Service, b *backups.Service) *Router {
-	return &Router{Config: c, Steam: s, Watcher: w, Notifier: n, Generator: g, Backups: b}
+type updatePrepareRequest struct {
+	Version string `json:"version"`
+}
+
+func NewRouter(c *config.File, s *steam.Service, w *watcher.Service, n *notifier.Service, g *generator.Service, b *backups.Service, u *updater.Service) *Router {
+	return &Router{Config: c, Steam: s, Watcher: w, Notifier: n, Generator: g, Backups: b, Updater: u}
+}
+
+func (r *Router) handleUpdateCheck(w http.ResponseWriter, req *http.Request) error {
+	if r.Updater == nil {
+		return AppError{Status: http.StatusServiceUnavailable, Message: "Decky updater is unavailable"}
+	}
+
+	state, err := r.Updater.CheckUpdate(req.Context())
+	if err != nil {
+		return AppError{Status: http.StatusBadGateway, Message: err.Error()}
+	}
+
+	return JSON(w, http.StatusOK, state)
+}
+
+func (r *Router) handleUpdatePrepare(w http.ResponseWriter, req *http.Request) error {
+	if r.Updater == nil {
+		return AppError{Status: http.StatusServiceUnavailable, Message: "Decky updater is unavailable"}
+	}
+
+	var input updatePrepareRequest
+	if err := json.NewDecoder(http.MaxBytesReader(w, req.Body, 4096)).Decode(&input); err != nil || input.Version == "" {
+		return AppError{Status: http.StatusBadRequest, Message: "a selected update version is required"}
+	}
+
+	state, err := r.Updater.PrepareUpdate(req.Context(), input.Version)
+	if err != nil {
+		return AppError{Status: http.StatusBadGateway, Message: err.Error()}
+	}
+
+	return JSON(w, http.StatusOK, state)
 }
 
 // Handler returns a fully configured chi router as an http.Handler
@@ -115,6 +152,8 @@ func (r *Router) Handler() http.Handler {
 	router.Use(middleware.Recoverer) // Prevents app from crashing on API panics
 
 	router.Route("/decky-backend", func(api chi.Router) {
+		api.Post("/updates/check", Wrap(r.handleUpdateCheck))
+		api.Post("/updates/prepare", Wrap(r.handleUpdatePrepare))
 		api.Get("/ready", Wrap(r.handleReady))
 		api.Get("/config", Wrap(r.handleGetConfig))
 		api.Get("/config/available-sounds", Wrap(r.handleGetAvailableSounds))
