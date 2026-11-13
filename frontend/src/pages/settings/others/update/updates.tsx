@@ -2,6 +2,7 @@ import '@/pages/settings/settings.scss';
 import './updates.scss';
 import { type FC, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
+import { Download } from 'lucide-react';
 import { GetAppInfo } from '@wa/sentinel/backend/config/file';
 import { useUpdate } from '@/shared/context/update-context';
 import { settingsSectionVariants } from '@/pages/settings/settings-motion';
@@ -21,7 +22,9 @@ const Updates: FC = () => {
   return (
     <motion.section className='card settings-section' aria-labelledby='updates-title' variants={settingsSectionVariants}>
       <header className='settings-section-header'>
-        <h3 id='updates-title' className='settings-section-title'>Updates</h3>
+        <h3 id='updates-title' className='settings-section-title'>
+          <Download aria-hidden='true' /> Updates
+        </h3>
       </header>
       <div className='settings-grid'>
         <div className='settings-grid-item settings-grid-item-preference'>
