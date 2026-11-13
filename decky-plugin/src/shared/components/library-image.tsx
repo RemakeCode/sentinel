@@ -1,11 +1,14 @@
 import { FC, useEffect, useRef, useState } from 'react';
-import { Focusable, joinClassNames, libraryAssetImageClasses, ProgressBar } from '@decky/ui';
+import { findClassModule, Focusable, joinClassNames, libraryAssetImageClasses, ProgressBar } from '@decky/ui';
 import { ASSET_URL } from '@/shared/utils/fetcher';
 
 //language=css
 const libraryImageStyles = `
   .sentinel-library-image-wrapper {
     width: inherit;
+  }
+  .sentinel-library-image-wrapper.sentinel-library-image-wrapper--steam-card {
+    height: 0;
   }
   .sentinel-library-image-progress {
     position: absolute;
@@ -29,6 +32,10 @@ const libraryImageStyles = `
   }
 `;
 
+const steamLibraryCardClass = (
+  findClassModule((classes) => classes.LibraryItemBox && classes.InCollection) || undefined
+)?.LibraryItemBox;
+
 export interface LibraryImageProps {
   src: string;
   fallbackSrc?: string;
@@ -39,6 +46,9 @@ export interface LibraryImageProps {
   onActivate?: () => void;
   onOpenContextMenu?: (parent?: EventTarget | null) => void;
   isRefreshing?: boolean;
+  autoFocus?: boolean;
+  onGamepadFocus?: () => void;
+  steamCard?: boolean;
 }
 
 const LibraryImage: FC<LibraryImageProps> = ({
@@ -49,10 +59,14 @@ const LibraryImage: FC<LibraryImageProps> = ({
   progress,
   onActivate,
   onOpenContextMenu,
-  isRefreshing = false
+  isRefreshing = false,
+  autoFocus,
+  onGamepadFocus,
+  steamCard = false
 }) => {
   const focusableRef = useRef<HTMLDivElement | null>(null);
   const [activeSrc, setActiveSrc] = useState(src);
+  const useSteamCard = steamCard && Boolean(steamLibraryCardClass);
 
   useEffect(() => {
     setActiveSrc(src);
@@ -70,6 +84,8 @@ const LibraryImage: FC<LibraryImageProps> = ({
       <style>{libraryImageStyles}</style>
       <Focusable
         ref={focusableRef}
+        autoFocus={autoFocus}
+        {...{ onGamepadFocus }}
         onActivate={onActivate}
         onMenuButton={() => onOpenContextMenu?.(focusableRef.current)}
         onMenuActionDescription='Game Actions'
@@ -77,12 +93,14 @@ const LibraryImage: FC<LibraryImageProps> = ({
           event.preventDefault();
           onOpenContextMenu?.(focusableRef.current ?? event.currentTarget);
         }}
-        noFocusRing={false}
+        noFocusRing
         className={joinClassNames(
           libraryAssetImageClasses.Container,
           libraryAssetImageClasses.GreyBackground,
           libraryAssetImageClasses.PortraitImage,
-          'sentinel-library-image-wrapper'
+          'sentinel-library-image-wrapper',
+          useSteamCard ? 'sentinel-library-image-wrapper--steam-card' : '',
+          useSteamCard ? steamLibraryCardClass || '' : ''
         )}
       >
         <img
