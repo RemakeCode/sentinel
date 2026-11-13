@@ -30,7 +30,7 @@ const Logging: FC = () => {
     <motion.div className='card settings-section' variants={settingsSectionVariants}>
       <header className='settings-section-header'>
         <h3 className='settings-section-title'>
-          Logging
+          <Terminal aria-hidden='true' /> Logging
         </h3>
       </header>
       <div className='settings-grid'>
