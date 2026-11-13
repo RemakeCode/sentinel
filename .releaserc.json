@@ -44,11 +44,18 @@
         "prepareCmd": "APP_VERSION=${nextRelease.version} task linux:package linux:create:flatpak linux:decky:package"
       }
     ],
+    "./build/release/update-manifest.mjs",
     [
       "@semantic-release/github",
       {
         "draftRelease": true,
         "assets": [
+          {
+            "path": "bin/update.json"
+          },
+          {
+            "path": "bin/update-flatpak.json"
+          },
           {
             "path": "bin/sentinel-linux.tar.gz"
           },
