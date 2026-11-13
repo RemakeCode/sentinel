@@ -1,6 +1,7 @@
 import { type FC, useEffect, useRef, useState } from 'react';
 import {
   DialogBody,
+  DialogBodyText,
   DialogButton,
   DialogControlsSection,
   DialogControlsSectionHeader,
@@ -76,8 +77,8 @@ const MappingsContent: FC = () => {
 
   const handleDelete = async (nonSteamAppId: number, sentinelName: string) => {
     const confirmed = await showConfirmModal({
-      title: 'Delete Mapping',
-      description: `Are you sure you want to delete the mapping for ${sentinelName}?`,
+      title: 'Remove Shortcut Match',
+      description: `Are you sure you want to remove the shortcut match for ${sentinelName}?`,
       okText: "Yes, I'm sure",
       cancelText: 'Cancel',
       destructive: true
@@ -91,9 +92,12 @@ const MappingsContent: FC = () => {
 
   return (
     <DialogControlsSection>
-      <DialogControlsSectionHeader>Game Mappings</DialogControlsSectionHeader>
+      <DialogControlsSectionHeader>Shortcut Matches</DialogControlsSectionHeader>
+      <DialogBodyText>
+        Automatically links non-Steam shortcuts to games in your Sentinel library for the "Now Playing" panel.
+      </DialogBodyText>
       {entries.length === 0 ? (
-        <Field label='No mappings saved yet.' />
+        <Field label='No shortcut matches saved yet.' />
       ) : (
         entries.map(([appIdStr, mapping]) => {
           const nonSteamAppId = Number(appIdStr);
@@ -393,7 +397,7 @@ const SettingsPage: FC = () => {
         },
 
         {
-          title: 'Game Mappings',
+          title: 'Shortcut Matches',
           identifier: 'mappings',
           icon: <FaLink />,
           content: <MappingsContent />
