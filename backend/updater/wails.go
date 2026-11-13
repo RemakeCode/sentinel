@@ -11,7 +11,7 @@ import (
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 	wup "github.com/wailsapp/wails/v3/pkg/updater"
-	"github.com/wailsapp/wails/v3/pkg/updater/providers/github"
+	"github.com/wailsapp/wails/v3/pkg/updater/providers/endpoint"
 )
 
 func (s *Service) ServiceStartup(ctx context.Context, _ application.ServiceOptions) error {
@@ -26,15 +26,17 @@ func (s *Service) Start(ctx context.Context) error {
 	s.engine = app.Updater
 	s.ctx = ctx
 
-	kind := nativeOrFlatpak()
+	manifest := "update.json"
+	if backend.IsFlatpak() {
+		manifest = "update-flatpak.json"
+	}
 
-	provider, err := github.New(github.Config{
-		Repository:    "RemakeCode/sentinel",
-		ChecksumAsset: "SHA256SUMS",
-		AssetMatcher:  matchArtifact(kind),
+	provider, err := endpoint.New(endpoint.Config{
+		URL:     "https://github.com/RemakeCode/sentinel/releases/latest/download/" + manifest,
+		Channel: "stable",
 	})
 	if err != nil {
-		slog.Error("Failed to configure GitHub update provider", "error", err)
+		slog.Error("Failed to configure update endpoint", "error", err)
 		return nil
 	}
 
