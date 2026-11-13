@@ -2,13 +2,9 @@ package updater
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 
-	"sentinel/backend"
-
 	wup "github.com/wailsapp/wails/v3/pkg/updater"
-	"github.com/wailsapp/wails/v3/pkg/updater/providers/github"
 )
 
 type Service struct {
@@ -42,28 +38,4 @@ func (s *Service) Download() error {
 
 func (s *Service) Restart() error {
 	return s.engine.Restart(s.ctx)
-}
-
-func nativeOrFlatpak() string {
-	if backend.IsFlatpak() {
-		return "flatpak"
-	}
-
-	return "native"
-}
-
-func matchArtifact(kind string) github.AssetMatcher {
-	return func(request wup.CheckRequest, assets []github.ReleaseAsset) int {
-		prefix := "sentinel"
-		if kind == "flatpak" {
-			prefix += "-flatpak"
-		}
-		name := fmt.Sprintf("%s-%s.tar.gz", prefix, request.Platform)
-		for index, asset := range assets {
-			if asset.Name == name {
-				return index
-			}
-		}
-		return -1
-	}
 }
