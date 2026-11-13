@@ -10,8 +10,8 @@ import (
 	"os/signal"
 	"sentinel/backend/api"
 	"sentinel/backend/bootstrap"
+	deckybootstrap "sentinel/backend/bootstrap/decky"
 	"sentinel/backend/decky"
-	"sentinel/backend/notifier"
 	"syscall"
 	"time"
 )
@@ -28,14 +28,13 @@ func runDecky() error {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
-	services := bootstrap.NewServices()
-	services.Notifier.SetDeliveryMode(notifier.DeliveryDecky)
+	services := deckybootstrap.NewServices()
 	sessionSupervisor := newDeckSessionSupervisor(services.Watcher, decky.IsActiveDeckSession)
 
-	if err := bootstrap.StartSharedServices(ctx, services, bootstrap.StartOptions{StartWatcher: false}); err != nil {
+	if err := deckybootstrap.StartServices(ctx, services); err != nil {
 		return fmt.Errorf("initialize Decky services: %w", err)
 	}
-	defer bootstrap.ShutdownSharedServices(services)
+	defer bootstrap.ShutdownSharedServices(services.Services)
 
 	go sessionSupervisor.Run(ctx)
 	return startDeckyServer(ctx, services)
@@ -49,8 +48,8 @@ func startDecky(startServices func() error, startSupervisor func(), startServer 
 	return startServer()
 }
 
-func startDeckyServer(ctx context.Context, services *bootstrap.Services) error {
-	router := api.NewRouter(services.Config, services.Steam, services.Watcher, services.Notifier, services.Generator, services.Backups)
+func startDeckyServer(ctx context.Context, services *deckybootstrap.Services) error {
+	router := api.NewRouter(services.Config, services.Steam, services.Watcher, services.Notifier, services.Generator, services.Backups, services.Updater)
 	addr, err := decky.GetAPIAddress()
 	if err != nil {
 		return err
