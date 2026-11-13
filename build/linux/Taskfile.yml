@@ -145,16 +145,9 @@ tasks:
       - task: create:aur
 
   generate:update-archive:
-    summary: Compresses the built executable and generates its update checksum
+    summary: Compresses the built executable for updates
     cmds:
       - tar -czf "{{.BIN_DIR}}/{{.APP_NAME}}-linux.tar.gz" -C "{{.BIN_DIR}}" "{{.APP_NAME}}"
-      - |
-        cd "{{.BIN_DIR}}"
-        if command -v sha256sum >/dev/null 2>&1; then
-          sha256sum {{.APP_NAME}}*-linux.tar.gz > SHA256SUMS
-        else
-          shasum -a 256 {{.APP_NAME}}*-linux.tar.gz > SHA256SUMS
-        fi
 
   create:deb:
     summary: Creates a deb package
@@ -190,13 +183,6 @@ tasks:
       - flatpak-builder --user --disable-rofiles-fuse --install-deps-from=flathub --force-clean --repo="{{.FLATPAK_REPO_DIR}}" "{{.FLATPAK_BUILD_DIR}}" "{{.FLATPAK_MANIFEST}}"
       - flatpak build-bundle --runtime-repo="{{.FLATPAK_RUNTIME_REPO}}" "{{.FLATPAK_REPO_DIR}}" "{{.FLATPAK_BUNDLE}}" "{{.APP_ID}}"
       - tar -czf "{{.BIN_DIR}}/{{.APP_NAME}}-flatpak-linux.tar.gz" -C "{{.FLATPAK_BUILD_DIR}}/files/bin" "{{.APP_NAME}}"
-      - |
-        cd "{{.BIN_DIR}}"
-        if command -v sha256sum >/dev/null 2>&1; then
-          sha256sum {{.APP_NAME}}*-linux.tar.gz > SHA256SUMS
-        else
-          shasum -a 256 {{.APP_NAME}}*-linux.tar.gz > SHA256SUMS
-        fi
     preconditions:
       - sh: command -v flatpak >/dev/null 2>&1
         msg: "flatpak is required to build the Flatpak bundle."
