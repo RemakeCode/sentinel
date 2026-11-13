@@ -1,5 +1,15 @@
-import { type FC, useCallback, useEffect, useRef, useState } from 'react';
-import { DialogHeader, Focusable, Menu, MenuItem, Navigation, ScrollPanel, Spinner, showContextMenu } from '@decky/ui';
+import { type Context, type FC, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import {
+  DialogHeader,
+  Focusable,
+  Menu,
+  MenuItem,
+  Navigation,
+  ReactRouter,
+  ScrollPanel,
+  Spinner,
+  showContextMenu
+} from '@decky/ui';
 import { toaster } from '@decky/api';
 import { LibraryImage } from '@/shared/components/library-image';
 import { EmptyState } from '@/shared/components/empty-state';
@@ -97,7 +107,30 @@ interface LibrarySyncStatus {
 
 const emptySyncStatus: LibrarySyncStatus = { State: 'idle', Current: 0, Total: 0, Failed: 0 };
 
+interface LibraryView {
+  appId: string;
+  scrollTop: number;
+}
+
+interface SteamRoute {
+  history: {
+    action: string;
+    location: { pathname: string; state?: { sentinelLibraryView?: LibraryView; [key: string]: unknown } };
+    replace(path: string, state: object): void;
+  };
+}
+
+const SteamRouterContext = Object.values(ReactRouter).find(
+  (value) => value !== null && typeof value === 'object' && 'displayName' in value && value.displayName === 'Router'
+) as Context<SteamRoute>;
+
 const LibraryPage: FC = () => {
+  const { history } = useContext(SteamRouterContext);
+  const [returnView] = useState(() =>
+    history.action === 'POP' ? history.location.state?.sentinelLibraryView : undefined
+  );
+  const [restorePending, setRestorePending] = useState(Boolean(returnView));
+  const gridRef = useRef<HTMLDivElement>(null);
   const [games, setGames] = useState<DeckyGameBasics[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncStatus, setSyncStatus] = useState<LibrarySyncStatus>(emptySyncStatus);
@@ -255,6 +288,23 @@ const LibraryPage: FC = () => {
       : `${syncStatus.Current}/${syncStatus.Total}`;
   const showInitialSpinner = loading || (isSyncRunning && games.length < 1);
   const showEmptyState = !showInitialSpinner && games.length === 0;
+  const returnGameId = games.some((game) => game.AppID === returnView?.appId) ? returnView?.appId : undefined;
+
+  useEffect(() => {
+    if (!restorePending || showInitialSpinner) return;
+    const scroller = gridRef.current?.parentElement;
+    if (!scroller) return;
+    scroller.scrollTop = returnGameId ? (returnView?.scrollTop ?? 0) : 0;
+    if (!returnGameId) setRestorePending(false);
+  }, [restorePending, showInitialSpinner, returnGameId, returnView]);
+
+  const openGame = (appId: string) => {
+    history.replace(history.location.pathname, {
+      ...history.location.state,
+      sentinelLibraryView: { appId, scrollTop: gridRef.current?.parentElement?.scrollTop ?? 0 }
+    });
+    Navigation.Navigate(`/sentinel/games/${appId}`);
+  };
 
   return (
     <div style={styles.wrapper}>
@@ -273,9 +323,9 @@ const LibraryPage: FC = () => {
       )}
       <div className='sentinel-library-scroll'>
         {!showInitialSpinner && !showEmptyState && (
-          <DialogHeader className={'sentinel-library-header'}>Games</DialogHeader>
+          <DialogHeader className={'sentinel-library-header'}>Library</DialogHeader>
         )}
-        <ScrollPanel>
+        <ScrollPanel {...{ fnScrollIntoViewHandler: restorePending && returnGameId ? () => true : undefined }}>
           {showInitialSpinner ? (
             <div className='sentinel-library-loader' aria-busy='true'>
               <Spinner />
@@ -289,20 +339,31 @@ const LibraryPage: FC = () => {
             />
           ) : (
             <>
-              <Focusable className='sentinel-library-grid' autoFocus>
+              <Focusable className='sentinel-library-grid' ref={gridRef} autoFocus={!returnGameId}>
                 {games.map((game) => {
                   const progress = computeProgress(game.Achievement.List);
                   const isRefreshing = refreshingGameIds.includes(game.AppID);
                   return (
                     <LibraryImage
                       key={game.AppID}
+                      steamCard
+                      autoFocus={game.AppID === returnGameId}
+                      onGamepadFocus={
+                        restorePending && game.AppID === returnGameId
+                          ? () => {
+                              const scroller = gridRef.current?.parentElement;
+                              if (scroller) scroller.scrollTop = returnView?.scrollTop ?? 0;
+                              setRestorePending(false);
+                            }
+                          : undefined
+                      }
                       src={game.PortraitImage}
                       fallbackSrc={game.FallbackPortraitImage}
                       alt={game.Name}
                       name={game.Name}
                       progress={progress}
                       isRefreshing={isRefreshing}
-                      onActivate={() => Navigation.Navigate(`/sentinel/games/${game.AppID}`)}
+                      onActivate={() => openGame(game.AppID)}
                       onOpenContextMenu={(parent) => void openGameContextMenu(game.AppID, parent)}
                     />
                   );
