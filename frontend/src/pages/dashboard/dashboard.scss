@@ -53,11 +53,10 @@
       border-radius: var(--radius-large);
       position: relative;
       isolation: isolate;
+      transition: transform 0.25s ease;
       &:hover,
       &:focus-within {
-        .games-item-cover > img {
-          transform: scale(1.025);
-        }
+        transform: scale(1.015);
         .games-item-overlay {
           opacity: 1;
         }
@@ -84,19 +83,20 @@
       border-radius: var(--radius-large);
     }
     &-cover {
+      --cover-bleed: 2px;
       position: relative;
       min-height: 0;
-      overflow: hidden;
+      // Clip the image and fading gradient together, after compositing their edges.
+      mask-image: linear-gradient(black, black);
       > img {
         position: absolute;
-        inset: 0;
+        inset: calc(-1 * var(--cover-bleed));
         display: block;
-        width: 100%;
-        height: 100%;
+        width: calc(100% + 2 * var(--cover-bleed));
+        height: calc(100% + 2 * var(--cover-bleed));
+        max-width: none;
         object-fit: cover;
         object-position: top;
-        backface-visibility: hidden;
-        transition: transform 0.25s ease;
       }
     }
     &-content {
@@ -115,7 +115,7 @@
     }
     &-overlay {
       position: absolute;
-      inset: 0;
+      inset: calc(-1 * var(--cover-bleed));
       background: linear-gradient(to top, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.3) 50%, transparent 100%);
       opacity: 0;
       transition: opacity 0.25s ease;
@@ -123,8 +123,8 @@
     }
     &-title {
       position: absolute;
-      inset-inline: var(--space-4);
-      bottom: 0;
+      inset-inline: calc(var(--space-4) + var(--cover-bleed));
+      bottom: var(--cover-bleed);
       color: #fff;
       overflow: hidden;
       display: -webkit-box;
@@ -167,14 +167,13 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
+    &-item-shell,
     &-item-overlay {
       transition: none;
     }
     &-item-shell:hover,
     &-item-shell:focus-within {
-      .games-item-cover > img {
-        transform: none;
-      }
+      transform: none;
     }
   }
 }
