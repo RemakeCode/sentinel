@@ -1,8 +1,8 @@
 import './game-details.scss';
-import type { FC, ReactNode } from 'react';
+import type { FC, MouseEvent, ReactNode } from 'react';
 import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Link, useLocation } from 'react-router';
+import { Link, useLocation, useNavigate } from 'react-router';
 import { ArrowDown, ArrowLeft, ArrowUp, Clock, History, Lock, Trophy } from 'lucide-react';
 import type { GameBasics } from '@wa/sentinel/backend/steam';
 import { computeProgress } from '@/shared/utils';
@@ -33,8 +33,20 @@ const containerVariants = {
 
 const GameDetails: FC = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   // Keep this route's game while AnimatePresence finishes its exit after navigation.
   const [game] = useState<GameBasics | undefined>(() => location.state?.game);
+
+  const handleBackToLibrary = (event: MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault();
+
+    if (location.state?.game) {
+      navigate(-1);
+      return;
+    }
+
+    navigate('/');
+  };
 
   const [sortBy, setSortBy] = useState<SortOption>(() => {
     if (typeof window !== 'undefined') {
@@ -107,7 +119,12 @@ const GameDetails: FC = () => {
     <main className='full-layout'>
       <HeaderPortal>
         <div className='header-nav'>
-          <Link to='/' className='header-back' aria-label='Back to library'>
+          <Link
+            to='/'
+            onClick={handleBackToLibrary}
+            className='header-back'
+            aria-label='Back to library'
+          >
             <ArrowLeft />
           </Link>
           <h3>Achievements</h3>
