@@ -20,7 +20,7 @@ import { dispatchGBESetupUpdate } from '@/shared/utils/gbe-setup-events';
 import { dispatchLibraryUpdate } from '@/shared/utils/library-update-events';
 import { dispatchBackupStatus, type BackupStatus } from '@/pages/settings/backup-restore/backup-status';
 import type { Update } from '@/shared/types/_generated/sentinel/backend/generator/models';
-import { restoreToastView, toastViewSize } from '@/shared/utils/toast-view';
+import { prepareToastView, restoreToastView, toastViewSize } from '@/shared/utils/toast-view';
 import {
   checkForUpdate,
   dispatchUpdateStatus,
@@ -38,6 +38,9 @@ const toasterContentClassName = `sentinel-toaster-content`;
 //language=css
 const toasterStyles = `
   ${rareAchievementGlowStyles}
+
+  .sentinel-toaster.DeckyGamepadUIPopupToast { visibility: hidden; }
+  .sentinel-toaster.DeckyGamepadUIPopupToast.sentinel-toast-ready { visibility: visible; }
 
   .sentinel-rare-achievement-glow--toast {
     --rare-achievement-glow-radius: 6px;
@@ -232,11 +235,11 @@ async function handleNotificationMessage(ev: MessageEvent<string>) {
 
     if (Object.keys(message).length > 0) {
       const showProgressToast = async () => {
+        const releaseView = await prepareToastView();
         toaster.toast({
           title: <ToastTitle message={message} />,
-          body: <ToastBody message={message} />,
+          body: <ToastBody message={message} releaseView={releaseView} />,
           playSound: false,
-          eType: 3,
           expiration: 0,
           className: toasterClassName,
           contentClassName: toasterContentClassName,
