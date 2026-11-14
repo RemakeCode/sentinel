@@ -42,6 +42,8 @@ function formatUnlockTime(timestamp: number | undefined): string {
 
 //language=css
 const achievementStyles = `
+    .sentinel-achievement-tabs.sentinel-achievement-tabs { height: auto; }
+
     ${rareAchievementGlowStyles}
 
     .sentinel-achievement-container {
@@ -355,7 +357,7 @@ const AchievementsPage: FC = () => {
               ))}
             </Focusable>
           </div>
-          <div className={achievementPageClasses.AchievementTabs} style={{ height: 'auto' }}>
+          <div className={joinClassNames(achievementPageClasses.AchievementTabs, 'sentinel-achievement-tabs')}>
             <div className={joinClassNames(achievementListClasses.AchievementList)}>
               {sortedUnlocked.length > 0 && (
                 <>

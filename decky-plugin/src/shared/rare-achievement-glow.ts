@@ -1,3 +1,4 @@
+//language=css
 export const rareAchievementGlowStyles = `
   @property --rare-achievement-angle {
     syntax: '<angle>';

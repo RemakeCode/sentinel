@@ -80,9 +80,7 @@ const SetupQRCode: FC<{ value: string; message: string; blurred?: boolean; label
 }) => (
   <div className='sentinel-gbe-setup-qr'>
     <div className='sentinel-gbe-setup-qr-code' role='img' aria-label={label}>
-      <div
-        className={`sentinel-gbe-setup-qr-image${blurred ? ' sentinel-gbe-setup-qr-image--blurred' : ''}`}
-      >
+      <div className={`sentinel-gbe-setup-qr-image${blurred ? ' sentinel-gbe-setup-qr-image--blurred' : ''}`}>
         <div dangerouslySetInnerHTML={{ __html: renderSVG(value, { border: 2, ecc: 'H' }) }} />
         <img className='sentinel-gbe-setup-qr-overlay' src={trophyOverlay} alt='' />
       </div>
@@ -174,7 +172,7 @@ const DLLSelectionFlow: FC<{
             <DialogBodyText>
               Sentinel preserves the original DLL and any original steam_settings for Undo.
             </DialogBodyText>
-            <code style={{ overflowWrap: 'anywhere' }}>{dllPath}</code>
+            <code className='sentinel-gbe-setup-dll-path'>{dllPath}</code>
           </>
         )}
       </DialogBody>
@@ -303,7 +301,9 @@ const SetupFlow: FC<{
             label='Expired Steam sign-in QR code'
           />
         )}
-        {update.phase === Phase.PhaseFailed && <DialogBodyText>Achievement setup failed. Please try again.</DialogBodyText>}
+        {update.phase === Phase.PhaseFailed && (
+          <DialogBodyText>Achievement setup failed. Please try again.</DialogBodyText>
+        )}
         {update.phase === Phase.PhaseCompleted && (
           <>
             <DialogBodyText>

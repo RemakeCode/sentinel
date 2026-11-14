@@ -1,10 +1,38 @@
 import { useEffect, useState } from 'react';
-import { DialogButton, DialogControlsSection, DialogControlsSectionHeader, Field, Focusable } from '@decky/ui';
-import { checkForUpdate, getUpdateStatus, prepareUpdate, subscribeUpdateStatus, type PreparedUpdate } from '@/pages/settings/updates/update-status';
+import { DialogButton, DialogControlsSection, DialogControlsSectionHeader, Field, ProgressBar } from '@decky/ui';
+import { ReleaseNotes } from '@/pages/settings/updates/release-notes';
+import {
+  checkForUpdate,
+  dispatchUpdateStatus,
+  getUpdateStatus,
+  prepareUpdate,
+  subscribeUpdateStatus,
+  type PreparedUpdate
+} from '@/pages/settings/updates/update-status';
 
 interface DeckyInstaller {
   call(route: string, ...args: unknown[]): Promise<unknown>;
 }
+
+//language=css
+const styles = `
+  .sentinel-update-progress {
+    width: 100%;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .sentinel-update-progress-status {
+    color: var(--gpColor-Blue, #1a9fff);
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    text-align: right;
+    overflow-wrap: anywhere;
+  }
+`;
 
 async function requestDeckyInstall(update: PreparedUpdate): Promise<void> {
   const installer =
@@ -17,7 +45,6 @@ async function requestDeckyInstall(update: PreparedUpdate): Promise<void> {
   if (!update.path.startsWith('/') || !/^[a-f0-9]{64}$/.test(update.sha256) || !update.version) {
     throw new Error('The verified update path, version, or checksum is invalid.');
   }
-  // Internal Loader interface, isolated here for compatibility with future versions.
   await installer.call(
     'utilities/install_plugin',
     `file://${update.path}`,
@@ -28,41 +55,25 @@ async function requestDeckyInstall(update: PreparedUpdate): Promise<void> {
   );
 }
 
-const styles = `
-  .sentinel-release-notes {
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
-    max-height: 260px;
-    overflow-y: auto;
-    padding: 8px;
-  }
-`;
-
 export function Updates() {
   const [state, setState] = useState(getUpdateStatus);
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState('');
+  const [installing, setInstalling] = useState(false);
   const preparing = state.phase === 'downloading' || state.phase === 'verifying';
-  const busy = pending || preparing;
 
+  useEffect(() => subscribeUpdateStatus(setState), []);
   useEffect(() => {
     const current = getUpdateStatus();
-    if (current.phase !== 'downloading' && current.phase !== 'verifying') void check();
+    if (!current.release && current.phase !== 'downloading' && current.phase !== 'verifying') void check();
   }, []);
 
-  useEffect(() => {
-    if (!preparing) return undefined;
-    return subscribeUpdateStatus(setState);
-  }, [preparing]);
-
   const check = async () => {
-    const current = getUpdateStatus();
-    if (pending || current.phase === 'downloading' || current.phase === 'verifying') return;
+    if (pending || preparing) return;
     setPending(true);
     setMessage('');
     try {
       const result = await checkForUpdate();
-      setState(result);
       if (!result.release) setMessage('No update available.');
     } catch (error) {
       setMessage(`Unable to check for updates: ${String(error)}`);
@@ -71,62 +82,80 @@ export function Updates() {
     }
   };
 
-  const update = async () => {
+  const install = async () => {
     const release = state.release;
-    if (busy || !release) return;
-    setPending(true);
-    setMessage('Preparing update…');
-    setState({ ...state, phase: 'downloading', downloaded: 0, total: release.size, error: undefined });
+    if (!release || pending || installing || preparing) return;
+    setInstalling(true);
+    setMessage('');
     try {
-      const result = await prepareUpdate(release.version);
-      setState(result);
-      if (result.phase !== 'ready' || !result.prepared || result.prepared.version !== release.version || result.prepared.sha256 !== release.sha256) {
+      let result = getUpdateStatus();
+      if (
+        result.phase !== 'ready' ||
+        !result.prepared ||
+        result.prepared.version !== release.version ||
+        result.prepared.sha256 !== release.sha256
+      ) {
+        dispatchUpdateStatus({
+          ...result,
+          release,
+          phase: 'downloading',
+          downloaded: 0,
+          total: release.size,
+          error: undefined
+        });
+        result = await prepareUpdate(release.version);
+        dispatchUpdateStatus(result);
+      }
+      if (
+        result.phase !== 'ready' ||
+        !result.prepared ||
+        result.prepared.version !== release.version ||
+        result.prepared.sha256 !== release.sha256
+      ) {
         throw new Error('The backend did not return a verified update. Check again and retry.');
       }
       await requestDeckyInstall(result.prepared);
       setMessage('Installation requested. Confirm in Decky’s prompt. The plugin reloads automatically.');
     } catch (error) {
-      setState({ ...getUpdateStatus(), phase: 'failed' });
+      const current = getUpdateStatus();
+      if (current.phase === 'downloading' || current.phase === 'verifying') {
+        dispatchUpdateStatus({ ...current, release, phase: 'failed' });
+      }
       setMessage(`Unable to update: ${String(error)}`);
     } finally {
-      setPending(false);
+      setInstalling(false);
     }
   };
-  const progress = state.total > 0 ? Math.min(100, Math.round((state.downloaded / state.total) * 100)) : 0;
+
+  const busy = installing || preparing;
+  const progress = state.total > 0 ? Math.min(100, Math.round((state.downloaded / state.total) * 100)) : undefined;
+  let operation = 'Downloading update…';
+  if (state.phase === 'verifying') operation = 'Verifying update…';
+  else if (state.phase === 'ready') operation = 'Requesting installation…';
+  let buttonLabel = 'Check';
+  if (pending) buttonLabel = 'Checking…';
+  else if (state.release) buttonLabel = 'Install Update';
 
   return (
     <DialogControlsSection>
       <style>{styles}</style>
-      <DialogControlsSectionHeader>Updates{state.release ? ' • Available' : ''}</DialogControlsSectionHeader>
-      <Field
-        label='Check for updates'
-        description={message || state.error || (state.phase === 'checking' ? 'Checking…' : '')}
-      >
-        <DialogButton disabled={busy} onClick={check}>
-          Check
-        </DialogButton>
+      <DialogControlsSectionHeader>Updates</DialogControlsSectionHeader>
+      <Field label='Updates' description={busy ? undefined : message || state.error} childrenContainerWidth='fixed'>
+        {busy && (
+          <div className='sentinel-update-progress'>
+            <div className='sentinel-update-progress-status' role='status'>
+              {operation}
+            </div>
+            <ProgressBar nProgress={progress} indeterminate={state.phase !== 'downloading' || progress === undefined} />
+          </div>
+        )}
+        {!busy && (
+          <DialogButton disabled={pending} onClick={state.release ? install : check}>
+            {buttonLabel}
+          </DialogButton>
+        )}
       </Field>
-      {state.release && (
-        <>
-          <Field label='Shared release notes' description='This release may include both desktop and Decky changes.' />
-          <Focusable className='sentinel-release-notes'>
-            {state.release.notes || 'No release notes provided.'}
-          </Focusable>
-          <Field
-            label={
-              busy && preparing
-                ? state.phase === 'verifying'
-                  ? 'Verifying update…'
-                  : `Downloading update… ${progress}%`
-                : 'Update available'
-            }
-          >
-            <DialogButton disabled={busy} onClick={update}>
-              {state.phase === 'ready' ? 'Install update' : 'Update'}
-            </DialogButton>
-          </Field>
-        </>
-      )}
+      {state.release && <ReleaseNotes release={state.release} />}
     </DialogControlsSection>
   );
 }

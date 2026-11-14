@@ -21,7 +21,13 @@ import { dispatchLibraryUpdate } from '@/shared/utils/library-update-events';
 import { dispatchBackupStatus, type BackupStatus } from '@/pages/settings/backup-restore/backup-status';
 import type { Update } from '@/shared/types/_generated/sentinel/backend/generator/models';
 import { restoreToastView, toastViewSize } from '@/shared/utils/toast-view';
-import { checkForUpdate, dispatchUpdateStatus, getUpdateStatus, subscribeUpdateStatus, type UpdateState } from '@/pages/settings/updates/update-status';
+import {
+  checkForUpdate,
+  dispatchUpdateStatus,
+  getUpdateStatus,
+  subscribeUpdateStatus,
+  type UpdateState
+} from '@/pages/settings/updates/update-status';
 import { BASE_URL, Fetcher } from '@/shared/utils/fetcher';
 
 let sseController: SSEController | null = null;
@@ -249,18 +255,36 @@ async function handleNotificationMessage(ev: MessageEvent<string>) {
   sentinelLogger.warn(`Ignoring unknown Sentinel SSE message type: ${String(envelope.messageType)}`);
 }
 
+//language=css
+const pluginTitleStyles = `
+  .sentinel-plugin-title { display: flex; justify-content: space-between; align-items: center; width: 100%; }
+  .sentinel-plugin-title-actions { display: flex; gap: 8px; }
+  /* Override Steam's more specific default button sizing. */
+  .sentinel-plugin-title-button { padding: 8px !important; min-width: fit-content !important; }
+  .sentinel-plugin-title-settings-icon { position: relative; display: inline-flex; }
+  .sentinel-plugin-title-update-dot { position: absolute; top: -3px; right: -3px; width: 10px; height: 10px; border-radius: 50%; background-color: #1a9fff; }
+`;
+
 function PluginTitle() {
   const [state, setState] = useState(getUpdateStatus);
   useEffect(() => subscribeUpdateStatus(setState), []);
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-      <span>Sentinel{state.release ? ' • Update available' : ''}</span>
-      <div style={{ display: 'flex', gap: '8px' }}>
-        <DialogButton onClick={() => Navigation.Navigate('/sentinel/library')} style={{ padding: '8px', minWidth: 'fit-content' }}>
+    <div className='sentinel-plugin-title'>
+      <style>{pluginTitleStyles}</style>
+      <span>Sentinel</span>
+      <div className='sentinel-plugin-title-actions'>
+        <DialogButton onClick={() => Navigation.Navigate('/sentinel/library')} className='sentinel-plugin-title-button'>
           <FaBook />
         </DialogButton>
-        <DialogButton onClick={() => Navigation.Navigate('/sentinel/settings')} style={{ padding: '8px', minWidth: 'fit-content' }}>
-          <FaGear />
+        <DialogButton
+          aria-label={state.release ? 'Settings, update available' : 'Settings'}
+          onClick={() => Navigation.Navigate('/sentinel/settings')}
+          className='sentinel-plugin-title-button'
+        >
+          <span className='sentinel-plugin-title-settings-icon'>
+            <FaGear />
+            {state.release && <span aria-hidden='true' className='sentinel-plugin-title-update-dot' />}
+          </span>
         </DialogButton>
       </div>
     </div>
