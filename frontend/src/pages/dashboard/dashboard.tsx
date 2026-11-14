@@ -50,7 +50,12 @@ const Dashboard: FC = () => {
             <div className='logo-text-meta'>An achievement watcher</div>
           </div>
         </div>
-        <Link to='/settings' className='header-icon' aria-label={release ? 'Settings, update available' : 'Settings'}>
+        <Link
+          to='/settings/general'
+          preventScrollReset
+          className='header-icon'
+          aria-label={release ? 'Settings, update available' : 'Settings'}
+        >
           <Settings />
           {release && <span className='header-update-dot' aria-hidden='true' />}
         </Link>
@@ -79,7 +84,7 @@ const Dashboard: FC = () => {
               : 'Games appear here when Sentinel detects achievement data. Check your configured paths if a game is missing.'}
             icon={<Gamepad2 />}
             action={syncStatus.State !== 'error' ? (
-              <Link to='/settings/general' className='button outline'>
+              <Link to='/settings/general' preventScrollReset className='button outline'>
                 <Settings size={18} /> Open settings
               </Link>
             ) : undefined}
@@ -107,6 +112,7 @@ const Dashboard: FC = () => {
                   >
                     <Link
                       to={`/game/${game.AppID}`}
+                      preventScrollReset
                       state={{ game, idx }}
                       className='games-item-link'
                       aria-label={`Open ${game.Name} achievements, ${progress}% complete`}

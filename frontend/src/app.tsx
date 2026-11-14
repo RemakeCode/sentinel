@@ -59,7 +59,7 @@ const App: FC = () => {
     // POP navigation (back/forward buttons) should keep its native scroll restoration
     // managed by <ScrollRestoration />.
     if (navigationType !== 'POP') {
-      window.scrollTo(0, 0);
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
     }
   };
 
