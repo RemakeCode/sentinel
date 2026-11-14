@@ -16,10 +16,10 @@ export const ToastTitle = ({ message }: ToastProps) => {
   return <div className='sentinel-toast-game-name'>{message.GameName}</div>;
 };
 
-export const ToastBody = ({ message }: ToastProps) => {
+export const ToastBody = ({ message, releaseView }: ToastProps & { releaseView: () => void }) => {
   const rowRef = useRef<HTMLDivElement>(null);
 
-  useLayoutEffect(() => acquireToastView(rowRef.current), []);
+  useLayoutEffect(() => acquireToastView(rowRef.current, releaseView), [releaseView]);
 
   const progressPercent =
     message.MaxProgress > 0 ? Math.min(100, Math.max(0, (message.Progress / message.MaxProgress) * 100)) : 0;
