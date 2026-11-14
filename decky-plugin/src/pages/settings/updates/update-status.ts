@@ -34,11 +34,15 @@ export const dispatchUpdateStatus = (state: UpdateState) => {
 };
 export const subscribeUpdateStatus = (handler: (state: UpdateState) => void) => {
   handlers.add(handler);
-  return () => { handlers.delete(handler); };
+  return () => {
+    handlers.delete(handler);
+  };
 };
 export const checkForUpdate = async () => {
   const state = await fetcher.post<UpdateState>('/check', {});
   dispatchUpdateStatus(state);
   return state;
 };
-export const prepareUpdate = (version: string) => fetcher.post<UpdateState>('/prepare', { version });
+export const prepareUpdate = (version: string) => {
+  return fetcher.post<UpdateState>('/prepare', { version });
+};

@@ -34,6 +34,9 @@ const fetcher = new Fetcher();
 
 //language=css
 const mainStyles = `
+  .sentinel-qam-loader { display: flex; justify-content: center; padding: 16px 0; }
+  .sentinel-qam-ach-image .sentinel-img-icon { bottom: 0; height: 48px; }
+
   ${rareAchievementGlowStyles}
 
   .sentinel-qam-scroll-area {
@@ -332,11 +335,8 @@ const MainPage: FC = () => {
 
   if (loading) {
     return (
-      <div
-        aria-busy='true'
-        aria-label='Loading'
-        style={{ display: 'flex', justifyContent: 'center', padding: '16px 0' }}
-      >
+      <div aria-busy='true' aria-label='Loading' className='sentinel-qam-loader'>
+        <style>{mainStyles}</style>
         <Spinner />
       </div>
     );
@@ -403,7 +403,7 @@ const MainPage: FC = () => {
                 <div
                   className={joinClassNames('sentinel-qam-ach-image', isRare ? 'sentinel-rare-achievement-glow' : '')}
                 >
-                  <ImgIcon src={ach.Icon} style={{ bottom: 0, height: '48px' }} />
+                  <ImgIcon src={ach.Icon} />
                 </div>
                 <div className='sentinel-qam-ach-content'>
                   <div className='sentinel-qam-ach-row'>

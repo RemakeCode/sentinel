@@ -21,6 +21,15 @@ import { FaArchive, FaBook, FaCircle, FaCog, FaLink, FaTrophy } from 'react-icon
 import { BackupRestoreContent } from '@/pages/settings/backup-restore/backup-restore';
 import { AchievementSetupContent } from '@/pages/settings/achievement-setup/achievement-setup';
 import { Updates } from '@/pages/settings/updates/updates';
+import { getUpdateStatus, subscribeUpdateStatus } from '@/pages/settings/updates/update-status';
+
+//language=css
+const settingsStyles = `
+  button.sentinel-settings-icon-button.DialogButton { min-width: 0; }
+  .sentinel-settings-emulator-icon { display: block; }
+  .sentinel-settings-others-icon { display: flex; align-items: center; gap: 8px; position: relative; }
+  .sentinel-settings-update-dot { width: 10px; height: 10px; border-radius: 50%; background-color: #1a9fff; position: absolute; right: -3px; top: -3px; }
+`;
 
 const fetcher = new Fetcher();
 
@@ -103,7 +112,10 @@ const MappingsContent: FC = () => {
           const nonSteamAppId = Number(appIdStr);
           return (
             <Field key={nonSteamAppId} label={mapping.shortcutName} description={mapping.sentinelName}>
-              <DialogButton onClick={() => handleDelete(nonSteamAppId, mapping.sentinelName)} style={{ minWidth: 0 }}>
+              <DialogButton
+                onClick={() => handleDelete(nonSteamAppId, mapping.sentinelName)}
+                className='sentinel-settings-icon-button'
+              >
                 <BsTrash />
               </DialogButton>
             </Field>
@@ -121,6 +133,7 @@ const SettingsPage: FC = () => {
   const [testNotificationDisabled, setTestNotificationDisabled] = useState(false);
   const [achievementProgressUpdateMode, setAchievementProgressUpdateMode] = useState<string>('');
   const [serviceStatus, setServiceStatus] = useState<'loading' | 'online' | 'offline'>('loading');
+  const [updateState, setUpdateState] = useState(getUpdateStatus);
   const testNotificationTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { play } = usePlayAudio();
@@ -157,6 +170,8 @@ const SettingsPage: FC = () => {
   useEffect(() => {
     Promise.all([loadConfig(), loadAvailableSounds(), checkServiceStatus()]);
   }, []);
+
+  useEffect(() => subscribeUpdateStatus(setUpdateState), []);
 
   const handleSteamDataSourceChange = async (source: string) => {
     setStmSrc(source);
@@ -283,158 +298,174 @@ const SettingsPage: FC = () => {
   const emulators = config?.emulators || [];
 
   return (
-    <SidebarNavigation
-      title='Settings'
-      pages={[
-        {
-          title: 'Settings',
-          identifier: 'settings',
-          icon: <FaCog />,
-          content: (
-            <DialogBody>
-              <DialogControlsSection>
-                <DialogControlsSectionHeader>Prefix Paths</DialogControlsSectionHeader>
-                {prefixes.length === 0 ? (
-                  <Field label='No prefix paths configured' />
-                ) : (
-                  prefixes.map((prefix, index) => (
-                    <Field key={index} label={prefix.path}>
-                      <DialogButton onClick={() => handleRemovePrefix(index)} focusable style={{ minWidth: 0 }}>
-                        <BsTrash />
-                      </DialogButton>
-                    </Field>
-                  ))
-                )}
-                <Field label=''>
-                  <DialogButton onClick={handleAddPrefix}>Add Prefix Folder</DialogButton>
-                </Field>
-              </DialogControlsSection>
-              <DialogControlsSection>
-                <DialogControlsSectionHeader>Emulator Paths</DialogControlsSectionHeader>
-                {emulators.length === 0 ? (
-                  <Field label='No emulator paths configured' />
-                ) : (
-                  emulators.map((emu, index) => (
-                    <Field
-                      key={index}
-                      label={emulatorSearchPaths[emu.id] ?? emu.id}
-                      icon={
-                        <div style={{ display: 'block' }}>{emu.shouldNotify ? <FaVolumeHigh /> : <FaVolumeOff />}</div>
+    <>
+      <style>{settingsStyles}</style>
+      <SidebarNavigation
+        title='Settings'
+        pages={[
+          {
+            title: 'Settings',
+            identifier: 'settings',
+            icon: <FaCog />,
+            content: (
+              <DialogBody>
+                <DialogControlsSection>
+                  <DialogControlsSectionHeader>Prefix Paths</DialogControlsSectionHeader>
+                  {prefixes.length === 0 ? (
+                    <Field label='No prefix paths configured' />
+                  ) : (
+                    prefixes.map((prefix, index) => (
+                      <Field key={index} label={prefix.path}>
+                        <DialogButton
+                          onClick={() => handleRemovePrefix(index)}
+                          focusable
+                          className='sentinel-settings-icon-button'
+                        >
+                          <BsTrash />
+                        </DialogButton>
+                      </Field>
+                    ))
+                  )}
+                  <Field label=''>
+                    <DialogButton onClick={handleAddPrefix}>Add Prefix Folder</DialogButton>
+                  </Field>
+                </DialogControlsSection>
+                <DialogControlsSection>
+                  <DialogControlsSectionHeader>Emulator Paths</DialogControlsSectionHeader>
+                  {emulators.length === 0 ? (
+                    <Field label='No emulator paths configured' />
+                  ) : (
+                    emulators.map((emu, index) => (
+                      <Field
+                        key={index}
+                        label={emulatorSearchPaths[emu.id] ?? emu.id}
+                        icon={
+                          <div className='sentinel-settings-emulator-icon'>
+                            {emu.shouldNotify ? <FaVolumeHigh /> : <FaVolumeOff />}
+                          </div>
+                        }
+                      >
+                        <Toggle value={emu.shouldNotify} onChange={() => handleToggleNotify(index)} />
+                      </Field>
+                    ))
+                  )}
+                </DialogControlsSection>
+                <DialogControlsSection>
+                  <DialogControlsSectionHeader>Steam Data Source</DialogControlsSectionHeader>
+                  <Field label='Data source' childrenContainerWidth='fixed'>
+                    <Dropdown
+                      rgOptions={[
+                        { data: 'external', label: 'External Sources' },
+                        { data: 'key', label: 'Steam' }
+                      ]}
+                      selectedOption={stmSrc}
+                      onChange={(option) => handleSteamDataSourceChange(option.data)}
+                    />
+                  </Field>
+                </DialogControlsSection>
+                <DialogControlsSection>
+                  <DialogControlsSectionHeader>Library Images</DialogControlsSectionHeader>
+                  <Field label='Experimental SteamGridDB Images'>
+                    <Toggle value={config?.decky?.UseSteamGrid ?? false} onChange={handleUseSteamGridToggle} />
+                  </Field>
+                </DialogControlsSection>
+                <DialogControlsSection>
+                  <DialogControlsSectionHeader>Notification Sound</DialogControlsSectionHeader>
+                  <Field label='Sound' childrenContainerWidth='fixed'>
+                    <Dropdown
+                      rgOptions={availableSounds.map((s) => ({ data: s.value, label: s.name }))}
+                      selectedOption={config?.notificationSound || ''}
+                      onChange={handleSoundChange}
+                      strDefaultLabel='Select a sound'
+                    />
+                  </Field>
+                </DialogControlsSection>
+                <DialogControlsSection>
+                  <DialogControlsSectionHeader>Achievement Progress Updates</DialogControlsSectionHeader>
+                  <Field label='Mode' childrenContainerWidth='fixed'>
+                    <Dropdown
+                      rgOptions={[
+                        { data: 'default', label: 'Default (Sound & Notification)' },
+                        { data: 'silent', label: 'Silent (No Sound)' },
+                        { data: 'disabled', label: 'Disabled' }
+                      ]}
+                      selectedOption={achievementProgressUpdateMode}
+                      onChange={handleAchievementProgressUpdateModeChange}
+                      strDefaultLabel='Select mode'
+                    />
+                  </Field>
+                </DialogControlsSection>
+                <DialogControlsSection>
+                  <DialogControlsSectionHeader>Test Notification</DialogControlsSectionHeader>
+                  <Field label='Normal'>
+                    <DialogButton disabled={testNotificationDisabled} onClick={handleTestNotification}>
+                      Test
+                    </DialogButton>
+                  </Field>
+                  <Field label='Progress'>
+                    <DialogButton disabled={testNotificationDisabled} onClick={handleTestNotificationProgress}>
+                      Test
+                    </DialogButton>
+                  </Field>
+                </DialogControlsSection>
+              </DialogBody>
+            )
+          },
+
+          {
+            title: 'Achievement Setup',
+            identifier: 'achievement-setup',
+            icon: <FaTrophy />,
+            content: <AchievementSetupContent />
+          },
+
+          {
+            title: 'Shortcut Matches',
+            identifier: 'mappings',
+            icon: <FaLink />,
+            content: <MappingsContent />
+          },
+
+          {
+            title: 'Backup & Restore',
+            identifier: 'backup-restore',
+            icon: <FaArchive />,
+            content: <BackupRestoreContent />
+          },
+          {
+            title: 'Others',
+            identifier: 'others',
+            icon: (
+              <div className='sentinel-settings-others-icon'>
+                <FaBook />
+                {updateState.release && <span className='sentinel-settings-update-dot' />}
+              </div>
+            ),
+            content: (
+              <DialogBody>
+                <Updates />
+                <DialogControlsSection>
+                  <DialogControlsSectionHeader>Service Status</DialogControlsSectionHeader>
+                  <Field label={`Backend Status - ${serviceStatus}`}>
+                    <FaCircle
+                      fill={
+                        serviceStatus === 'online' ? '#22c55e' : serviceStatus === 'offline' ? '#ef4444' : '#6b7280'
                       }
-                    >
-                      <Toggle value={emu.shouldNotify} onChange={() => handleToggleNotify(index)} />
-                    </Field>
-                  ))
-                )}
-              </DialogControlsSection>
-              <DialogControlsSection>
-                <DialogControlsSectionHeader>Steam Data Source</DialogControlsSectionHeader>
-                <Field label='Data source' childrenContainerWidth='fixed'>
-                  <Dropdown
-                    rgOptions={[
-                      { data: 'external', label: 'External Sources' },
-                      { data: 'key', label: 'Steam' }
-                    ]}
-                    selectedOption={stmSrc}
-                    onChange={(option) => handleSteamDataSourceChange(option.data)}
-                  />
-                </Field>
-              </DialogControlsSection>
-              <DialogControlsSection>
-                <DialogControlsSectionHeader>Library Images</DialogControlsSectionHeader>
-                <Field label='Experimental SteamGridDB Images'>
-                  <Toggle value={config?.decky?.UseSteamGrid ?? false} onChange={handleUseSteamGridToggle} />
-                </Field>
-              </DialogControlsSection>
-              <DialogControlsSection>
-                <DialogControlsSectionHeader>Notification Sound</DialogControlsSectionHeader>
-                <Field label='Sound' childrenContainerWidth='fixed'>
-                  <Dropdown
-                    rgOptions={availableSounds.map((s) => ({ data: s.value, label: s.name }))}
-                    selectedOption={config?.notificationSound || ''}
-                    onChange={handleSoundChange}
-                    strDefaultLabel='Select a sound'
-                  />
-                </Field>
-              </DialogControlsSection>
-              <DialogControlsSection>
-                <DialogControlsSectionHeader>Achievement Progress Updates</DialogControlsSectionHeader>
-                <Field label='Mode' childrenContainerWidth='fixed'>
-                  <Dropdown
-                    rgOptions={[
-                      { data: 'default', label: 'Default (Sound & Notification)' },
-                      { data: 'silent', label: 'Silent (No Sound)' },
-                      { data: 'disabled', label: 'Disabled' }
-                    ]}
-                    selectedOption={achievementProgressUpdateMode}
-                    onChange={handleAchievementProgressUpdateModeChange}
-                    strDefaultLabel='Select mode'
-                  />
-                </Field>
-              </DialogControlsSection>
-              <DialogControlsSection>
-                <DialogControlsSectionHeader>Test Notification</DialogControlsSectionHeader>
-                <Field label='Normal'>
-                  <DialogButton disabled={testNotificationDisabled} onClick={handleTestNotification}>
-                    Test
-                  </DialogButton>
-                </Field>
-                <Field label='Progress'>
-                  <DialogButton disabled={testNotificationDisabled} onClick={handleTestNotificationProgress}>
-                    Test
-                  </DialogButton>
-                </Field>
-              </DialogControlsSection>
-            </DialogBody>
-          )
-        },
-
-        {
-          title: 'Achievement Setup',
-          identifier: 'achievement-setup',
-          icon: <FaTrophy />,
-          content: <AchievementSetupContent />
-        },
-
-        {
-          title: 'Shortcut Matches',
-          identifier: 'mappings',
-          icon: <FaLink />,
-          content: <MappingsContent />
-        },
-
-        {
-          title: 'Backup & Restore',
-          identifier: 'backup-restore',
-          icon: <FaArchive />,
-          content: <BackupRestoreContent />
-        },
-        {
-          title: 'Others',
-          identifier: 'others',
-          icon: <FaBook />,
-          content: (
-            <DialogBody>
-              <DialogControlsSection>
-                <DialogControlsSectionHeader>Service Status</DialogControlsSectionHeader>
-                <Field label={`Backend Status - ${serviceStatus}`}>
-                  <FaCircle
-                    fill={serviceStatus === 'online' ? '#22c55e' : serviceStatus === 'offline' ? '#ef4444' : '#6b7280'}
-                  />
-                </Field>
-              </DialogControlsSection>
-              <Updates />
-              <DialogControlsSection>
-                <DialogControlsSectionHeader>Logging</DialogControlsSectionHeader>
-                <Field label='Enable logging'>
-                  <Toggle value={(config?.logLevel || '') === 'info'} onChange={handleLoggingToggle} />
-                </Field>
-              </DialogControlsSection>
-            </DialogBody>
-          )
-        }
-      ]}
-    />
+                    />
+                  </Field>
+                </DialogControlsSection>
+                <DialogControlsSection>
+                  <DialogControlsSectionHeader>Logging</DialogControlsSectionHeader>
+                  <Field label='Enable logging'>
+                    <Toggle value={(config?.logLevel || '') === 'info'} onChange={handleLoggingToggle} />
+                  </Field>
+                </DialogControlsSection>
+              </DialogBody>
+            )
+          }
+        ]}
+      />
+    </>
   );
 };
 

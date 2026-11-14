@@ -19,6 +19,12 @@ interface Snapshot {
   timestamp: number;
 }
 
+//language=css
+const styles = `
+  .sentinel-backup-actions { display: flex; align-items: center; gap: 8px; }
+  button.sentinel-backup-action-button.DialogButton { min-width: 0; }
+`;
+
 const fetcher = new Fetcher(BASE_URL);
 const formatDate = (timestamp: number) =>
   new Date(timestamp * 1000)
@@ -153,6 +159,7 @@ export function BackupRestoreContent() {
 
   return (
     <DialogBody>
+      <style>{styles}</style>
       <DialogControlsSection>
         <DialogControlsSectionHeader>Backup & Restore</DialogControlsSectionHeader>
         <ButtonItem
@@ -192,16 +199,16 @@ export function BackupRestoreContent() {
               inlineWrap='keep-inline'
               verticalAlignment='center'
             >
-              <Focusable flow-children='row' style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Focusable flow-children='row' className='sentinel-backup-actions'>
                 <DialogButton
-                  style={{ minWidth: 0 }}
+                  className='sentinel-backup-action-button'
                   disabled={running}
                   onClick={() => void restore(`${directory.replace(/\/$/, '')}/${snapshot.name}`)}
                 >
                   Restore
                 </DialogButton>
                 <DialogButton
-                  style={{ minWidth: 0 }}
+                  className='sentinel-backup-action-button'
                   disabled={running}
                   onClick={() => void deleteBackup(snapshot.name)}
                 >

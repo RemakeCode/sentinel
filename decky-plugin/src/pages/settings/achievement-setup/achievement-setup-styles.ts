@@ -1,4 +1,7 @@
+//language=css
 export const achievementSetupStyles = `
+  .sentinel-gbe-setup-dll-path { overflow-wrap: anywhere; }
+
   .sentinel-gbe-setup-content {
     box-sizing: border-box;
     height: 160px;
